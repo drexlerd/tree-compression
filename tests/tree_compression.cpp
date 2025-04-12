@@ -24,17 +24,17 @@ namespace valla::tests
 TEST(VallaTests, TreeCompressionTest)
 {
     auto tree_table = IndexedHashSet();
-    tree_table.find_or_insert(make_slot(-1, -1));
     auto root_table = IndexedHashSet();
     auto tmp_state = State();
 
     {
         const auto s0 = State { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
-        const auto [s0_idx, success] = insert(s0, tree_table, root_table);
+        const auto s0_idx = insert(s0, tree_table, root_table).first->second;
 
         EXPECT_EQ(tree_table.size(), 8);
         EXPECT_EQ(root_table.size(), 1);
 
+        // Created new state!
         EXPECT_EQ(s0_idx, 0);
 
         read_state(s0_idx, tree_table, root_table, tmp_state);
@@ -43,32 +43,44 @@ TEST(VallaTests, TreeCompressionTest)
 
     {
         const auto s1 = State { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-        const auto [s1_idx, success] = insert(s1, tree_table, root_table);
+        const auto s1_idx = insert(s1, tree_table, root_table).first->second;
 
         EXPECT_EQ(tree_table.size(), 10);
         EXPECT_EQ(root_table.size(), 2);
 
+        // Created new state!
         EXPECT_EQ(s1_idx, 1);
+
+        read_state(s1_idx, tree_table, root_table, tmp_state);
+        EXPECT_EQ(tmp_state, s1);
     }
 
     {
         const auto s2 = State { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
-        const auto [s2_idx, success] = insert(s2, tree_table, root_table);
+        const auto s2_idx = insert(s2, tree_table, root_table).first->second;
 
         EXPECT_EQ(tree_table.size(), 12);
         EXPECT_EQ(root_table.size(), 3);
 
+        // Created new state!
         EXPECT_EQ(s2_idx, 2);
+
+        read_state(s2_idx, tree_table, root_table, tmp_state);
+        EXPECT_EQ(tmp_state, s2);
     }
 
     {
         const auto s3 = State { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
-        const auto [s3_idx, success] = insert(s3, tree_table, root_table);
+        const auto s3_idx = insert(s3, tree_table, root_table).first->second;
 
         EXPECT_EQ(tree_table.size(), 12);
         EXPECT_EQ(root_table.size(), 3);
 
+        // State already exists!
         EXPECT_EQ(s3_idx, 2);
+
+        read_state(s3_idx, tree_table, root_table, tmp_state);
+        EXPECT_EQ(tmp_state, s3);
     }
 }
 

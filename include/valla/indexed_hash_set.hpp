@@ -30,17 +30,19 @@ namespace valla
 class IndexedHashSet
 {
 public:
-    std::pair<Index, bool> find_or_insert(Slot slot)
+    auto insert_slot(Slot slot)
     {
         const auto result = m_slot_to_index.emplace(slot, m_slot_to_index.size());
+
         if (result.second)
         {
             m_index_to_slot.push_back(slot);
         }
-        return { result.first->second, result.second };
+
+        return result;
     }
 
-    Slot get(Index index) const
+    Slot get_slot(Index index) const
     {
         assert(index < m_index_to_slot.size());
         return m_index_to_slot[index];
