@@ -27,6 +27,10 @@
 
 namespace valla
 {
+/// @brief `IndexedHashSet` encapsulates a bijective function f : Slot -> Index with inverse mapping f^{-1} : Index -> Slot
+/// where the indices in the image are enumerated 0,1,2,... and so on.
+///
+/// TODO: think more about how to implement this using a Cleary table!
 class IndexedHashSet
 {
 public:
@@ -45,6 +49,7 @@ public:
     Slot get_slot(Index index) const
     {
         assert(index < m_index_to_slot.size());
+
         return m_index_to_slot[index];
     }
 

@@ -29,13 +29,12 @@
 
 namespace valla
 {
-using Index = uint32_t;
+// Observe: there is no sentinel value requires in constrast to several other tree compression data structures.
 
-static const Index NULL_INDEX = std::numeric_limits<Index>::max();
+using Index = uint32_t;  ///< Enough space for 4,294,967,295 indices
+using Slot = uint64_t;   ///< A slot is made up of two indices.
 
 using State = std::vector<Index>;
-
-using Slot = uint64_t;
 }
 
 #endif
