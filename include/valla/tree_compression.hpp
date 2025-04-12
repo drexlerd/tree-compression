@@ -40,7 +40,7 @@ inline Index insert_recursively(State::const_iterator it, State::const_iterator 
     /* Base case */
     if (len <= 2)
     {
-        return table.insert_slot((len == 0) ? make_slot(-1, -1) : (len == 1) ? make_slot(*it, -1) : make_slot(*it, *(it + 1))).first->second;
+        return table.insert_slot((len == 1) ? make_slot(*it, NULL_INDEX) : make_slot(*it, *(it + 1))).first->second;
     }
 
     /* Divide */
@@ -57,14 +57,15 @@ inline auto insert(const State& state, IndexedHashSet& tree_table, IndexedHashSe
 {
     assert(std::is_sorted(state.begin(), state.end()));
 
+    if (state.size() == 0)
+        return root_table.insert_slot(make_slot(tree_table.insert_slot(make_slot(NULL_INDEX, NULL_INDEX)).first->second, Index(0)));
+
     return root_table.insert_slot(make_slot(insert_recursively(state.begin(), state.end(), tree_table), state.size()));
 }
 
 inline void read_state_recursively(Index index, size_t len, const IndexedHashSet& tree_table, State& out_state)
 {
     const auto [left_index, right_index] = read_slot(tree_table.get_slot(index));
-
-    // std::cout << "index=" << index << " len=" << len << " left_index=" << left_index << " right_index=" << right_index << std::endl;
 
     /* Base case */
     if (len <= 2)

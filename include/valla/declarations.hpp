@@ -31,6 +31,8 @@ namespace valla
 {
 using Index = uint32_t;
 
+static const Index NULL_INDEX = std::numeric_limits<Index>::max();
+
 using State = std::vector<Index>;
 
 using Slot = uint64_t;
