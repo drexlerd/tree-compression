@@ -57,7 +57,7 @@ inline auto insert(const State& state, IndexedHashSet& tree_table, IndexedHashSe
 {
     assert(std::is_sorted(state.begin(), state.end()));
 
-    if (state.size() == 0)
+    if (state.size() == 0)  ///< Special case for empty state.
         return root_table.insert_slot(make_slot(tree_table.insert_slot(make_slot(NULL_INDEX, NULL_INDEX)).first->second, Index(0)));
 
     return root_table.insert_slot(make_slot(insert_recursively(state.begin(), state.end(), tree_table), state.size()));
@@ -92,7 +92,7 @@ inline void read_state(Index root_index, const IndexedHashSet& tree_table, const
 
     const auto [tree_index, len] = read_slot(root_table.get_slot(root_index));
 
-    if (len == 0)
+    if (len == 0)  ///< Special case for empty state.
         return;
 
     read_state_recursively(tree_index, len, tree_table, out_state);
