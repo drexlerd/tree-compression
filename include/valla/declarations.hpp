@@ -34,8 +34,6 @@ using Index = uint32_t;
 using State = std::vector<Index>;
 
 using Slot = uint64_t;
-
-using IndexedHashSet = std::unordered_map<Slot, Index>;
 }
 
 #endif

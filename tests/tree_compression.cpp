@@ -24,7 +24,9 @@ namespace valla::tests
 TEST(VallaTests, TreeCompressionTest)
 {
     auto tree_table = IndexedHashSet();
+    tree_table.find_or_insert(make_slot(-1, -1));
     auto root_table = IndexedHashSet();
+    auto tmp_state = State();
 
     {
         const auto s0 = State { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
@@ -34,6 +36,9 @@ TEST(VallaTests, TreeCompressionTest)
         EXPECT_EQ(root_table.size(), 1);
 
         EXPECT_EQ(s0_idx, 0);
+
+        read_state(s0_idx, tree_table, root_table, tmp_state);
+        EXPECT_EQ(tmp_state, s0);
     }
 
     {
