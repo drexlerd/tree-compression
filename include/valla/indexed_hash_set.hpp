@@ -31,6 +31,7 @@ namespace valla
 /// where the indices in the image are enumerated 0,1,2,... and so on.
 ///
 /// TODO: think more about how to implement this using a Cleary table!
+/// Current understanding: reduces current memory overhead from 5/2 to 1 at the cost of a bidirectional probing search!!!
 class IndexedHashSet
 {
 public:
