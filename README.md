@@ -21,6 +21,16 @@ cmake --build build -j$(nproc)
 ./build/tests/valla_tests
 ```
 
+## Available State Compression Methods
+
+1. Chain of Perfectly Balanced Binary Trees (CPBBT)
+
+The following table shows the properties of our implementations.
+
+| Configuration     |     Variable-length | Multi-core      |
+| :---------------- | ------------------: | --------------: | 
+| CPBBT             |                 YES |              NO |
+
 ## TODOs
 
 - add automated performance benchmarking with some artificial benchmarks to compare and visualize upon commit.
