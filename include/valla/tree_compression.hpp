@@ -24,16 +24,12 @@
 #include <algorithm>
 #include <cassert>
 #include <cmath>
+#include <concepts>
 #include <iostream>
+#include <ranges>
 
 namespace valla
 {
-
-/// @brief Pack two uint32_t into a uint64_t.
-inline Slot make_slot(Index lhs, Index rhs) { return Slot(lhs) << 32 | rhs; }
-
-/// @brief Unpack two uint32_t from a uint64_t.
-inline std::pair<Index, Index> read_slot(Slot slot) { return { Index(slot >> 32), slot & (Index(-1)) }; }
 
 /// @brief Recursively insert the elements from `it` until `end` into the `table`.
 /// @param it points to the first element.
@@ -66,7 +62,9 @@ inline Index insert_recursively(State::const_iterator it, State::const_iterator 
 /// @param tree_table is the tree table whose nodes encode the tree structure without size information.
 /// @param root_table is the root_table whose nodes encode the root tree index + the size of the state that defines the tree structure.
 /// @return A pair (it, bool) where it points to the entry in the root table and bool is true if and only if the state was newly inserted.
-inline auto insert(const State& state, IndexedHashSet& tree_table, IndexedHashSet& root_table)
+template<std::ranges::forward_range Range>
+    requires std::same_as<std::ranges::range_value_t<Range>, Index>
+auto insert(const Range& state, IndexedHashSet& tree_table, IndexedHashSet& root_table)
 {
     assert(std::is_sorted(state.begin(), state.end()));
 

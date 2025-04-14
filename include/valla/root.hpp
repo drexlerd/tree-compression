@@ -22,22 +22,26 @@
 #include "indexed_hash_set.hpp"
 
 #include <algorithm>
+#include <bit>
 #include <cassert>
 #include <cmath>
+#include <concepts>
 #include <iostream>
+#include <ranges>
 
 namespace valla
 {
 class Root
 {
 private:
-    Slot m_root;
     IndexedHashSet& m_tree_table;
+    Index m_index;
+    uint32_t m_size;
 
     friend class const_iterator;
 
 public:
-    Root(Slot root, IndexedHashSet& tree_table);
+    Root(IndexedHashSet& tree_table, Slot root) : m_tree_table(tree_table), m_index(read_pos(root, 0)), m_size(read_pos(root, 1)) {}
 
     /**
      * Iterators
@@ -46,9 +50,44 @@ public:
     class const_iterator
     {
     private:
-        Index m_node;
-        Index m_size;
-        IndexedHashSet& m_tree_table;
+        IndexedHashSet* m_tree_table;
+
+        struct Entry
+        {
+            Index m_index;
+            uint32_t m_size;
+        };
+
+        std::vector<Entry> m_stack;
+
+        Index m_value;
+
+        static constexpr const Index END_POS = Index(-1);
+
+        void advance()
+        {
+            while (!m_stack.empty())
+            {
+                auto entry = m_stack.back();
+                m_stack.pop_back();
+
+                if (entry.m_size == 1)
+                {
+                    m_value = entry.m_index;
+                    return;
+                }
+
+                const auto [left, right] = read_slot(m_tree_table->get_slot(entry.m_index));
+
+                Index mid = std::bit_floor(entry.m_size - 1);
+
+                // Emplace right first to ensure left is visited first in dfs.
+                m_stack.emplace_back(right, entry.m_size - mid);
+                m_stack.emplace_back(left, mid);
+            }
+
+            m_value = END_POS;
+        }
 
     public:
         using difference_type = std::ptrdiff_t;
@@ -57,17 +96,33 @@ public:
         using reference = value_type&;
         using iterator_category = std::forward_iterator_tag;
 
-        const_iterator();
-        const_iterator(Slot root, IndexedHashSet& tree_table, bool begin);
-        value_type operator*() const;
-        const_iterator& operator++();
-        const_iterator operator++(int);
-        bool operator==(const const_iterator& other) const;
-        bool operator!=(const const_iterator& other) const;
+        const_iterator() : m_tree_table(nullptr), m_stack(), m_value(END_POS) {}
+        const_iterator(IndexedHashSet& tree_table, Index node, Index size, bool begin) : m_tree_table(&tree_table), m_stack(), m_value(END_POS)
+        {
+            if (begin)
+            {
+                m_stack.emplace_back(node, size);
+                advance();
+            }
+        }
+        value_type operator*() const { return m_value; }
+        const_iterator& operator++()
+        {
+            advance();
+            return *this;
+        }
+        const_iterator operator++(int)
+        {
+            auto it = *this;
+            ++it;
+            return it;
+        }
+        bool operator==(const const_iterator& other) const { return m_value == other.m_value; }
+        bool operator!=(const const_iterator& other) const { return !(*this == other); }
     };
 
-    const_iterator begin() const;
-    const_iterator end() const;
+    const_iterator begin() const { return const_iterator(m_tree_table, m_index, m_size, true); }
+    const_iterator end() const { return const_iterator(m_tree_table, m_index, m_size, false); }
 };
 }
 

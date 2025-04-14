@@ -17,6 +17,8 @@
 
 #include "../include/valla/tree_compression.hpp"
 
+#include "../include/valla/root.hpp"
+
 #include <gtest/gtest.h>
 
 namespace valla::tests
@@ -116,6 +118,21 @@ TEST(VallaTests, TreeCompressionEdgeCasesTest)
 
         read_state(s1_idx, tree_table, root_table, tmp_state);
         EXPECT_EQ(tmp_state, s1);
+    }
+}
+
+TEST(VallaTests, TreeCompressionIteratorTest)
+{
+    auto tree_table = IndexedHashSet();
+    auto root_table = IndexedHashSet();
+    auto tmp_state = State();
+
+    {
+        const auto s0 = State { 1, 2, 4, 5, 6 };
+        const auto s0_idx = insert(s0, tree_table, root_table).first->second;
+        const auto s0_root = Root(tree_table, root_table.get_slot(s0_idx));
+
+        EXPECT_EQ(s0, State(s0_root.begin(), s0_root.end()));
     }
 }
 
