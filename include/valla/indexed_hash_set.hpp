@@ -32,6 +32,7 @@ namespace valla
 ///
 /// TODO: think more about how to implement this using a Cleary table!
 /// Current understanding: reduces current memory overhead from 5/2 to 1 at the cost of a bidirectional probing search!!!
+/// Found some code on this: https://github.com/DaanWoltgens/ClearyCuckooParallel/tree/main
 class IndexedHashSet
 {
 public:
