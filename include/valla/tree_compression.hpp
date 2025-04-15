@@ -38,10 +38,8 @@ namespace valla
 /// @return the index of the slot at the root.
 template<std::forward_iterator Iterator>
     requires std::same_as<std::iter_value_t<Iterator>, Index>
-inline Index insert_recursively(Iterator it, Iterator end, IndexedHashSet& table)
+inline Index insert_recursively(Iterator it, Iterator end, size_t size, IndexedHashSet& table)
 {
-    const auto size = static_cast<size_t>(std::distance(it, end));
-
     /* Base cases */
     if (size == 1)
         return *it;  ///< Skip node creation
@@ -53,8 +51,9 @@ inline Index insert_recursively(Iterator it, Iterator end, IndexedHashSet& table
     const auto mid = std::bit_floor(size - 1);
 
     /* Conquer */
-    const auto left_index = insert_recursively(it, it + mid, table);
-    const auto right_index = insert_recursively(it + mid, end, table);
+    const auto mid_it = it + mid;
+    const auto left_index = insert_recursively(it, mid_it, mid, table);
+    const auto right_index = insert_recursively(mid_it, end, size - mid, table);
 
     return table.insert_slot(make_slot(left_index, right_index)).first->second;
 }
@@ -70,10 +69,13 @@ auto insert(const Range& state, IndexedHashSet& tree_table, IndexedHashSet& root
 {
     assert(std::is_sorted(state.begin(), state.end()));
 
-    if (state.size() == 0)                                             ///< Special case for empty state.
+    // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
+    const auto size = static_cast<size_t>(std::distance(state.begin(), state.end()));
+
+    if (size == 0)                                                     ///< Special case for empty state.
         return root_table.insert_slot(make_slot(Index(0), Index(0)));  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
 
-    return root_table.insert_slot(make_slot(insert_recursively(state.begin(), state.end(), tree_table), state.size()));
+    return root_table.insert_slot(make_slot(insert_recursively(state.begin(), state.end(), size, tree_table), size));
 }
 
 /// @brief Recursively reads the state from the tree induced by the given `index` and the `len`.
