@@ -15,9 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#include "../include/valla/tree_compression.hpp"
-
 #include <gtest/gtest.h>
+#include <valla/tree_compression.hpp>
 
 namespace valla::tests
 {
