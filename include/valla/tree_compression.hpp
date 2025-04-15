@@ -27,6 +27,7 @@
 #include <concepts>
 #include <iostream>
 #include <ranges>
+#include <stack>
 
 namespace valla
 {
@@ -149,7 +150,7 @@ private:
         uint32_t m_size;
     };
 
-    std::vector<Entry> m_stack;
+    std::stack<Entry> m_stack;
 
     Index m_value;
 
@@ -159,8 +160,8 @@ private:
     {
         while (!m_stack.empty())
         {
-            auto entry = m_stack.back();
-            m_stack.pop_back();
+            auto entry = m_stack.top();
+            m_stack.pop();
 
             if (entry.m_size == 1)
             {
@@ -173,8 +174,8 @@ private:
             Index mid = std::bit_floor(entry.m_size - 1);
 
             // Emplace right first to ensure left is visited first in dfs.
-            m_stack.emplace_back(right, entry.m_size - mid);
-            m_stack.emplace_back(left, mid);
+            m_stack.emplace(right, entry.m_size - mid);
+            m_stack.emplace(left, mid);
         }
 
         m_value = END_POS;
@@ -196,7 +197,7 @@ public:
             const auto [tree_idx, size] = read_slot(root);
             if (size > 0)  ///< Push to stack only if there leafs
             {
-                m_stack.emplace_back(tree_idx, size);
+                m_stack.emplace(tree_idx, size);
                 advance();
             }
         }
