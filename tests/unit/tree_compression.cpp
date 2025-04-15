@@ -134,7 +134,7 @@ TEST(VallaTests, TreeCompressionIteratorTest)
 
     {
         const auto s0 = State {};
-        EXPECT_EQ(s0, State(begin(Slot(0), tree_table), end()));
+        EXPECT_EQ(s0, State(begin(Slot(), tree_table), end()));
     }
 }
 
