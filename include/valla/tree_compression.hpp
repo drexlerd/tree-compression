@@ -180,8 +180,12 @@ public:
     {
         if (begin)
         {
-            m_stack.emplace_back(read_pos(root, 0), read_pos(root, 1));
-            advance();
+            const auto [tree_idx, size] = read_slot(root);
+            if (size > 0)  ///< Push to stack only if there leafs
+            {
+                m_stack.emplace_back(tree_idx, size);
+                advance();
+            }
         }
     }
     value_type operator*() const { return m_value; }
@@ -200,9 +204,9 @@ public:
     bool operator!=(const const_iterator& other) const { return !(*this == other); }
 };
 
-const_iterator begin(Slot root, const IndexedHashSet& tree_table) { return const_iterator(&tree_table, root, true); }
+inline const_iterator begin(Slot root, const IndexedHashSet& tree_table) { return const_iterator(&tree_table, root, true); }
 
-const_iterator end() { return const_iterator(); }
+inline const_iterator end() { return const_iterator(); }
 
 }
 

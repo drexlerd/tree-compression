@@ -132,6 +132,11 @@ TEST(VallaTests, TreeCompressionIteratorTest)
 
         EXPECT_EQ(s0, State(begin(s0_root, tree_table), end()));
     }
+
+    {
+        const auto s0 = State {};
+        EXPECT_EQ(s0, State(begin(Slot(0), tree_table), end()));
+    }
 }
 
 }
