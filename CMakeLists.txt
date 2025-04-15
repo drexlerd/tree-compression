@@ -9,6 +9,13 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 ##############################################################
+# Build Targets
+##############################################################
+
+option(BUILD_TESTS "Build" OFF)
+option(BUILD_PROFILING "Build" OFF)
+
+##############################################################
 # Establish project
 ##############################################################
 
@@ -57,9 +64,24 @@ endif()
 # Add library and executable targets
 ##############################################################
 
+# ------------
+# Target valla
+# ------------
 add_subdirectory(src)
 
-add_subdirectory(tests)
+# ----------------
+# Target Profiling
+# ----------------
+if(BUILD_PROFILING)
+    add_subdirectory(benchmark)
+endif()
+
+# -----------
+# Target Test
+# -----------
+if(BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
 
 
 ###########
