@@ -14,6 +14,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(valla VERSION 0.1 LANGUAGES C CXX)
 
+include(GNUInstallDirs)
+
 # Compilation flags, some configuration-specific
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wextra -pedantic -fPIC")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -fomit-frame-pointer")
@@ -60,9 +62,6 @@ add_subdirectory(src)
 add_subdirectory(tests)
 
 
-
-
-
 ###########
 # Install #
 ###########
@@ -94,4 +93,12 @@ configure_package_config_file("${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in"
     "${CMAKE_CURRENT_BINARY_DIR}/vallaConfig.cmake"
     INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/valla"
     NO_CHECK_REQUIRED_COMPONENTS_MACRO
+)
+
+# Install config files
+install(
+    FILES
+        "${CMAKE_CURRENT_BINARY_DIR}/vallaConfig.cmake"
+        "${CMAKE_CURRENT_BINARY_DIR}/vallaConfigVersion.cmake"
+    DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/valla"
 )
