@@ -1,6 +1,7 @@
 {
     "cmake.configureArgs": [
-        "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+        "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON",
+        "-DCMAKE_PREFIX_PATH=/home/dominik/projects/code/tree-compression/dependencies/installs"
     ],
     "editor.formatOnSave": true,
     "files.associations": {

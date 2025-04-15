@@ -35,7 +35,63 @@ else()
 endif()
 
 ##############################################################
+# Dependency Handling
+##############################################################
+
+find_package(fmt REQUIRED PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
+if(fmt_FOUND)
+  include_directories(${fmt_INCLUDE_DIRS})
+  message(STATUS "Found fmt: ${fmt_DIR} (found version ${fmt_VERSION})")
+endif()
+
+
+find_package(absl CONFIG REQUIRED PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
+if(absl_FOUND)
+  include_directories(${absl_INCLUDE_DIRS})
+  message(STATUS "Found absl: ${absl_DIR} (found version ${absl_VERSION})")
+endif()
+
+##############################################################
 # Add library and executable targets
 ##############################################################
 
+add_subdirectory(src)
+
 add_subdirectory(tests)
+
+
+
+
+
+###########
+# Install #
+###########
+
+# Install header files
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/valla"
+    DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+
+
+###########
+# Exports #
+###########
+
+# https://cmake.org/cmake/help/latest/guide/importing-exporting/index.html
+
+include(CMakePackageConfigHelpers)
+
+# Generate the version file for the config file
+write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/vallaConfigVersion.cmake"
+    VERSION ${valla_VERSION}
+    COMPATIBILITY ExactVersion
+)
+
+# Create config file
+# https://cmake.org/cmake/help/book/mastering-cmake/cmake/Help/guide/importing-exporting/index.html
+# https://cmake.org/cmake/help/latest/module/CMakePackageConfigHelpers.html#generating-a-package-configuration-file
+configure_package_config_file("${CMAKE_CURRENT_SOURCE_DIR}/Config.cmake.in"
+    "${CMAKE_CURRENT_BINARY_DIR}/vallaConfig.cmake"
+    INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/valla"
+    NO_CHECK_REQUIRED_COMPONENTS_MACRO
+)

@@ -184,6 +184,7 @@ public:
     using pointer = value_type*;
     using reference = value_type&;
     using iterator_category = std::forward_iterator_tag;
+    using iterator_concept = std::forward_iterator_tag;
 
     const_iterator() : m_tree_table(nullptr), m_stack(), m_value(END_POS) {}
     const_iterator(const IndexedHashSet* tree_table, Slot root, bool begin) : m_tree_table(tree_table), m_stack(), m_value(END_POS)

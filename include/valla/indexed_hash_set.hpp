@@ -20,6 +20,7 @@
 
 #include "declarations.hpp"
 
+#include <absl/container/flat_hash_map.h>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -57,8 +58,20 @@ public:
 
     size_t size() const { return m_index_to_slot.size(); }
 
+    size_t get_memory_usage() const
+    {
+        size_t usage = 0;
+
+        usage += m_slot_to_index.capacity() * (sizeof(Slot) + sizeof(Index));
+        usage += m_slot_to_index.capacity();
+
+        usage += m_index_to_slot.capacity() * sizeof(Slot);
+
+        return usage;
+    }
+
 private:
-    std::unordered_map<Slot, Index> m_slot_to_index;
+    absl::flat_hash_map<Slot, Index> m_slot_to_index;
     std::vector<Slot> m_index_to_slot;
 };
 }

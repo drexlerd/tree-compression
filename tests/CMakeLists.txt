@@ -1,23 +1,15 @@
 enable_testing()
-option(INSTALL_GMOCK "Install Googletest's GMock?" OFF)
-option(INSTALL_GTEST "Install Googletest's GTest?" OFF)
 
-set(TEST_NAME ${CMAKE_PROJECT_NAME}_tests)
+find_package(GTest "1.11.0" REQUIRED COMPONENTS GTest Main PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
+# Set result variables
+find_package(GTest)
 
-include(FetchContent)
-FetchContent_Declare(
-  googletest
-  GIT_REPOSITORY https://github.com/google/googletest.git
-  GIT_TAG        release-1.11.0
-)
-FetchContent_MakeAvailable(googletest)
+# Helper function to create and register a test executable
+function(add_gtest test_name source_file)
+    add_executable(${test_name} ${source_file})
+    target_link_libraries(${test_name} PRIVATE absl::flat_hash_set absl::flat_hash_map GTest::GTest GTest::Main)
+    add_test(NAME ${test_name} COMMAND ${test_name})
+endfunction()
 
-add_library(GTest::GTest INTERFACE IMPORTED)
-target_link_libraries(GTest::GTest INTERFACE gtest_main)
-
-file(GLOB SRC_FILES "*.cpp")
-add_executable(valla_tests ${SRC_FILES})
-target_link_libraries(valla_tests
-    PRIVATE
-        GTest::GTest)
-add_test(valla_gtests valla_tests)
+# Add each test source file as a separate test executable
+add_gtest(tree_compression                        "tree_compression.cpp")
