@@ -33,13 +33,13 @@ jobs:
 
       # Run benchmarks and store the output to a file
       - name: Run benchmark insert
-        run: build/benchmarks/insert --benchmark_format=json | tee benchmark_result_insert.json
+        run: build/benchmark/insert --benchmark_format=json | tee benchmark_result_insert.json
       - name: Run benchmark read
-        run: build/benchmarks/read --benchmark_format=json | tee benchmark_result_read.json
+        run: build/benchmark/read --benchmark_format=json | tee benchmark_result_read.json
 
       # Combine outputs to a single file
       - name: Combine JSON files
-        run: python3 benchmarks/combine_results.py benchmark_result_insert.json benchmark_result_read.json > benchmark_result.json
+        run: python3 benchmark/combine_results.py benchmark_result_insert.json benchmark_result_read.json > benchmark_result.json
 
       # Run `github-action-benchmark` action
       - name: Store benchmark result
