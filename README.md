@@ -43,6 +43,11 @@ The following table shows the properties of our implementations.
 | :---------------- | ------------------: | --------------: | 
 | CPBBT             |                 YES |              NO |
 
+### Benchmarking
+
+The benchmark framework depends on GoogleBenchmark and requires the additional compile flag `-DBUILD_PROFILING=ON` to be set in the cmake configure step. The results from the GitHub action can be viewed (here)[https://drexlerd.github.io/tree-compression/dev/bench/].
+
+
 ## TODOs
 
 - add automated performance benchmarking with some artificial benchmarks to compare and visualize upon commit.

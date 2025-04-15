@@ -147,7 +147,7 @@ private:
     struct Entry
     {
         Index m_index;
-        uint32_t m_size;
+        Index m_size;
     };
 
     std::stack<Entry> m_stack;
