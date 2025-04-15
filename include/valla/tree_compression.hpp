@@ -40,17 +40,17 @@ template<std::forward_iterator Iterator>
     requires std::same_as<std::iter_value_t<Iterator>, Index>
 inline Index insert_recursively(Iterator it, Iterator end, IndexedHashSet& table)
 {
-    const auto len = static_cast<size_t>(std::distance(it, end));
+    const auto size = static_cast<size_t>(std::distance(it, end));
 
     /* Base cases */
-    if (len == 1)
+    if (size == 1)
         return *it;  ///< Skip node creation
 
-    if (len == 2)
+    if (size == 2)
         return table.insert_slot(make_slot(*it, *(it + 1))).first->second;
 
     /* Divide */
-    const auto mid = std::bit_floor(len - 1);
+    const auto mid = std::bit_floor(size - 1);
 
     /* Conquer */
     const auto left_index = insert_recursively(it, it + mid, table);
@@ -78,13 +78,13 @@ auto insert(const Range& state, IndexedHashSet& tree_table, IndexedHashSet& root
 
 /// @brief Recursively reads the state from the tree induced by the given `index` and the `len`.
 /// @param index is the index of the slot in the tree table.
-/// @param len is the length of the state that defines the shape of the tree at the index.
+/// @param size is the length of the state that defines the shape of the tree at the index.
 /// @param tree_table is the tree table.
 /// @param out_state is the output state.
-inline void read_state_recursively(Index index, size_t len, const IndexedHashSet& tree_table, State& ref_state)
+inline void read_state_recursively(Index index, size_t size, const IndexedHashSet& tree_table, State& ref_state)
 {
     /* Base case */
-    if (len == 1)
+    if (size == 1)
     {
         ref_state.push_back(index);
         return;
@@ -93,7 +93,7 @@ inline void read_state_recursively(Index index, size_t len, const IndexedHashSet
     const auto [left_index, right_index] = read_slot(tree_table.get_slot(index));
 
     /* Base case */
-    if (len == 2)
+    if (size == 2)
     {
         ref_state.push_back(left_index);
         ref_state.push_back(right_index);
@@ -101,29 +101,39 @@ inline void read_state_recursively(Index index, size_t len, const IndexedHashSet
     }
 
     /* Divide */
-    const auto mid = std::bit_floor(len - 1);
+    const auto mid = std::bit_floor(size - 1);
 
     /* Conquer */
     read_state_recursively(left_index, mid, tree_table, ref_state);
-    read_state_recursively(right_index, len - mid, tree_table, ref_state);
+    read_state_recursively(right_index, size - mid, tree_table, ref_state);
 }
 
-/// @brief Read the `out_state` from the given `root_index` from the `tree_table` and the `root_table`.
+/// @brief Read the `out_state` from the given `tree_index` from the `tree_table`.
+/// @param index
+/// @param size
+/// @param tree_table
+/// @param out_state
+inline void read_state(Index tree_index, size_t size, const IndexedHashSet& tree_table, State& out_state)
+{
+    out_state.clear();
+
+    if (size == 0)  ///< Special case for empty state.
+        return;
+
+    read_state_recursively(tree_index, size, tree_table, out_state);
+}
+
+/// @brief Read the `out_state` from the given `root_index` from the `root_table`.
 /// @param root_index is the index of the slot in the root table.
 /// @param tree_table is the tree table.
 /// @param root_table is the root table.
 /// @param out_state is the output state.
 inline void read_state(Index root_index, const IndexedHashSet& tree_table, const IndexedHashSet& root_table, State& out_state)
 {
-    out_state.clear();
-
     /* Observe: a root slot wraps the root tree_index together with the length that defines the tree structure! */
-    const auto [tree_index, len] = read_slot(root_table.get_slot(root_index));
+    const auto [tree_index, size] = read_slot(root_table.get_slot(root_index));
 
-    if (len == 0)  ///< Special case for empty state.
-        return;
-
-    read_state_recursively(tree_index, len, tree_table, out_state);
+    read_state(tree_index, size, tree_table, out_state);
 }
 
 class const_iterator

@@ -35,7 +35,7 @@ namespace valla
 using Index = uint32_t;  ///< Enough space for 4,294,967,295 indices
 using Slot = uint64_t;   ///< A slot is made up of two indices.
 
-static constexpr const Slot NULL_SLOT = Slot(-1);  ///< meaning is like nullptr
+static constexpr const Slot EMPTY_ROOT_SLOT = Slot(0);  ///< represents the empty state.
 
 /// @brief Pack two uint32_t into a uint64_t.
 inline Slot make_slot(Index lhs, Index rhs) { return Slot(lhs) << 32 | rhs; }
