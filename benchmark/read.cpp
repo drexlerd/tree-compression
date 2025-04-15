@@ -46,15 +46,28 @@ static void BM_TreeCompressionRead(benchmark::State& state)
         all_states.push_back(std::move(s));
     }
 
+    IndexedHashSet tree_table;
+    IndexedHashSet root_table;
+
+    auto all_roots = std::vector<Slot> {};
+
+    for (size_t rep = 0; rep < repetitions; ++rep)
+    {
+        for (const auto& s : all_states)
+            all_roots.push_back(insert(s, tree_table, root_table).first->second);
+    }
+
     for (auto _ : state)
     {
-        IndexedHashSet tree_table;
-        IndexedHashSet root_table;
+        auto state = State();
 
         for (size_t rep = 0; rep < repetitions; ++rep)
         {
-            for (const auto& s : all_states)
-                benchmark::DoNotOptimize(valla::insert(s, tree_table, root_table));
+            for (const auto& r : all_roots)
+            {
+                read_state(r, tree_table, root_table, state);
+                benchmark::DoNotOptimize(state);
+            }
         }
 
         benchmark::ClobberMemory();
