@@ -39,22 +39,31 @@ namespace valla::delta
 /// @return the index of the slot at the root.
 template<std::forward_iterator Iterator>
     requires std::same_as<std::iter_value_t<Iterator>, Index>
-inline Index insert_recursively(Iterator it, Iterator end, size_t size, IndexedHashSet& table)
+inline Index insert_recursively(Iterator it, Iterator end, size_t size, IndexedHashSet& table, Index& prev)
 {
     /* Base cases */
     if (size == 1)
-        return *it;  ///< Skip node creation
+    {
+        Index delta = *it - prev;
+        prev = *it;
+        return delta;  ///< Skip node creation
+    }
 
     if (size == 2)
-        return table.insert_slot(make_slot(*it, *(it + 1))).first->second;
+    {
+        Index left_delta = *it - prev;
+        Index right_delta = *(it + 1) - *it;
+        prev = *(it + 1);
+        return table.insert_slot(make_slot(left_delta, right_delta)).first->second;
+    }
 
     /* Divide */
     const auto mid = std::bit_floor(size - 1);
 
     /* Conquer */
     const auto mid_it = it + mid;
-    const auto left_index = insert_recursively(it, mid_it, mid, table);
-    const auto right_index = insert_recursively(mid_it, end, size - mid, table);
+    const auto left_index = insert_recursively(it, mid_it, mid, table, prev);
+    const auto right_index = insert_recursively(mid_it, end, size - mid, table, prev);
 
     return table.insert_slot(make_slot(left_index, right_index)).first->second;
 }
@@ -76,7 +85,8 @@ auto insert(const Range& state, IndexedHashSet& tree_table, IndexedHashSet& root
     if (size == 0)                                                     ///< Special case for empty state.
         return root_table.insert_slot(make_slot(Index(0), Index(0)));  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
 
-    return root_table.insert_slot(make_slot(insert_recursively(state.begin(), state.end(), size, tree_table), size));
+    auto prev = Index(0);
+    return root_table.insert_slot(make_slot(insert_recursively(state.begin(), state.end(), size, tree_table, prev), size));
 }
 
 /// @brief Recursively reads the state from the tree induced by the given `index` and the `len`.
@@ -84,12 +94,12 @@ auto insert(const Range& state, IndexedHashSet& tree_table, IndexedHashSet& root
 /// @param size is the length of the state that defines the shape of the tree at the index.
 /// @param tree_table is the tree table.
 /// @param out_state is the output state.
-inline void read_state_recursively(Index index, size_t size, const IndexedHashSet& tree_table, State& ref_state)
+inline void read_state_recursively(Index index, size_t size, const IndexedHashSet& tree_table, State& ref_state, Index& prev)
 {
     /* Base case */
     if (size == 1)
     {
-        ref_state.push_back(index);
+        ref_state.push_back(prev += index);
         return;
     }
 
@@ -98,8 +108,8 @@ inline void read_state_recursively(Index index, size_t size, const IndexedHashSe
     /* Base case */
     if (size == 2)
     {
-        ref_state.push_back(left_index);
-        ref_state.push_back(right_index);
+        ref_state.push_back(prev += left_index);
+        ref_state.push_back(prev += right_index);
         return;
     }
 
@@ -107,8 +117,8 @@ inline void read_state_recursively(Index index, size_t size, const IndexedHashSe
     const auto mid = std::bit_floor(size - 1);
 
     /* Conquer */
-    read_state_recursively(left_index, mid, tree_table, ref_state);
-    read_state_recursively(right_index, size - mid, tree_table, ref_state);
+    read_state_recursively(left_index, mid, tree_table, ref_state, prev);
+    read_state_recursively(right_index, size - mid, tree_table, ref_state, prev);
 }
 
 /// @brief Read the `out_state` from the given `tree_index` from the `tree_table`.
@@ -123,7 +133,8 @@ inline void read_state(Index tree_index, size_t size, const IndexedHashSet& tree
     if (size == 0)  ///< Special case for empty state.
         return;
 
-    read_state_recursively(tree_index, size, tree_table, out_state);
+    auto prev = Index(0);
+    read_state_recursively(tree_index, size, tree_table, out_state, prev);
 }
 
 /// @brief Read the `out_state` from the given `root_index` from the `root_table`.
@@ -165,7 +176,7 @@ private:
 
             if (entry.m_size == 1)
             {
-                m_value = entry.m_index;
+                m_value += entry.m_index;
                 return;
             }
 
@@ -197,6 +208,7 @@ public:
             const auto [tree_idx, size] = read_slot(root);
             if (size > 0)  ///< Push to stack only if there leafs
             {
+                m_value = Index(0);
                 m_stack.emplace(tree_idx, size);
                 advance();
             }

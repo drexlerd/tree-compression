@@ -13,3 +13,5 @@ endfunction()
 
 # Add each test source file as a separate test executable
 add_gtest(tree_compression                        "tree_compression.cpp")
+
+add_gtest(delta_tree_compression                  "delta_tree_compression.cpp")
