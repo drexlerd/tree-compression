@@ -18,7 +18,7 @@
 #ifndef VALLA_INCLUDE_INDEXED_HASH_SET_HPP_
 #define VALLA_INCLUDE_INDEXED_HASH_SET_HPP_
 
-#include "declarations.hpp"
+#include "valla/declarations.hpp"
 
 #include <absl/container/flat_hash_map.h>
 #include <algorithm>

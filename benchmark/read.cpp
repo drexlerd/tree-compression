@@ -21,6 +21,7 @@
 
 namespace valla::benchmarks
 {
+namespace v = valla::plain;
 
 /// @brief In this benchmark, we evaluate the performance of accessing data in sequence
 static void BM_TreeCompressionRead(benchmark::State& state)
@@ -54,7 +55,7 @@ static void BM_TreeCompressionRead(benchmark::State& state)
     for (size_t rep = 0; rep < repetitions; ++rep)
     {
         for (const auto& s : all_states)
-            all_roots.push_back(insert(s, tree_table, root_table).first->second);
+            all_roots.push_back(v::insert(s, tree_table, root_table).first->second);
     }
 
     for (auto _ : state)
@@ -65,7 +66,7 @@ static void BM_TreeCompressionRead(benchmark::State& state)
         {
             for (const auto& r : all_roots)
             {
-                read_state(r, tree_table, root_table, state);
+                v::read_state(r, tree_table, root_table, state);
                 benchmark::DoNotOptimize(state);
             }
         }

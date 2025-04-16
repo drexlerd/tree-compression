@@ -19,8 +19,11 @@
 #include <valla/indexed_hash_set.hpp>
 #include <valla/tree_compression.hpp>
 
+
+
 namespace valla::benchmarks
 {
+namespace v = valla::plain;
 
 /// @brief In this benchmark, we evaluate the performance of accessing data in sequence
 static void BM_TreeCompressionInsert(benchmark::State& state)
@@ -54,7 +57,7 @@ static void BM_TreeCompressionInsert(benchmark::State& state)
         for (size_t rep = 0; rep < repetitions; ++rep)
         {
             for (const auto& s : all_states)
-                benchmark::DoNotOptimize(valla::insert(s, tree_table, root_table));
+                benchmark::DoNotOptimize(v::insert(s, tree_table, root_table));
         }
 
         benchmark::ClobberMemory();
