@@ -30,3 +30,13 @@
 *.exe
 *.out
 *.app
+
+# IDE folders
+/.idea
+
+# Build folders
+**/CMakeFiles/*
+**/*-build/*
+/dependencies/build
+/dependencies/installs
+**/cmake-build-debug/

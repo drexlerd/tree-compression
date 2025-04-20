@@ -50,6 +50,7 @@ inline Index read_pos(Slot slot, size_t pos)
 }
 
 using State = std::vector<Index>;
+using RootIndices = std::vector<Index>;
 
 }
 

@@ -51,7 +51,7 @@ public:
 
     Slot get_slot(Index index) const
     {
-        assert(index < m_index_to_slot.size());
+        assert(index < m_index_to_slot.size() && "Index out of bounds");
 
         return m_index_to_slot[index];
     }
