@@ -18,6 +18,7 @@
 #ifndef VALLA_INCLUDE_DELTA_TREE_COMPRESSION_HPP_
 #define VALLA_INCLUDE_DELTA_TREE_COMPRESSION_HPP_
 
+#include "valla/bitset_pool.hpp"
 #include "valla/declarations.hpp"
 #include "valla/indexed_hash_set.hpp"
 
