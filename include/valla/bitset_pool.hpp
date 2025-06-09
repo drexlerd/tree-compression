@@ -72,6 +72,8 @@ private:
     size_t m_segment;
     size_t m_offset;
 
+    static constexpr const size_t MAX_SEGMENT_SIZE = std::numeric_limits<uint32_t>::max() >> 6;
+
     static constexpr const size_t INITIAL_SEGMENT_SIZE = 1024;
 
     void resize_to_fit(size_t num_bits);
@@ -152,7 +154,7 @@ inline void BitsetPool::resize_to_fit(size_t num_bits)
     if (remaining_bits < num_bits)
     {
         const auto needed_blocks = (num_bits + 63) / 64;
-        const auto new_segment_size = std::max(m_segments.back().size() * 2, needed_blocks);
+        const auto new_segment_size = std::min(std::max(m_segments.back().size() * 2, needed_blocks), MAX_SEGMENT_SIZE);
 
         m_segments.push_back(std::vector<uint64_t>(new_segment_size));
         ++m_segment;
