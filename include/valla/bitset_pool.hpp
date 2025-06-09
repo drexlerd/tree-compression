@@ -156,13 +156,13 @@ inline void BitsetPool::resize_to_fit(size_t num_bits)
         const auto needed_blocks = (num_bits + 63) / 64;
         const auto new_segment_size = std::min(std::max(m_segments.back().size() * 2, needed_blocks), MAX_SEGMENT_SIZE);
 
-        m_segments.push_back(std::vector<uint64_t>(new_segment_size));
+        m_segments.push_back(std::vector<uint64_t>(new_segment_size, uint64_t(0)));
         ++m_segment;
         m_offset = 0;
     }
 }
 
-inline BitsetPool::BitsetPool() : m_segments(1, std::vector<uint64_t>(INITIAL_SEGMENT_SIZE)), m_segment(0), m_offset(0) {}
+inline BitsetPool::BitsetPool() : m_segments(1, std::vector<uint64_t>(INITIAL_SEGMENT_SIZE, uint64_t(0))), m_segment(0), m_offset(0) {}
 
 inline BitsetView BitsetPool::allocate(size_t num_bits)
 {
