@@ -44,7 +44,7 @@ namespace valla::canonical
 /// @return the index of the slot at the root.
 template<std::forward_iterator Iterator>
     requires std::same_as<std::iter_value_t<Iterator>, Index>
-inline Index insert_recursively(Iterator it, Iterator end, size_t size, BitsetView view, size_t& bit, RootIndexedHashSet& table)
+inline Index insert_recursively(Iterator it, Iterator end, size_t size, BitsetView view, size_t& bit, BitsetPool& pool, IndexedHashSet& table)
 {
     /* Base cases */
     if (size == 1)
@@ -52,7 +52,15 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, BitsetVi
 
     if (size == 2)
     {
-        return table.insert_slot(make_slot(*it, *(it + 1))).first->second;
+        Index i1 = *it;
+        Index i2 = *(it + 1);
+        if (i2 < i1)
+        {
+            std::swap(i1, i2);
+            view.set(bit, pool);
+        }
+        ++bit;
+        return table.insert_slot(make_slot(i1, i2)).first->second;
     }
 
     /* Divide */
@@ -60,10 +68,17 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, BitsetVi
 
     /* Conquer */
     const auto mid_it = it + mid;
-    const auto left_index = insert_recursively(it, mid_it, mid, view, bit, table);
-    const auto right_index = insert_recursively(mid_it, end, size - mid, view, bit, table);
+    Index i1 = insert_recursively(it, mid_it, mid, view, bit, pool, table);
+    Index i2 = insert_recursively(mid_it, end, size - mid, view, bit, pool, table);
 
-    return table.insert_slot(make_slot(left_index, right_index)).first->second;
+    if (i2 < i1)
+    {
+        std::swap(i1, i2);
+        view.set(bit, pool);
+    }
+    ++bit;
+
+    return table.insert_slot(make_slot(i1, i2)).first->second;
 }
 
 /// @brief Inserts the elements from the given `state` into the `tree_table` and the `root_table`.
@@ -84,11 +99,191 @@ auto insert(const Range& state, IndexedHashSet& tree_table, RootIndexedHashSet& 
         return root_table.insert_slot(
             RootSlot(make_slot(Index(0), Index(0)), pool.allocate(0)));  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
 
-    auto ordering = pool.allocate(size + 1);  // for sorted leafs, we could skil size/2, but it is not costly so we keep it general
+    auto ordering = pool.allocate(size - 1);  // for sorted leafs, we could skil size/2, but it is not costly so we keep it general
 
     size_t bit = 0;
-    return root_table.insert_slot(RootSlot(make_slot(insert_recursively(state.begin(), state.end(), size, ordering, bit, tree_table), size), ordering));
+    auto result =
+        root_table.insert_slot(RootSlot(make_slot(insert_recursively(state.begin(), state.end(), size, ordering, bit, pool, tree_table), size), ordering));
+
+    assert(bit == size - 1);
+    return result;
 }
+
+/// @brief Recursively reads the state from the tree induced by the given `index` and the `len`.
+/// @param index is the index of the slot in the tree table.
+/// @param size is the length of the state that defines the shape of the tree at the index.
+/// @param tree_table is the tree table.
+/// @param out_state is the output state.
+inline void read_state_recursively(Index index,
+                                   size_t size,
+                                   BitsetConstView ordering,
+                                   const IndexedHashSet& tree_table,
+                                   const BitsetPool& pool,
+                                   size_t& bit,
+                                   State& ref_state)
+{
+    /* Base case */
+    if (size == 1)
+    {
+        ref_state.push_back(index);
+        return;
+    }
+
+    auto [i1, i2] = read_slot(tree_table.get_slot(index));
+    if (ordering.get(bit, pool))
+    {
+        std::swap(i1, i2);
+    }
+    ++bit;
+
+    /* Base case */
+    if (size == 2)
+    {
+        ref_state.push_back(i1);
+        ref_state.push_back(i2);
+        return;
+    }
+
+    /* Divide */
+    const auto mid = std::bit_floor(size - 1);
+
+    /* Conquer */
+    read_state_recursively(i1, mid, ordering, tree_table, pool, bit, ref_state);
+    read_state_recursively(i2, size - mid, ordering, tree_table, pool, bit, ref_state);
+}
+
+/// @brief Read the `out_state` from the given `tree_index` from the `tree_table`.
+/// @param index
+/// @param size
+/// @param tree_table
+/// @param out_state
+inline void read_state(Index tree_index, size_t size, BitsetConstView ordering, const IndexedHashSet& tree_table, const BitsetPool& pool, State& out_state)
+{
+    out_state.clear();
+
+    if (size == 0)  ///< Special case for empty state.
+        return;
+
+    size_t bit = 0;
+
+    read_state_recursively(tree_index, size, ordering, tree_table, pool, bit, out_state);
+}
+
+/// @brief Read the `out_state` from the given `root_index` from the `root_table`.
+/// @param root_index is the index of the slot in the root table.
+/// @param tree_table is the tree table.
+/// @param root_table is the root table.
+/// @param out_state is the output state.
+inline void read_state(Index root_index, const IndexedHashSet& tree_table, const RootIndexedHashSet& root_table, const BitsetPool& pool, State& out_state)
+{
+    /* Observe: a root slot wraps the root tree_index together with the length that defines the tree structure! */
+    const auto& root_slot = root_table.get_slot(root_index);
+    const auto [tree_index, size] = read_slot(root_slot.slot);
+    const auto ordering = root_slot.ordering;
+
+    read_state(tree_index, size, ordering, tree_table, pool, out_state);
+}
+
+class const_iterator
+{
+private:
+    const IndexedHashSet* m_tree_table;
+    const BitsetPool* m_pool;
+    BitsetConstView m_ordering;
+    size_t m_bit;
+
+    struct Entry
+    {
+        Index m_index;
+        Index m_size;
+    };
+
+    std::stack<Entry> m_stack;
+
+    Index m_value;
+
+    static constexpr const Index END_POS = Index(-1);
+
+    void advance()
+    {
+        while (!m_stack.empty())
+        {
+            auto entry = m_stack.top();
+            m_stack.pop();
+
+            if (entry.m_size == 1)
+            {
+                m_value = entry.m_index;
+                return;
+            }
+
+            auto [i1, i2] = read_slot(m_tree_table->get_slot(entry.m_index));
+            if (m_ordering.get(m_bit, *m_pool))
+            {
+                std::swap(i1, i2);
+            }
+            ++m_bit;
+
+            Index mid = std::bit_floor(entry.m_size - 1);
+
+            // Emplace right first to ensure left is visited first in dfs.
+            m_stack.emplace(i2, entry.m_size - mid);
+            m_stack.emplace(i1, mid);
+        }
+
+        m_value = END_POS;
+    }
+
+public:
+    using difference_type = std::ptrdiff_t;
+    using value_type = Index;
+    using pointer = value_type*;
+    using reference = value_type&;
+    using iterator_category = std::forward_iterator_tag;
+    using iterator_concept = std::forward_iterator_tag;
+
+    const_iterator() : m_tree_table(nullptr), m_stack(), m_value(END_POS) {}
+    const_iterator(const IndexedHashSet* tree_table, const BitsetPool* pool, RootSlot root, bool begin) :
+        m_tree_table(tree_table),
+        m_pool(pool),
+        m_ordering(root.ordering),
+        m_bit(0),
+        m_stack(),
+        m_value(END_POS)
+    {
+        assert(m_tree_table);
+        assert(m_pool);
+
+        if (begin)
+        {
+            const auto [tree_idx, size] = read_slot(root.slot);
+
+            if (size > 0)  ///< Push to stack only if there leafs
+            {
+                m_stack.emplace(tree_idx, size);
+                advance();
+            }
+        }
+    }
+    value_type operator*() const { return m_value; }
+    const_iterator& operator++()
+    {
+        advance();
+        return *this;
+    }
+    const_iterator operator++(int)
+    {
+        auto it = *this;
+        ++it;
+        return it;
+    }
+    bool operator==(const const_iterator& other) const { return m_value == other.m_value; }
+    bool operator!=(const const_iterator& other) const { return !(*this == other); }
+};
+
+inline const_iterator begin(RootSlot root, const IndexedHashSet& tree_table, const BitsetPool& pool) { return const_iterator(&tree_table, &pool, root, true); }
+
+inline const_iterator end() { return const_iterator(); }
 
 }
 

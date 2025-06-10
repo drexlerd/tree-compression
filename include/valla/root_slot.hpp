@@ -30,6 +30,7 @@ struct RootSlot
     Slot slot;
     BitsetConstView ordering;
 
+    RootSlot() : slot(0), ordering() {}
     RootSlot(Slot slot, BitsetConstView ordering) : slot(slot), ordering(ordering) {}
 };
 

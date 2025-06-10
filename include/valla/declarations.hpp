@@ -56,7 +56,7 @@ using RootIndices = std::vector<Index>;
 template<typename T>
 inline void hash_combine(size_t& seed, const T& value)
 {
-    seed ^= Hash<std::decay_t<T>> {}(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+    seed ^= std::hash<std::decay_t<T>> {}(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
 }
 
 }

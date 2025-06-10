@@ -34,6 +34,7 @@ private:
     uint32_t m_offset;
 
 public:
+    BitsetView() : m_segment(-1), m_offset(-1) {}
     BitsetView(uint32_t segment, uint32_t offset);
 
     bool get(size_t bit, const BitsetPool& pool) const;
@@ -53,6 +54,7 @@ private:
     uint32_t m_offset;
 
 public:
+    BitsetConstView() : m_segment(-1), m_offset(-1) {}
     BitsetConstView(uint32_t segment, uint32_t offset);
 
     /// @brief Implicit conversion from mutable BitsetView.
