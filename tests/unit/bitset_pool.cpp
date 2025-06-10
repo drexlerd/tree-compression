@@ -25,37 +25,32 @@ TEST(VallaTests, BitsetPoolTest)
 {
     auto pool = BitsetPool();
 
-    auto view1 = pool.allocate(70);
-    auto view2 = pool.allocate(70);
+    auto view1 = pool.allocate(2);
+    auto view2 = pool.allocate(2);
 
-    EXPECT_EQ(view1.get_segment(), 0);
-    EXPECT_EQ(view1.get_offset(), 0);
-    EXPECT_EQ(view2.get_segment(), 0);
-    EXPECT_EQ(view2.get_offset(), 70);
+    EXPECT_FALSE(view1.get(0));
+    EXPECT_FALSE(view1.get(63));
+    EXPECT_FALSE(view1.get(64));
 
-    EXPECT_FALSE(view1.get(0, pool));
-    EXPECT_FALSE(view1.get(63, pool));
-    EXPECT_FALSE(view1.get(64, pool));
+    view1.set(0);
+    view1.set(63);
+    view1.set(64);
 
-    view1.set(0, pool);
-    view1.set(63, pool);
-    view1.set(64, pool);
+    EXPECT_TRUE(view1.get(0));
+    EXPECT_TRUE(view1.get(63));
+    EXPECT_TRUE(view1.get(64));
 
-    EXPECT_TRUE(view1.get(0, pool));
-    EXPECT_TRUE(view1.get(63, pool));
-    EXPECT_TRUE(view1.get(64, pool));
+    EXPECT_FALSE(view2.get(0));
+    EXPECT_FALSE(view2.get(63));
+    EXPECT_FALSE(view2.get(64));
 
-    EXPECT_FALSE(view2.get(0, pool));
-    EXPECT_FALSE(view2.get(63, pool));
-    EXPECT_FALSE(view2.get(64, pool));
+    view2.set(0);
+    view2.set(63);
+    view2.set(64);
 
-    view2.set(0, pool);
-    view2.set(63, pool);
-    view2.set(64, pool);
-
-    EXPECT_TRUE(view2.get(0, pool));
-    EXPECT_TRUE(view2.get(63, pool));
-    EXPECT_TRUE(view2.get(64, pool));
+    EXPECT_TRUE(view2.get(0));
+    EXPECT_TRUE(view2.get(63));
+    EXPECT_TRUE(view2.get(64));
 }
 
 }

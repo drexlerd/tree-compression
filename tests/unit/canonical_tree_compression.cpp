@@ -108,7 +108,7 @@ TEST(VallaTests, CanonicalTreeCompression2Test)
         EXPECT_EQ(tmp_state, s0);
 
         tmp_state.clear();
-        EXPECT_EQ(s0, State(canonical::begin(root_table.get_slot(s0_idx), tree_table, pool), canonical::end()));
+        EXPECT_EQ(s0, State(canonical::begin(root_table.get_slot(s0_idx), tree_table), canonical::end()));
     }
 
     {
@@ -125,7 +125,7 @@ TEST(VallaTests, CanonicalTreeCompression2Test)
         EXPECT_EQ(tmp_state, s1);
 
         tmp_state.clear();
-        EXPECT_EQ(s1, State(canonical::begin(root_table.get_slot(s1_idx), tree_table, pool), canonical::end()));
+        EXPECT_EQ(s1, State(canonical::begin(root_table.get_slot(s1_idx), tree_table), canonical::end()));
     }
 }
 
@@ -157,7 +157,7 @@ TEST(VallaTests, CanonicalTreeCompressionExhaustiveTest)
             assert(tmp_state == s);
 
             tmp_state.clear();
-            EXPECT_EQ(s, State(canonical::begin(root_table.get_slot(s_idx), tree_table, pool), canonical::end()));
+            EXPECT_EQ(s, State(canonical::begin(root_table.get_slot(s_idx), tree_table), canonical::end()));
         }
     }
 }
@@ -212,12 +212,12 @@ TEST(VallaTests, CanonicalTreeCompressionIteratorTest)
         const auto s0_idx = canonical::insert(s0, tree_table, root_table, pool).first->second;
         const auto s0_root = root_table.get_slot(s0_idx);
 
-        EXPECT_EQ(s0, State(canonical::begin(s0_root, tree_table, pool), canonical::end()));
+        EXPECT_EQ(s0, State(canonical::begin(s0_root, tree_table), canonical::end()));
     }
 
     {
         const auto s0 = State {};
-        EXPECT_EQ(s0, State(canonical::begin(RootSlot(), tree_table, pool), canonical::end()));
+        EXPECT_EQ(s0, State(canonical::begin(RootSlot(), tree_table), canonical::end()));
     }
 }
 }

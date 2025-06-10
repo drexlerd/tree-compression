@@ -42,17 +42,10 @@ private:
 public:
     explicit RootSlotHash(const BitsetPool& pool) : m_pool(pool) {}
 
-    /// @brief TODO: we might want to use bitmasks.
-    /// @param el
-    /// @return
     size_t operator()(RootSlot el) const
     {
-        size_t size = read_pos(el.slot, 1);
-        size_t seed = 0;
-        for (size_t bit = 0; bit < std::bit_ceil(size); ++bit)
-        {
-            hash_combine(seed, el.ordering.get(bit, m_pool.get()));
-        }
+        size_t seed = read_pos(el.slot, 1);
+        hash_combine(seed, BitsetHash()(el.ordering));
         hash_combine(seed, SlotHash {}(el.slot));
         return seed;
     }
@@ -72,15 +65,8 @@ public:
     /// @return
     bool operator()(RootSlot lhs, RootSlot rhs) const
     {
-        size_t lhs_size = read_pos(lhs.slot, 1);
-        size_t rhs_size = read_pos(rhs.slot, 1);
-        if (lhs_size != rhs_size || lhs.slot != rhs.slot)
+        if (lhs.slot != rhs.slot || !BitsetEqualTo()(lhs.ordering, rhs.ordering))
             return false;
-        for (size_t bit = 0; bit < std::bit_ceil(lhs_size); ++bit)
-        {
-            if (lhs.ordering.get(bit, m_pool.get()) != rhs.ordering.get(bit, m_pool.get()))
-                return false;
-        }
         return true;
     }
 };

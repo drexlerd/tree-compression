@@ -44,7 +44,7 @@ namespace valla::canonical
 /// @return the index of the slot at the root.
 template<std::forward_iterator Iterator>
     requires std::same_as<std::iter_value_t<Iterator>, Index>
-inline Index insert_recursively(Iterator it, Iterator end, size_t size, BitsetView view, size_t bit, BitsetPool& pool, IndexedHashSet& table)
+inline Index insert_recursively(Iterator it, Iterator end, size_t size, BitsetView view, size_t bit, IndexedHashSet& table)
 {
     /* Base cases */
     if (size == 1)
@@ -58,7 +58,7 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, BitsetVi
         if (i2 < i1)
         {
             std::swap(i1, i2);
-            view.set(bit, pool);
+            view.set(bit);
         }
 
         return table.insert_slot(make_slot(i1, i2)).first->second;
@@ -70,13 +70,13 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, BitsetVi
     /* Conquer */
     const auto mid_it = it + mid;
 
-    Index i1 = insert_recursively(it, mid_it, mid, view, 2 * bit + 1, pool, table);
-    Index i2 = insert_recursively(mid_it, end, size - mid, view, 2 * bit + 2, pool, table);
+    Index i1 = insert_recursively(it, mid_it, mid, view, 2 * bit + 1, table);
+    Index i2 = insert_recursively(mid_it, end, size - mid, view, 2 * bit + 2, table);
 
     if (i2 < i1)
     {
         std::swap(i1, i2);
-        view.set(bit, pool);
+        view.set(bit);
     }
 
     return table.insert_slot(make_slot(i1, i2)).first->second;
@@ -100,11 +100,21 @@ auto insert(const Range& state, IndexedHashSet& tree_table, RootIndexedHashSet& 
         return root_table.insert_slot(
             RootSlot(make_slot(Index(0), Index(0)), pool.allocate(0)));  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
 
-    // Since we represent the ordering as a binary tree, there is some padding caused by bit_ceil, e.g., 9 -> 16.
-    auto ordering = pool.allocate(std::bit_ceil(size));
+    // Since we represent the ordering as a binary tree, there is some padding because we round up to use 64 bit blocks for efficiency.
+    auto tmp_ordering = pool.allocate((std::bit_ceil(size) + 63) / 64);
 
     size_t bit = 0;
-    return root_table.insert_slot(RootSlot(make_slot(insert_recursively(state.begin(), state.end(), size, ordering, bit, pool, tree_table), size), ordering));
+    const auto tree_index = insert_recursively(state.begin(), state.end(), size, tmp_ordering, bit, tree_table);
+
+    // Undo the bitset allocation when proven that bitset already exists
+    const auto result = pool.insert(tmp_ordering);
+    if (!result.second)
+    {
+        pool.pop_allocation();
+    }
+    auto ordering = (result.second) ? *result.first : BitsetConstView(tmp_ordering);
+
+    return root_table.insert_slot(RootSlot(make_slot(tree_index, size), ordering));
 }
 
 /// @brief Recursively reads the state from the tree induced by the given `index` and the `len`.
@@ -129,7 +139,7 @@ inline void read_state_recursively(Index index,
 
     auto [i1, i2] = read_slot(tree_table.get_slot(index));
 
-    const auto must_swap = ordering.get(bit, pool);
+    const auto must_swap = ordering.get(bit);
 
     /* Base case */
     if (size == 2)
@@ -188,7 +198,6 @@ class const_iterator
 {
 private:
     const IndexedHashSet* m_tree_table;
-    const BitsetPool* m_pool;
     BitsetConstView m_ordering;
 
     struct Entry
@@ -221,7 +230,7 @@ private:
 
             Index mid = std::bit_floor(entry.m_size - 1);
 
-            const auto must_swap = m_ordering.get(entry.m_bit, *m_pool);
+            const auto must_swap = m_ordering.get(entry.m_bit);
 
             if (must_swap)
                 std::swap(i1, i2);
@@ -243,15 +252,13 @@ public:
     using iterator_concept = std::forward_iterator_tag;
 
     const_iterator() : m_tree_table(nullptr), m_stack(), m_value(END_POS) {}
-    const_iterator(const IndexedHashSet* tree_table, const BitsetPool* pool, RootSlot root, bool begin) :
+    const_iterator(const IndexedHashSet* tree_table, RootSlot root, bool begin) :
         m_tree_table(tree_table),
-        m_pool(pool),
         m_ordering(root.ordering),
         m_stack(),
         m_value(END_POS)
     {
         assert(m_tree_table);
-        assert(m_pool);
 
         if (begin)
         {
@@ -280,7 +287,7 @@ public:
     bool operator!=(const const_iterator& other) const { return !(*this == other); }
 };
 
-inline const_iterator begin(RootSlot root, const IndexedHashSet& tree_table, const BitsetPool& pool) { return const_iterator(&tree_table, &pool, root, true); }
+inline const_iterator begin(RootSlot root, const IndexedHashSet& tree_table) { return const_iterator(&tree_table, root, true); }
 
 inline const_iterator end() { return const_iterator(); }
 
