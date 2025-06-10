@@ -24,8 +24,8 @@ namespace valla::tests
 TEST(VallaTests, CanonicalTreeCompressionTest)
 {
     auto tree_table = IndexedHashSet();
-    auto root_table = IndexedHashSet();
     auto pool = BitsetPool();
+    auto root_table = RootIndexedHashSet(pool);
 
     auto tmp_state = State();
 

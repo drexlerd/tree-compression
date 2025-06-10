@@ -55,6 +55,8 @@ private:
 public:
     BitsetConstView(uint32_t segment, uint32_t offset);
 
+    /// @brief Implicit conversion from mutable BitsetView.
+    /// @param view
     BitsetConstView(BitsetView view);
 
     bool get(size_t bit, const BitsetPool& pool) const;
