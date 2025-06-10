@@ -48,12 +48,12 @@ public:
     size_t operator()(RootSlot el) const
     {
         size_t size = read_pos(el.slot, 1);
-        size_t seed = size;
-        for (size_t bit = 0; bit < size + 1; ++bit)
+        size_t seed = 0;
+        for (size_t bit = 0; bit < std::bit_ceil(size); ++bit)
         {
             hash_combine(seed, el.ordering.get(bit, m_pool.get()));
         }
-        hash_combine(seed, read_pos(el.slot, 0));
+        hash_combine(seed, SlotHash {}(el.slot));
         return seed;
     }
 };
@@ -76,7 +76,7 @@ public:
         size_t rhs_size = read_pos(rhs.slot, 1);
         if (lhs_size != rhs_size || lhs.slot != rhs.slot)
             return false;
-        for (size_t bit = 0; bit < lhs_size; ++bit)
+        for (size_t bit = 0; bit < std::bit_ceil(lhs_size); ++bit)
         {
             if (lhs.ordering.get(bit, m_pool.get()) != rhs.ordering.get(bit, m_pool.get()))
                 return false;
