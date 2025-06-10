@@ -53,6 +53,18 @@ inline Index read_pos(Slot slot, size_t pos)
 using State = std::vector<Index>;
 using RootIndices = std::vector<Index>;
 
+inline std::ostream& operator<<(std::ostream& out, const State& state)
+{
+    out << "[";
+    for (const auto x : state)
+    {
+        out << x << ", ";
+    }
+    out << "]";
+
+    return out;
+}
+
 template<typename T>
 inline void hash_combine(size_t& seed, const T& value)
 {

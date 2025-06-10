@@ -74,7 +74,7 @@ public:
     {
         size_t lhs_size = read_pos(lhs.slot, 1);
         size_t rhs_size = read_pos(rhs.slot, 1);
-        if (lhs_size != rhs_size)
+        if (lhs_size != rhs_size || lhs.slot != rhs.slot)
             return false;
         for (size_t bit = 0; bit < lhs_size; ++bit)
         {

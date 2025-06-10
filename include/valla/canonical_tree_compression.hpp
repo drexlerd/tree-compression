@@ -60,6 +60,7 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, BitsetVi
             std::swap(i1, i2);
             view.set(bit, pool);
         }
+
         return table.insert_slot(make_slot(i1, i2)).first->second;
     }
 
@@ -68,6 +69,7 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, BitsetVi
 
     /* Conquer */
     const auto mid_it = it + mid;
+
     Index i1 = insert_recursively(it, mid_it, mid, view, 2 * bit + 1, pool, table);
     Index i2 = insert_recursively(mid_it, end, size - mid, view, 2 * bit + 2, pool, table);
 
@@ -98,7 +100,8 @@ auto insert(const Range& state, IndexedHashSet& tree_table, RootIndexedHashSet& 
         return root_table.insert_slot(
             RootSlot(make_slot(Index(0), Index(0)), pool.allocate(0)));  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
 
-    auto ordering = pool.allocate(size - 1);  // for sorted leafs, we could skil size/2, but it is not costly so we keep it general
+    // Since we represent the ordering as a binary tree, there is some padding caused by bit_ceil, e.g., 9 -> 16.
+    auto ordering = pool.allocate(std::bit_ceil(size));
 
     size_t bit = 0;
     return root_table.insert_slot(RootSlot(make_slot(insert_recursively(state.begin(), state.end(), size, ordering, bit, pool, tree_table), size), ordering));
@@ -126,14 +129,13 @@ inline void read_state_recursively(Index index,
 
     auto [i1, i2] = read_slot(tree_table.get_slot(index));
 
-    if (ordering.get(bit, pool))
-    {
-        std::swap(i1, i2);
-    }
+    const auto must_swap = ordering.get(bit, pool);
 
     /* Base case */
     if (size == 2)
     {
+        if (must_swap)
+            std::swap(i1, i2);
         ref_state.push_back(i1);
         ref_state.push_back(i2);
         return;
@@ -141,6 +143,9 @@ inline void read_state_recursively(Index index,
 
     /* Divide */
     const auto mid = std::bit_floor(size - 1);
+
+    if (must_swap)
+        std::swap(i1, i2);
 
     /* Conquer */
     read_state_recursively(i1, mid, ordering, tree_table, pool, 2 * bit + 1, ref_state);
@@ -213,12 +218,13 @@ private:
             }
 
             auto [i1, i2] = read_slot(m_tree_table->get_slot(entry.m_index));
-            if (m_ordering.get(entry.m_bit, *m_pool))
-            {
-                std::swap(i1, i2);
-            }
 
             Index mid = std::bit_floor(entry.m_size - 1);
+
+            const auto must_swap = m_ordering.get(entry.m_bit, *m_pool);
+
+            if (must_swap)
+                std::swap(i1, i2);
 
             // Emplace right first to ensure left is visited first in dfs.
             m_stack.emplace(i2, entry.m_size - mid, 2 * entry.m_bit + 2);
