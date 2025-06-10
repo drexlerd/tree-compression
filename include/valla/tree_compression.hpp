@@ -18,10 +18,8 @@
 #ifndef VALLA_INCLUDE_TREE_COMPRESSION_HPP_
 #define VALLA_INCLUDE_TREE_COMPRESSION_HPP_
 
-#include "valla/bitset_pool.hpp"
 #include "valla/declarations.hpp"
 #include "valla/indexed_hash_set.hpp"
-#include "valla/root_slot.hpp"
 
 #include <algorithm>
 #include <cassert>

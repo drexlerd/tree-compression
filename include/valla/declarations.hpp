@@ -19,6 +19,7 @@
 #define VALLA_INCLUDE_DECLARATIONS_HPP_
 
 #include <cassert>
+#include <functional>
 #include <iostream>
 #include <memory>
 #include <mutex>
@@ -51,6 +52,12 @@ inline Index read_pos(Slot slot, size_t pos)
 
 using State = std::vector<Index>;
 using RootIndices = std::vector<Index>;
+
+template<typename T>
+inline void hash_combine(size_t& seed, const T& value)
+{
+    seed ^= Hash<std::decay_t<T>> {}(value) + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}
 
 }
 
