@@ -36,16 +36,11 @@ struct RootSlot
 
 struct RootSlotHash
 {
-private:
-    std::reference_wrapper<const BitsetPool> m_pool;
-
 public:
-    explicit RootSlotHash(const BitsetPool& pool) : m_pool(pool) {}
-
     size_t operator()(RootSlot el) const
     {
         size_t seed = read_pos(el.slot, 1);
-        hash_combine(seed, BitsetHash()(el.ordering));
+        hash_combine(seed, el.ordering.get_blocks());
         hash_combine(seed, SlotHash {}(el.slot));
         return seed;
     }
@@ -53,19 +48,10 @@ public:
 
 struct RootSlotEqualTo
 {
-private:
-    std::reference_wrapper<const BitsetPool> m_pool;
-
 public:
-    explicit RootSlotEqualTo(const BitsetPool& pool) : m_pool(pool) {}
-
-    /// @brief TODO: we might want to use bitmasks.
-    /// @param lhs
-    /// @param rhs
-    /// @return
     bool operator()(RootSlot lhs, RootSlot rhs) const
     {
-        if (lhs.slot != rhs.slot || !BitsetEqualTo()(lhs.ordering, rhs.ordering))
+        if (lhs.slot != rhs.slot || lhs.ordering.get_blocks() != rhs.ordering.get_blocks())
             return false;
         return true;
     }
@@ -74,10 +60,7 @@ public:
 class RootIndexedHashSet
 {
 public:
-    explicit RootIndexedHashSet(BitsetPool& pool) :
-        m_slot_to_index(absl::flat_hash_map<RootSlot, Index, RootSlotHash, RootSlotEqualTo>(0, RootSlotHash(pool), RootSlotEqualTo(pool)))
-    {
-    }
+    RootIndexedHashSet() : m_slot_to_index(), m_index_to_slot() {}
 
     auto insert_slot(RootSlot slot)
     {

@@ -25,7 +25,7 @@ TEST(VallaTests, CanonicalTreeCompressionTest)
 {
     auto tree_table = IndexedHashSet();
     auto pool = BitsetPool();
-    auto root_table = RootIndexedHashSet(pool);
+    auto root_table = RootIndexedHashSet();
 
     auto tmp_state = State();
 
@@ -90,7 +90,7 @@ TEST(VallaTests, CanonicalTreeCompression2Test)
 {
     auto tree_table = IndexedHashSet();
     auto pool = BitsetPool();
-    auto root_table = RootIndexedHashSet(pool);
+    auto root_table = RootIndexedHashSet();
 
     auto tmp_state = State();
 
@@ -133,7 +133,7 @@ TEST(VallaTests, CanonicalTreeCompressionExhaustiveTest)
 {
     auto tree_table = IndexedHashSet();
     auto pool = BitsetPool();
-    auto root_table = RootIndexedHashSet(pool);
+    auto root_table = RootIndexedHashSet();
 
     auto tmp_state = State();
 
@@ -166,7 +166,7 @@ TEST(VallaTests, CanonicalTreeCompressionEdgeCasesTest)
 {
     auto tree_table = IndexedHashSet();
     auto pool = BitsetPool();
-    auto root_table = RootIndexedHashSet(pool);
+    auto root_table = RootIndexedHashSet();
 
     auto tmp_state = State();
 
@@ -203,7 +203,7 @@ TEST(VallaTests, CanonicalTreeCompressionIteratorTest)
 {
     auto tree_table = IndexedHashSet();
     auto pool = BitsetPool();
-    auto root_table = RootIndexedHashSet(pool);
+    auto root_table = RootIndexedHashSet();
 
     auto tmp_state = State();
 
