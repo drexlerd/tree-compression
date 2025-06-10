@@ -86,6 +86,51 @@ TEST(VallaTests, CanonicalTreeCompressionTest)
     }
 }
 
+TEST(VallaTests, CanonicalTreeCompression2Test)
+{
+    auto tree_table = IndexedHashSet();
+    auto pool = BitsetPool();
+    auto root_table = RootIndexedHashSet(pool);
+
+    auto tmp_state = State();
+
+    {
+        const auto s0 = State { 0, 2, 4, 6, 8, 10, 12, 14 };
+        const auto s0_idx = canonical::insert(s0, tree_table, root_table, pool).first->second;
+
+        EXPECT_EQ(tree_table.size(), 7);
+        EXPECT_EQ(root_table.size(), 1);
+
+        // Created new state!
+        EXPECT_EQ(s0_idx, 0);
+
+        canonical::read_state(s0_idx, tree_table, root_table, pool, tmp_state);
+        EXPECT_EQ(tmp_state, s0);
+
+        tmp_state.clear();
+        EXPECT_EQ(s0, State(canonical::begin(root_table.get_slot(s0_idx), tree_table, pool), canonical::end()));
+    }
+
+    std::cout << std::endl;
+
+    {
+        const auto s1 = State { 3, 4, 8, 10, 12, 14 };
+        const auto s1_idx = canonical::insert(s1, tree_table, root_table, pool).first->second;
+
+        EXPECT_EQ(tree_table.size(), 9);
+        EXPECT_EQ(root_table.size(), 2);
+
+        // Created new state!
+        EXPECT_EQ(s1_idx, 1);
+
+        canonical::read_state(s1_idx, tree_table, root_table, pool, tmp_state);
+        EXPECT_EQ(tmp_state, s1);
+
+        tmp_state.clear();
+        EXPECT_EQ(s1, State(canonical::begin(root_table.get_slot(s1_idx), tree_table, pool), canonical::end()));
+    }
+}
+
 TEST(VallaTests, CanonicalTreeCompressionEdgeCasesTest)
 {
     auto tree_table = IndexedHashSet();

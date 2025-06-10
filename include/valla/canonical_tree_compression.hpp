@@ -44,7 +44,7 @@ namespace valla::canonical
 /// @return the index of the slot at the root.
 template<std::forward_iterator Iterator>
     requires std::same_as<std::iter_value_t<Iterator>, Index>
-inline Index insert_recursively(Iterator it, Iterator end, size_t size, BitsetView view, size_t& bit, BitsetPool& pool, IndexedHashSet& table)
+inline Index insert_recursively(Iterator it, Iterator end, size_t size, BitsetView view, size_t bit, BitsetPool& pool, IndexedHashSet& table)
 {
     /* Base cases */
     if (size == 1)
@@ -54,12 +54,12 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, BitsetVi
     {
         Index i1 = *it;
         Index i2 = *(it + 1);
+
         if (i2 < i1)
         {
             std::swap(i1, i2);
             view.set(bit, pool);
         }
-        ++bit;
         return table.insert_slot(make_slot(i1, i2)).first->second;
     }
 
@@ -68,15 +68,14 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, BitsetVi
 
     /* Conquer */
     const auto mid_it = it + mid;
-    Index i1 = insert_recursively(it, mid_it, mid, view, bit, pool, table);
-    Index i2 = insert_recursively(mid_it, end, size - mid, view, bit, pool, table);
+    Index i1 = insert_recursively(it, mid_it, mid, view, 2 * bit + 1, pool, table);
+    Index i2 = insert_recursively(mid_it, end, size - mid, view, 2 * bit + 2, pool, table);
 
     if (i2 < i1)
     {
         std::swap(i1, i2);
         view.set(bit, pool);
     }
-    ++bit;
 
     return table.insert_slot(make_slot(i1, i2)).first->second;
 }
@@ -102,11 +101,7 @@ auto insert(const Range& state, IndexedHashSet& tree_table, RootIndexedHashSet& 
     auto ordering = pool.allocate(size - 1);  // for sorted leafs, we could skil size/2, but it is not costly so we keep it general
 
     size_t bit = 0;
-    auto result =
-        root_table.insert_slot(RootSlot(make_slot(insert_recursively(state.begin(), state.end(), size, ordering, bit, pool, tree_table), size), ordering));
-
-    assert(bit == size - 1);
-    return result;
+    return root_table.insert_slot(RootSlot(make_slot(insert_recursively(state.begin(), state.end(), size, ordering, bit, pool, tree_table), size), ordering));
 }
 
 /// @brief Recursively reads the state from the tree induced by the given `index` and the `len`.
@@ -119,7 +114,7 @@ inline void read_state_recursively(Index index,
                                    BitsetConstView ordering,
                                    const IndexedHashSet& tree_table,
                                    const BitsetPool& pool,
-                                   size_t& bit,
+                                   size_t bit,
                                    State& ref_state)
 {
     /* Base case */
@@ -130,11 +125,11 @@ inline void read_state_recursively(Index index,
     }
 
     auto [i1, i2] = read_slot(tree_table.get_slot(index));
+
     if (ordering.get(bit, pool))
     {
         std::swap(i1, i2);
     }
-    ++bit;
 
     /* Base case */
     if (size == 2)
@@ -148,8 +143,8 @@ inline void read_state_recursively(Index index,
     const auto mid = std::bit_floor(size - 1);
 
     /* Conquer */
-    read_state_recursively(i1, mid, ordering, tree_table, pool, bit, ref_state);
-    read_state_recursively(i2, size - mid, ordering, tree_table, pool, bit, ref_state);
+    read_state_recursively(i1, mid, ordering, tree_table, pool, 2 * bit + 1, ref_state);
+    read_state_recursively(i2, size - mid, ordering, tree_table, pool, 2 * bit + 2, ref_state);
 }
 
 /// @brief Read the `out_state` from the given `tree_index` from the `tree_table`.
@@ -190,12 +185,12 @@ private:
     const IndexedHashSet* m_tree_table;
     const BitsetPool* m_pool;
     BitsetConstView m_ordering;
-    size_t m_bit;
 
     struct Entry
     {
         Index m_index;
         Index m_size;
+        Index m_bit;
     };
 
     std::stack<Entry> m_stack;
@@ -218,17 +213,16 @@ private:
             }
 
             auto [i1, i2] = read_slot(m_tree_table->get_slot(entry.m_index));
-            if (m_ordering.get(m_bit, *m_pool))
+            if (m_ordering.get(entry.m_bit, *m_pool))
             {
                 std::swap(i1, i2);
             }
-            ++m_bit;
 
             Index mid = std::bit_floor(entry.m_size - 1);
 
             // Emplace right first to ensure left is visited first in dfs.
-            m_stack.emplace(i2, entry.m_size - mid);
-            m_stack.emplace(i1, mid);
+            m_stack.emplace(i2, entry.m_size - mid, 2 * entry.m_bit + 2);
+            m_stack.emplace(i1, mid, 2 * entry.m_bit + 1);
         }
 
         m_value = END_POS;
@@ -247,7 +241,6 @@ public:
         m_tree_table(tree_table),
         m_pool(pool),
         m_ordering(root.ordering),
-        m_bit(0),
         m_stack(),
         m_value(END_POS)
     {
@@ -260,7 +253,7 @@ public:
 
             if (size > 0)  ///< Push to stack only if there leafs
             {
-                m_stack.emplace(tree_idx, size);
+                m_stack.emplace(tree_idx, size, 0);
                 advance();
             }
         }
