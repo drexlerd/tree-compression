@@ -39,7 +39,7 @@ TEST(VallaTests, CanonicalTreeCompressionTest)
         // Created new state!
         EXPECT_EQ(s0_idx, 0);
 
-        canonical::read_state(s0_idx, tree_table, root_table, pool, tmp_state);
+        canonical::read_state(s0_idx, tree_table, root_table, tmp_state);
         EXPECT_EQ(tmp_state, s0);
     }
 
@@ -53,7 +53,7 @@ TEST(VallaTests, CanonicalTreeCompressionTest)
         // Created new state!
         EXPECT_EQ(s1_idx, 1);
 
-        canonical::read_state(s1_idx, tree_table, root_table, pool, tmp_state);
+        canonical::read_state(s1_idx, tree_table, root_table, tmp_state);
         EXPECT_EQ(tmp_state, s1);
     }
 
@@ -67,7 +67,7 @@ TEST(VallaTests, CanonicalTreeCompressionTest)
         // Created new state!
         EXPECT_EQ(s2_idx, 2);
 
-        canonical::read_state(s2_idx, tree_table, root_table, pool, tmp_state);
+        canonical::read_state(s2_idx, tree_table, root_table, tmp_state);
         EXPECT_EQ(tmp_state, s2);
     }
 
@@ -81,7 +81,7 @@ TEST(VallaTests, CanonicalTreeCompressionTest)
         // State already exists!
         EXPECT_EQ(s3_idx, 2);
 
-        canonical::read_state(s3_idx, tree_table, root_table, pool, tmp_state);
+        canonical::read_state(s3_idx, tree_table, root_table, tmp_state);
         EXPECT_EQ(tmp_state, s3);
     }
 }
@@ -104,7 +104,7 @@ TEST(VallaTests, CanonicalTreeCompression2Test)
         // Created new state!
         EXPECT_EQ(s0_idx, 0);
 
-        canonical::read_state(s0_idx, tree_table, root_table, pool, tmp_state);
+        canonical::read_state(s0_idx, tree_table, root_table, tmp_state);
         EXPECT_EQ(tmp_state, s0);
 
         tmp_state.clear();
@@ -121,7 +121,7 @@ TEST(VallaTests, CanonicalTreeCompression2Test)
         // Created new state!
         EXPECT_EQ(s1_idx, 1);
 
-        canonical::read_state(s1_idx, tree_table, root_table, pool, tmp_state);
+        canonical::read_state(s1_idx, tree_table, root_table, tmp_state);
         EXPECT_EQ(tmp_state, s1);
 
         tmp_state.clear();
@@ -152,7 +152,7 @@ TEST(VallaTests, CanonicalTreeCompressionExhaustiveTest)
         {
             auto s_idx = canonical::insert(s, tree_table, root_table, pool).first->second;
 
-            canonical::read_state(s_idx, tree_table, root_table, pool, tmp_state);
+            canonical::read_state(s_idx, tree_table, root_table, tmp_state);
             EXPECT_EQ(tmp_state, s);
             assert(tmp_state == s);
 
@@ -180,7 +180,7 @@ TEST(VallaTests, CanonicalTreeCompressionEdgeCasesTest)
         // Created new state!
         EXPECT_EQ(s0_idx, 0);
 
-        canonical::read_state(s0_idx, tree_table, root_table, pool, tmp_state);
+        canonical::read_state(s0_idx, tree_table, root_table, tmp_state);
         EXPECT_EQ(tmp_state, s0);
     }
 
@@ -194,7 +194,7 @@ TEST(VallaTests, CanonicalTreeCompressionEdgeCasesTest)
         // Created new state!
         EXPECT_EQ(s1_idx, 1);
 
-        canonical::read_state(s1_idx, tree_table, root_table, pool, tmp_state);
+        canonical::read_state(s1_idx, tree_table, root_table, tmp_state);
         EXPECT_EQ(tmp_state, s1);
     }
 }

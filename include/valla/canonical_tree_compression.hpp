@@ -101,20 +101,19 @@ auto insert(const Range& state, IndexedHashSet& tree_table, RootIndexedHashSet& 
             RootSlot(make_slot(Index(0), Index(0)), pool.allocate(0)));  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
 
     // Since we represent the ordering as a binary tree, there is some padding because we round up to use 64 bit blocks for efficiency.
-    auto tmp_ordering = pool.allocate((std::bit_ceil(size) + 63) / 64);
+    auto ordering = pool.allocate((std::bit_ceil(size) + 63) / 64);
 
     size_t bit = 0;
-    const auto tree_index = insert_recursively(state.begin(), state.end(), size, tmp_ordering, bit, tree_table);
+    const auto tree_index = insert_recursively(state.begin(), state.end(), size, ordering, bit, tree_table);
 
-    // Undo the bitset allocation when proven that bitset already exists
-    const auto result = pool.insert(tmp_ordering);
+    // Undo the bitset allocation when proven that an identical bitset already exists
+    const auto result = pool.insert(ordering);
     if (!result.second)
     {
         pool.pop_allocation();
     }
-    auto ordering = (result.second) ? *result.first : BitsetConstView(tmp_ordering);
 
-    return root_table.insert_slot(RootSlot(make_slot(tree_index, size), ordering));
+    return root_table.insert_slot(RootSlot(make_slot(tree_index, size), *result.first));
 }
 
 /// @brief Recursively reads the state from the tree induced by the given `index` and the `len`.
@@ -122,13 +121,7 @@ auto insert(const Range& state, IndexedHashSet& tree_table, RootIndexedHashSet& 
 /// @param size is the length of the state that defines the shape of the tree at the index.
 /// @param tree_table is the tree table.
 /// @param out_state is the output state.
-inline void read_state_recursively(Index index,
-                                   size_t size,
-                                   BitsetConstView ordering,
-                                   const IndexedHashSet& tree_table,
-                                   const BitsetPool& pool,
-                                   size_t bit,
-                                   State& ref_state)
+inline void read_state_recursively(Index index, size_t size, BitsetConstView ordering, const IndexedHashSet& tree_table, size_t bit, State& ref_state)
 {
     /* Base case */
     if (size == 1)
@@ -158,8 +151,8 @@ inline void read_state_recursively(Index index,
         std::swap(i1, i2);
 
     /* Conquer */
-    read_state_recursively(i1, mid, ordering, tree_table, pool, 2 * bit + 1, ref_state);
-    read_state_recursively(i2, size - mid, ordering, tree_table, pool, 2 * bit + 2, ref_state);
+    read_state_recursively(i1, mid, ordering, tree_table, 2 * bit + 1, ref_state);
+    read_state_recursively(i2, size - mid, ordering, tree_table, 2 * bit + 2, ref_state);
 }
 
 /// @brief Read the `out_state` from the given `tree_index` from the `tree_table`.
@@ -167,7 +160,7 @@ inline void read_state_recursively(Index index,
 /// @param size
 /// @param tree_table
 /// @param out_state
-inline void read_state(Index tree_index, size_t size, BitsetConstView ordering, const IndexedHashSet& tree_table, const BitsetPool& pool, State& out_state)
+inline void read_state(Index tree_index, size_t size, BitsetConstView ordering, const IndexedHashSet& tree_table, State& out_state)
 {
     out_state.clear();
 
@@ -176,7 +169,7 @@ inline void read_state(Index tree_index, size_t size, BitsetConstView ordering, 
 
     size_t bit = 0;
 
-    read_state_recursively(tree_index, size, ordering, tree_table, pool, bit, out_state);
+    read_state_recursively(tree_index, size, ordering, tree_table, bit, out_state);
 }
 
 /// @brief Read the `out_state` from the given `root_index` from the `root_table`.
@@ -184,14 +177,14 @@ inline void read_state(Index tree_index, size_t size, BitsetConstView ordering, 
 /// @param tree_table is the tree table.
 /// @param root_table is the root table.
 /// @param out_state is the output state.
-inline void read_state(Index root_index, const IndexedHashSet& tree_table, const RootIndexedHashSet& root_table, const BitsetPool& pool, State& out_state)
+inline void read_state(Index root_index, const IndexedHashSet& tree_table, const RootIndexedHashSet& root_table, State& out_state)
 {
     /* Observe: a root slot wraps the root tree_index together with the length that defines the tree structure! */
     const auto& root_slot = root_table.get_slot(root_index);
     const auto [tree_index, size] = read_slot(root_slot.slot);
     const auto ordering = root_slot.ordering;
 
-    read_state(tree_index, size, ordering, tree_table, pool, out_state);
+    read_state(tree_index, size, ordering, tree_table, out_state);
 }
 
 class const_iterator

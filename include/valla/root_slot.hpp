@@ -39,7 +39,7 @@ struct RootSlotHash
 public:
     size_t operator()(RootSlot el) const
     {
-        size_t seed = read_pos(el.slot, 1);
+        size_t seed = 0;
         hash_combine(seed, el.ordering.get_blocks());
         hash_combine(seed, SlotHash {}(el.slot));
         return seed;
@@ -49,12 +49,7 @@ public:
 struct RootSlotEqualTo
 {
 public:
-    bool operator()(RootSlot lhs, RootSlot rhs) const
-    {
-        if (lhs.slot != rhs.slot || lhs.ordering.get_blocks() != rhs.ordering.get_blocks())
-            return false;
-        return true;
-    }
+    bool operator()(RootSlot lhs, RootSlot rhs) const { return lhs.slot == rhs.slot && lhs.ordering.get_blocks() == rhs.ordering.get_blocks(); }
 };
 
 class RootIndexedHashSet
