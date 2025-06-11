@@ -129,6 +129,50 @@ TEST(VallaTests, CanonicalTreeCompression2Test)
     }
 }
 
+TEST(VallaTests, CanonicalTreeCompressionRandomTest)
+{
+    auto tree_table = IndexedHashSet();
+    auto pool = BitsetPool();
+    auto root_table = RootIndexedHashSet();
+
+    std::mt19937 rng(42);  // fixed seed for reproducibility
+    std::uniform_int_distribution<Index> dist(0, 10'000);
+    const size_t state_num = static_cast<size_t>(1000);  // number of states
+    const size_t state_size = static_cast<size_t>(10);   // size of each state
+
+    std::vector<State> all_states;
+    all_states.reserve(state_num);
+
+    // Generate sorted random states
+    for (size_t i = 0; i < state_num; ++i)
+    {
+        State s(state_size);
+        for (auto& v : s)
+            v = dist(rng);
+
+        s.erase(std::unique(s.begin(), s.end()), s.end());
+        std::sort(s.begin(), s.end());
+        all_states.push_back(std::move(s));
+    }
+
+    auto tmp_state = State();
+
+    {
+        for (const auto& s : all_states)
+        {
+            auto s_idx = canonical::insert(s, tree_table, root_table, pool).first->second;
+
+            canonical::read_state(s_idx, tree_table, root_table, tmp_state);
+            EXPECT_EQ(tmp_state, s);
+            assert(tmp_state == s);
+
+            tmp_state.clear();
+            EXPECT_EQ(s, State(canonical::begin(root_table.get_slot(s_idx), tree_table), canonical::end()));
+            assert(s == State(canonical::begin(root_table.get_slot(s_idx), tree_table), canonical::end()));
+        }
+    }
+}
+
 TEST(VallaTests, CanonicalTreeCompressionExhaustiveTest)
 {
     auto tree_table = IndexedHashSet();
