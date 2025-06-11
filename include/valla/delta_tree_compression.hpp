@@ -39,7 +39,7 @@ namespace valla::delta
 /// @param size is the number of elements in the range from it to end.
 /// @param table is the table to uniquely insert the slots.
 /// @return the index of the slot at the root.
-template<std::forward_iterator Iterator>
+template<std::input_iterator Iterator>
     requires std::same_as<std::iter_value_t<Iterator>, Index>
 inline Index insert_recursively(Iterator it, Iterator end, size_t size, IndexedHashSet& table, Index& prev)
 {
@@ -77,7 +77,7 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, IndexedH
 /// @param tree_table is the tree table whose nodes encode the tree structure without size information.
 /// @param root_table is the root_table whose nodes encode the root tree index + the size of the state that defines the tree structure.
 /// @return A pair (it, bool) where it points to the entry in the root table and bool is true if and only if the state was newly inserted.
-template<std::ranges::forward_range Range>
+template<std::ranges::input_range Range>
     requires std::same_as<std::ranges::range_value_t<Range>, Index>
 auto insert(const Range& state, IndexedHashSet& tree_table, IndexedHashSet& root_table)
 {
@@ -200,9 +200,9 @@ public:
     using difference_type = std::ptrdiff_t;
     using value_type = Index;
     using pointer = value_type*;
-    using reference = value_type&;
-    using iterator_category = std::forward_iterator_tag;
-    using iterator_concept = std::forward_iterator_tag;
+    using reference = value_type;
+    using iterator_category = std::input_iterator_tag;
+    using iterator_concept = std::input_iterator_tag;
 
     const_iterator() : m_tree_table(nullptr), m_stack(), m_value(END_POS) {}
     const_iterator(const IndexedHashSet* tree_table, Slot root, bool begin) : m_tree_table(tree_table), m_stack(), m_value(END_POS)
