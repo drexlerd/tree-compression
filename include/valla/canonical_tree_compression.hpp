@@ -20,6 +20,7 @@
 
 #include "valla/bitset_pool.hpp"
 #include "valla/declarations.hpp"
+#include "valla/details/memory_pool.hpp"
 #include "valla/indexed_hash_set.hpp"
 #include "valla/root_slot.hpp"
 
@@ -203,20 +204,27 @@ inline void read_state(Index root_index, const IndexedHashSet& tree_table, const
     read_state(tree_index, size, ordering, tree_table, out_state);
 }
 
+struct Entry
+{
+    Index m_index;
+    Index m_size;
+    Index m_bit;
+};
+
+static thread_local MemoryPool<std::vector<Entry>> s_stack_pool = MemoryPool<std::vector<Entry>> {};
+
+inline void copy(const std::vector<Entry>& src, std::vector<Entry>& dst)
+{
+    dst.clear();
+    dst.insert(dst.end(), src.begin(), src.end());
+}
+
 class const_iterator
 {
 private:
     const IndexedHashSet* m_tree_table;
     const Bitset* m_ordering;
-
-    struct Entry
-    {
-        Index m_index;
-        Index m_size;
-        Index m_bit;
-    };
-
-    std::stack<Entry> m_stack;
+    MemoryPoolUniquePtr<std::vector<Entry>> m_stack;
 
     Index m_value;
 
@@ -224,10 +232,10 @@ private:
 
     void advance()
     {
-        while (!m_stack.empty())
+        while (!m_stack->empty())
         {
-            auto entry = m_stack.top();
-            m_stack.pop();
+            auto entry = m_stack->back();
+            m_stack->pop_back();
 
             if (entry.m_size == 1)
             {
@@ -245,8 +253,8 @@ private:
                 std::swap(i1, i2);
 
             // Emplace right first to ensure left is visited first in dfs.
-            m_stack.emplace(i2, entry.m_size - mid, 2 * entry.m_bit + 2);
-            m_stack.emplace(i1, mid, 2 * entry.m_bit + 1);
+            m_stack->emplace_back(i2, entry.m_size - mid, 2 * entry.m_bit + 2);
+            m_stack->emplace_back(i1, mid, 2 * entry.m_bit + 1);
         }
 
         m_value = END_POS;
@@ -260,14 +268,16 @@ public:
     using iterator_category = std::forward_iterator_tag;
     using iterator_concept = std::forward_iterator_tag;
 
-    const_iterator() : m_tree_table(nullptr), m_stack(), m_value(END_POS) {}
+    const_iterator() : m_tree_table(nullptr), m_stack(s_stack_pool.get_or_allocate()), m_value(END_POS) {}
     const_iterator(const IndexedHashSet* tree_table, const RootSlot* root, bool begin) :
         m_tree_table(tree_table),
         m_ordering(&root->get_ordering()),
-        m_stack(),
+        m_stack(s_stack_pool.get_or_allocate()),
         m_value(END_POS)
     {
         assert(m_tree_table);
+
+        m_stack->clear();
 
         if (begin)
         {
@@ -275,7 +285,7 @@ public:
 
             if (size > 0)  ///< Push to stack only if there leafs
             {
-                m_stack.emplace(tree_idx, size, 0);
+                m_stack->emplace_back(tree_idx, size, 0);
                 advance();
             }
         }
