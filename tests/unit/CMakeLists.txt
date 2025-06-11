@@ -16,6 +16,8 @@ add_gtest(bitset_pool                              "bitset_pool.cpp")
 
 add_gtest(tree_compression                         "tree_compression.cpp")
 
+add_gtest(canonical_delta_tree_compression         "canonical_delta_tree_compression.cpp")
+
 add_gtest(canonical_tree_compression               "canonical_tree_compression.cpp")
 
 add_gtest(delta_tree_compression                   "delta_tree_compression.cpp")
