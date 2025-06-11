@@ -25,8 +25,11 @@ TEST(VallaTests, BitsetPoolTest)
 {
     auto pool = BitsetPool();
 
-    auto view1 = pool.allocate(2);
-    auto view2 = pool.allocate(2);
+    auto view1 = pool.allocate(128);
+    auto view2 = pool.allocate(128);
+
+    EXPECT_EQ(view1.get_num_blocks(), 2);
+    EXPECT_EQ(view2.get_num_blocks(), 2);
 
     EXPECT_FALSE(view1.get(0));
     EXPECT_FALSE(view1.get(63));

@@ -27,25 +27,28 @@ namespace valla
 struct RootSlot
 {
     Slot slot;
-    BitsetConstView ordering;
+    const Bitset* ordering;
 
     RootSlot() : slot(0), ordering() {}
-    RootSlot(Slot slot, BitsetConstView ordering) : slot(slot), ordering(ordering) {}
+    RootSlot(Slot slot, const Bitset* ordering) : slot(slot), ordering(ordering) {}
 
     Slot get_slot() const { return slot; }
     Index get_index() const { return read_pos(slot, 0); }
     Index get_size() const { return read_pos(slot, 1); }
-    BitsetConstView get_ordering() const { return ordering; }
+    const Bitset& get_ordering() const { return *ordering; }
 };
+
+static_assert(sizeof(RootSlot) == 16);
+static_assert(sizeof(RootSlot*) == 8);
 
 struct RootSlotHash
 {
-    size_t operator()(RootSlot el) const { return cantor_pair(SlotHash {}(el.slot), el.get_ordering().get_index()); }
+    size_t operator()(const RootSlot& el) const { return cantor_pair(SlotHash {}(el.slot), el.get_ordering().get_index()); }
 };
 
 struct RootSlotEqualTo
 {
-    bool operator()(RootSlot lhs, RootSlot rhs) const
+    bool operator()(const RootSlot& lhs, const RootSlot& rhs) const
     {
         return lhs.get_slot() == rhs.get_slot() && lhs.get_ordering().get_index() == rhs.get_ordering().get_index();
     }
