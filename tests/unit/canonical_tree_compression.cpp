@@ -137,8 +137,8 @@ TEST(VallaTests, CanonicalTreeCompressionRandomTest)
 
     std::mt19937 rng(42);  // fixed seed for reproducibility
     std::uniform_int_distribution<Index> dist(0, 10'000);
-    const size_t state_num = static_cast<size_t>(1000);  // number of states
-    const size_t state_size = static_cast<size_t>(10);   // size of each state
+    const size_t state_num = 1000;                                     // number of states
+    const std::vector<size_t> state_sizes = { 10, 20, 50, 100, 200 };  // size of each state
 
     std::vector<State> all_states;
     all_states.reserve(state_num);
@@ -146,13 +146,16 @@ TEST(VallaTests, CanonicalTreeCompressionRandomTest)
     // Generate sorted random states
     for (size_t i = 0; i < state_num; ++i)
     {
-        State s(state_size);
-        for (auto& v : s)
-            v = dist(rng);
+        for (const auto state_size : state_sizes)
+        {
+            State s(state_size);
+            for (auto& v : s)
+                v = dist(rng);
 
-        s.erase(std::unique(s.begin(), s.end()), s.end());
-        std::sort(s.begin(), s.end());
-        all_states.push_back(std::move(s));
+            s.erase(std::unique(s.begin(), s.end()), s.end());
+            std::sort(s.begin(), s.end());
+            all_states.push_back(std::move(s));
+        }
     }
 
     auto tmp_state = State();
