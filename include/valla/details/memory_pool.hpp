@@ -63,7 +63,6 @@ public:
     {
         if (other.m_pool && other.m_object)
         {
-            assert(other.m_pool);
             *this = other.m_pool->get_or_allocate();
             copy(*other.m_object, *m_object);
         }
@@ -79,6 +78,11 @@ public:
             if (other.m_pool && other.m_object)
             {
                 m_pool = other.m_pool;
+                if (!m_object)
+                {
+                    auto pointer = m_pool->get_or_allocate();
+                    m_object = pointer.release();
+                }
                 copy(*other.m_object, *m_object);
             }
         }

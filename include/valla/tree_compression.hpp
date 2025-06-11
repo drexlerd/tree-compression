@@ -54,10 +54,10 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, IndexedH
 
     /* Conquer */
     const auto mid_it = it + mid;
-    const auto left_index = insert_recursively(it, mid_it, mid, table);
-    const auto right_index = insert_recursively(mid_it, end, size - mid, table);
+    const auto i1 = insert_recursively(it, mid_it, mid, table);
+    const auto i2 = insert_recursively(mid_it, end, size - mid, table);
 
-    return table.insert_slot(make_slot(left_index, right_index)).first->second;
+    return table.insert_slot(make_slot(i1, i2)).first->second;
 }
 
 /// @brief Inserts the elements from the given `state` into the `tree_table` and the `root_table`.
@@ -94,13 +94,13 @@ inline void read_state_recursively(Index index, size_t size, const IndexedHashSe
         return;
     }
 
-    const auto [left_index, right_index] = read_slot(tree_table.get_slot(index));
+    const auto [i1, i2] = read_slot(tree_table.get_slot(index));
 
     /* Base case */
     if (size == 2)
     {
-        ref_state.push_back(left_index);
-        ref_state.push_back(right_index);
+        ref_state.push_back(i1);
+        ref_state.push_back(i2);
         return;
     }
 
@@ -108,8 +108,8 @@ inline void read_state_recursively(Index index, size_t size, const IndexedHashSe
     const auto mid = std::bit_floor(size - 1);
 
     /* Conquer */
-    read_state_recursively(left_index, mid, tree_table, ref_state);
-    read_state_recursively(right_index, size - mid, tree_table, ref_state);
+    read_state_recursively(i1, mid, tree_table, ref_state);
+    read_state_recursively(i2, size - mid, tree_table, ref_state);
 }
 
 /// @brief Read the `out_state` from the given `tree_index` from the `tree_table`.
@@ -170,13 +170,13 @@ private:
                 return;
             }
 
-            const auto [left, right] = read_slot(m_tree_table->get_slot(entry.m_index));
+            const auto [i1, i2] = read_slot(m_tree_table->get_slot(entry.m_index));
 
             Index mid = std::bit_floor(entry.m_size - 1);
 
             // Emplace right first to ensure left is visited first in dfs.
-            m_stack.emplace(right, entry.m_size - mid);
-            m_stack.emplace(left, mid);
+            m_stack.emplace(i2, entry.m_size - mid);
+            m_stack.emplace(i1, mid);
         }
 
         m_value = END_POS;
