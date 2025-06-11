@@ -261,9 +261,9 @@ public:
     using iterator_concept = std::forward_iterator_tag;
 
     const_iterator() : m_tree_table(nullptr), m_stack(), m_value(END_POS) {}
-    const_iterator(const IndexedHashSet* tree_table, RootSlot root, bool begin) :
+    const_iterator(const IndexedHashSet* tree_table, const RootSlot* root, bool begin) :
         m_tree_table(tree_table),
-        m_ordering(root.ordering),
+        m_ordering(&root->get_ordering()),
         m_stack(),
         m_value(END_POS)
     {
@@ -271,7 +271,7 @@ public:
 
         if (begin)
         {
-            const auto [tree_idx, size] = read_slot(root.slot);
+            const auto [tree_idx, size] = read_slot(root->get_slot());
 
             if (size > 0)  ///< Push to stack only if there leafs
             {
@@ -296,7 +296,7 @@ public:
     bool operator!=(const const_iterator& other) const { return !(*this == other); }
 };
 
-inline const_iterator begin(RootSlot root, const IndexedHashSet& tree_table) { return const_iterator(&tree_table, root, true); }
+inline const_iterator begin(const RootSlot& root, const IndexedHashSet& tree_table) { return const_iterator(&tree_table, &root, true); }
 
 inline const_iterator end() { return const_iterator(); }
 

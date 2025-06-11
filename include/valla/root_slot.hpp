@@ -80,7 +80,7 @@ private:
     }
 
 public:
-    RootIndexedHashSet() : m_slot_to_index(), m_index_to_slot(1, std::vector<RootSlot>(1)), m_segment(0), m_offset(0), m_size(0), m_capacity(1) {}
+    const RootSlot* get_empty_root() const { return m_empty_root; }
 
     auto insert_slot(RootSlot slot)
     {
@@ -99,6 +99,17 @@ public:
         }
 
         return result;
+    }
+
+    explicit RootIndexedHashSet(const BitsetRepository& repository) :
+        m_slot_to_index(),
+        m_index_to_slot(1, std::vector<RootSlot>(1)),
+        m_segment(0),
+        m_offset(0),
+        m_size(0),
+        m_capacity(1),
+        m_empty_root(insert_slot(RootSlot(0, repository.get_empty_bitset())).first->first)
+    {
     }
 
     const RootSlot& get_slot(Index index) const
@@ -132,6 +143,8 @@ private:
     size_t m_offset;
     size_t m_size;
     size_t m_capacity;
+
+    const RootSlot* m_empty_root;
 };
 }
 

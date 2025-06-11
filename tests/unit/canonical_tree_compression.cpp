@@ -25,8 +25,8 @@ TEST(VallaTests, CanonicalTreeCompressionTest)
 {
     auto tree_table = IndexedHashSet();
     auto pool = BitsetPool();
-    auto repo = BitsetRepository();
-    auto root_table = RootIndexedHashSet();
+    auto repo = BitsetRepository(pool);
+    auto root_table = RootIndexedHashSet(repo);
 
     auto tmp_state = State();
 
@@ -35,10 +35,10 @@ TEST(VallaTests, CanonicalTreeCompressionTest)
         const auto s0_idx = canonical::insert(s0, tree_table, root_table, pool, repo).first->second;
 
         EXPECT_EQ(tree_table.size(), 8);
-        EXPECT_EQ(root_table.size(), 1);
+        EXPECT_EQ(root_table.size(), 2);
 
         // Created new state!
-        EXPECT_EQ(s0_idx, 0);
+        EXPECT_EQ(s0_idx, 1);
 
         canonical::read_state(s0_idx, tree_table, root_table, tmp_state);
         EXPECT_EQ(tmp_state, s0);
@@ -49,10 +49,10 @@ TEST(VallaTests, CanonicalTreeCompressionTest)
         const auto s1_idx = canonical::insert(s1, tree_table, root_table, pool, repo).first->second;
 
         EXPECT_EQ(tree_table.size(), 9);
-        EXPECT_EQ(root_table.size(), 2);
+        EXPECT_EQ(root_table.size(), 3);
 
         // Created new state!
-        EXPECT_EQ(s1_idx, 1);
+        EXPECT_EQ(s1_idx, 2);
 
         canonical::read_state(s1_idx, tree_table, root_table, tmp_state);
         EXPECT_EQ(tmp_state, s1);
@@ -63,10 +63,10 @@ TEST(VallaTests, CanonicalTreeCompressionTest)
         const auto s2_idx = canonical::insert(s2, tree_table, root_table, pool, repo).first->second;
 
         EXPECT_EQ(tree_table.size(), 11);
-        EXPECT_EQ(root_table.size(), 3);
+        EXPECT_EQ(root_table.size(), 4);
 
         // Created new state!
-        EXPECT_EQ(s2_idx, 2);
+        EXPECT_EQ(s2_idx, 3);
 
         canonical::read_state(s2_idx, tree_table, root_table, tmp_state);
         EXPECT_EQ(tmp_state, s2);
@@ -77,10 +77,10 @@ TEST(VallaTests, CanonicalTreeCompressionTest)
         const auto s3_idx = canonical::insert(s3, tree_table, root_table, pool, repo).first->second;
 
         EXPECT_EQ(tree_table.size(), 11);
-        EXPECT_EQ(root_table.size(), 3);
+        EXPECT_EQ(root_table.size(), 4);
 
         // State already exists!
-        EXPECT_EQ(s3_idx, 2);
+        EXPECT_EQ(s3_idx, 3);
 
         canonical::read_state(s3_idx, tree_table, root_table, tmp_state);
         EXPECT_EQ(tmp_state, s3);
@@ -91,8 +91,8 @@ TEST(VallaTests, CanonicalTreeCompression2Test)
 {
     auto tree_table = IndexedHashSet();
     auto pool = BitsetPool();
-    auto repo = BitsetRepository();
-    auto root_table = RootIndexedHashSet();
+    auto repo = BitsetRepository(pool);
+    auto root_table = RootIndexedHashSet(repo);
 
     auto tmp_state = State();
 
@@ -101,10 +101,10 @@ TEST(VallaTests, CanonicalTreeCompression2Test)
         const auto s0_idx = canonical::insert(s0, tree_table, root_table, pool, repo).first->second;
 
         EXPECT_EQ(tree_table.size(), 7);
-        EXPECT_EQ(root_table.size(), 1);
+        EXPECT_EQ(root_table.size(), 2);
 
         // Created new state!
-        EXPECT_EQ(s0_idx, 0);
+        EXPECT_EQ(s0_idx, 1);
 
         canonical::read_state(s0_idx, tree_table, root_table, tmp_state);
         EXPECT_EQ(tmp_state, s0);
@@ -118,10 +118,10 @@ TEST(VallaTests, CanonicalTreeCompression2Test)
         const auto s1_idx = canonical::insert(s1, tree_table, root_table, pool, repo).first->second;
 
         EXPECT_EQ(tree_table.size(), 9);
-        EXPECT_EQ(root_table.size(), 2);
+        EXPECT_EQ(root_table.size(), 3);
 
         // Created new state!
-        EXPECT_EQ(s1_idx, 1);
+        EXPECT_EQ(s1_idx, 2);
 
         canonical::read_state(s1_idx, tree_table, root_table, tmp_state);
         EXPECT_EQ(tmp_state, s1);
@@ -135,8 +135,8 @@ TEST(VallaTests, CanonicalTreeCompressionRandomTest)
 {
     auto tree_table = IndexedHashSet();
     auto pool = BitsetPool();
-    auto repo = BitsetRepository();
-    auto root_table = RootIndexedHashSet();
+    auto repo = BitsetRepository(pool);
+    auto root_table = RootIndexedHashSet(repo);
 
     std::mt19937 rng(42);  // fixed seed for reproducibility
     std::uniform_int_distribution<Index> dist(0, 10'000);
@@ -183,8 +183,8 @@ TEST(VallaTests, CanonicalTreeCompressionExhaustiveTest)
 {
     auto tree_table = IndexedHashSet();
     auto pool = BitsetPool();
-    auto repo = BitsetRepository();
-    auto root_table = RootIndexedHashSet();
+    auto repo = BitsetRepository(pool);
+    auto root_table = RootIndexedHashSet(repo);
 
     auto tmp_state = State();
 
@@ -217,8 +217,8 @@ TEST(VallaTests, CanonicalTreeCompressionEdgeCasesTest)
 {
     auto tree_table = IndexedHashSet();
     auto pool = BitsetPool();
-    auto repo = BitsetRepository();
-    auto root_table = RootIndexedHashSet();
+    auto repo = BitsetRepository(pool);
+    auto root_table = RootIndexedHashSet(repo);
 
     auto tmp_state = State();
 
@@ -255,8 +255,8 @@ TEST(VallaTests, CanonicalTreeCompressionIteratorTest)
 {
     auto tree_table = IndexedHashSet();
     auto pool = BitsetPool();
-    auto repo = BitsetRepository();
-    auto root_table = RootIndexedHashSet();
+    auto repo = BitsetRepository(pool);
+    auto root_table = RootIndexedHashSet(repo);
 
     auto tmp_state = State();
 

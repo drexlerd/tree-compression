@@ -133,8 +133,12 @@ private:
 
     void resize_to_fit();
 
+    const Bitset* m_empty_bitset;
+
 public:
-    BitsetRepository();
+    explicit BitsetRepository(BitsetPool& pool);
+
+    const Bitset* get_empty_bitset() const;
 
     auto insert(Bitset bitset);
 
@@ -277,14 +281,7 @@ inline size_t BitsetPool::size() const { return m_size; }
  * BitsetRepository
  */
 
-inline BitsetRepository::BitsetRepository() :
-    m_segments(1, std::vector<Bitset>(INITIAL_SEGMENT_SIZE, Bitset())),
-    m_segment(0),
-    m_offset(0),
-    m_size(0),
-    m_capacity(1)
-{
-}
+inline const Bitset* BitsetRepository::get_empty_bitset() const { return m_empty_bitset; }
 
 inline void BitsetRepository::resize_to_fit()
 {
@@ -315,6 +312,16 @@ inline auto BitsetRepository::insert(Bitset bitset)
     }
 
     return result;
+}
+
+inline BitsetRepository::BitsetRepository(BitsetPool& pool) :
+    m_segments(1, std::vector<Bitset>(INITIAL_SEGMENT_SIZE, Bitset())),
+    m_segment(0),
+    m_offset(0),
+    m_size(0),
+    m_capacity(1),
+    m_empty_bitset(*insert(pool.allocate(0)).first)
+{
 }
 
 }
