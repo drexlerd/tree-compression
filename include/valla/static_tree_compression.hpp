@@ -52,7 +52,7 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, IndexedH
         return *it;  ///< Skip node creation
 
     if (size == 2)
-        return table.insert_slot(make_slot(*it, *(it + 1))).first->second;
+        return table.insert(make_slot(*it, *(it + 1))).first->second;
 
     /* Divide */
     const auto mid = calc_mid(size);
@@ -62,7 +62,7 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, IndexedH
     const auto left_index = insert_recursively(it, mid_it, mid, table);
     const auto right_index = insert_recursively(mid_it, end, size - mid, table);
 
-    return table.insert_slot(make_slot(left_index, right_index)).first->second;
+    return table.insert(make_slot(left_index, right_index)).first->second;
 }
 
 /// @brief Recursively insert the elements from `it` until `end` into the `table`.
@@ -77,9 +77,16 @@ inline std::pair<unsigned long, bool> emplace_recursively(Iterator it, Iterator 
     if (size == 1)
         return std::pair{static_cast<size_t>(*it), false};
 
+<<<<<<< HEAD
     if (size == 2){
         auto [iter, inserted] = table.insert_slot(make_slot(*it, *(it + 1)));
         return std::pair{iter->second, inserted};
+=======
+    if (size == 2)
+    {
+        auto [iter, inserted] = table.insert(make_slot(*it, *(it + 1)));
+        return std::pair { iter->second, inserted };
+>>>>>>> 6fa654f (refactoring: remove root table from tree construction. it is only used in the tests now)
     }
 
     /* Divide */
@@ -90,7 +97,7 @@ inline std::pair<unsigned long, bool> emplace_recursively(Iterator it, Iterator 
     const auto [left_index, left_inserted] = emplace_recursively(it, mid_it, mid, table);
     const auto [right_index, right_inserted] = emplace_recursively(mid_it, end, size - mid, table);
 
-    auto [iter, inserted] = table.insert_slot(make_slot(left_index, right_index));
+    auto [iter, inserted] = table.insert(make_slot(left_index, right_index));
 
     return std::pair{iter->second, left_inserted || right_inserted || inserted};
 

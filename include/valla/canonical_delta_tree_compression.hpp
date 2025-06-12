@@ -34,6 +34,9 @@
 
 namespace valla::canonical_delta
 {
+using RootSlotType = RootSlot;
+
+inline RootSlot get_empty_root_slot(const BitsetRepository& repo) { return RootSlot(0, &repo.get_empty_bitset()); }
 
 /// @brief Recursively insert the elements from `it` until `end` into the `table`.
 /// @param it points to the first element.
@@ -66,7 +69,7 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, Bitset v
         Index left_delta = i1 - prev;
         Index right_delta = i2 - i1;
         prev = i2;
-        return table.insert_slot(make_slot(left_delta, right_delta)).first->second;
+        return table.insert(make_slot(left_delta, right_delta)).first->second;
     }
 
     /* Divide */
@@ -84,29 +87,26 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, Bitset v
         view.set(bit);
     }
 
-    return table.insert_slot(make_slot(i1, i2)).first->second;
+    return table.insert(make_slot(i1, i2)).first->second;
 }
 
-/// @brief Inserts the elements from the given `state` into the `tree_table` and the `root_table`.
+/// @brief Inserts the elements from the given `state` into the `tree_table`
 /// @param state is the given state.
 /// @param tree_table is the tree table whose nodes encode the tree structure without size information.
-/// @param root_table is the root_table whose nodes encode the root tree index + the size of the state that defines the tree structure.
+/// @param pool is the bitset pool for allocation.
+/// @param repo is the bitset repository for uniqueness.
 /// @return A pair (it, bool) where it points to the entry in the root table and bool is true if and only if the state was newly inserted.
 template<std::ranges::input_range Range>
     requires std::same_as<std::ranges::range_value_t<Range>, Index>
-auto insert(const Range& state, IndexedHashSet& tree_table, RootIndexedHashSet& root_table, BitsetPool& pool, BitsetRepository& repo)
+auto insert(const Range& state, IndexedHashSet& tree_table, BitsetPool& pool, BitsetRepository& repo)
 {
     assert(std::is_sorted(state.begin(), state.end()));
 
     // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
     const auto size = static_cast<size_t>(std::distance(state.begin(), state.end()));
 
-    if (size == 0)
-    {  ///< Special case for empty state.
-        return root_table.insert_slot(
-            RootSlot(make_slot(Index(0), Index(0)),
-                     &*repo.insert(pool.allocate(0)).first));  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
-    }
+    if (size == 0)                         ///< Special case for empty state.
+        return get_empty_root_slot(repo);  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
 
     // Since we represent the ordering as a binary tree, there is some padding because we round up to use 64 bit blocks for efficiency.
     // std::cout << "num bits=" << std::bit_ceil(size) << std::endl;
@@ -125,7 +125,7 @@ auto insert(const Range& state, IndexedHashSet& tree_table, RootIndexedHashSet& 
         pool.pop_allocation();
     }
 
-    return root_table.insert_slot(RootSlot(make_slot(tree_index, size), &*result.first));
+    return RootSlot(make_slot(tree_index, size), &*result.first);
 }
 
 /// @brief Recursively reads the state from the tree induced by the given `index` and the `len`.

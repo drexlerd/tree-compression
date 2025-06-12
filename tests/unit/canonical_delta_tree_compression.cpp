@@ -32,7 +32,7 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionTest)
 
     {
         const auto s0 = State { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
-        const auto [s0_result, success] = canonical_delta::insert(s0, tree_table, root_table, pool, repo);
+        const auto [s0_result, success] = root_table.insert(canonical_delta::insert(s0, tree_table, pool, repo));
         const auto& s0_root = s0_result->first;
         const auto& s0_idx = s0_result->second;
 
@@ -48,7 +48,7 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionTest)
 
     {
         const auto s1 = State { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-        const auto [s1_result, success] = canonical_delta::insert(s1, tree_table, root_table, pool, repo);
+        const auto [s1_result, success] = root_table.insert(canonical_delta::insert(s1, tree_table, pool, repo));
         const auto& s1_root = s1_result->first;
         const auto& s1_idx = s1_result->second;
 
@@ -64,7 +64,7 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionTest)
 
     {
         const auto s2 = State { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
-        const auto [s2_result, success] = canonical_delta::insert(s2, tree_table, root_table, pool, repo);
+        const auto [s2_result, success] = root_table.insert(canonical_delta::insert(s2, tree_table, pool, repo));
         const auto& s2_root = s2_result->first;
         const auto& s2_idx = s2_result->second;
 
@@ -80,7 +80,7 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionTest)
 
     {
         const auto s3 = State { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
-        const auto [s3_result, success] = canonical_delta::insert(s3, tree_table, root_table, pool, repo);
+        const auto [s3_result, success] = root_table.insert(canonical_delta::insert(s3, tree_table, pool, repo));
         const auto& s3_root = s3_result->first;
         const auto& s3_idx = s3_result->second;
 
@@ -106,7 +106,7 @@ TEST(VallaTests, CanonicalDeltaTreeCompression2Test)
 
     {
         const auto s0 = State { 0, 2, 4, 6, 8, 10, 12, 14 };
-        const auto [s0_result, success] = canonical_delta::insert(s0, tree_table, root_table, pool, repo);
+        const auto [s0_result, success] = root_table.insert(canonical_delta::insert(s0, tree_table, pool, repo));
         const auto& s0_root = s0_result->first;
         const auto& s0_idx = s0_result->second;
 
@@ -125,7 +125,7 @@ TEST(VallaTests, CanonicalDeltaTreeCompression2Test)
 
     {
         const auto s1 = State { 3, 4, 8, 10, 12, 14 };
-        const auto [s1_result, success] = canonical_delta::insert(s1, tree_table, root_table, pool, repo);
+        const auto [s1_result, success] = root_table.insert(canonical_delta::insert(s1, tree_table, pool, repo));
         const auto& s1_root = s1_result->first;
         const auto& s1_idx = s1_result->second;
 
@@ -178,7 +178,7 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionRandomTest)
     {
         for (const auto& s : all_states)
         {
-            auto [s_result, success] = canonical_delta::insert(s, tree_table, root_table, pool, repo);
+            auto [s_result, success] = root_table.insert(canonical_delta::insert(s, tree_table, pool, repo));
             const auto& s_root = s_result->first;
             const auto& s_idx = s_result->second;
 
@@ -215,7 +215,7 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionExhaustiveTest)
     {
         for (const auto& s : all_states)
         {
-            auto [s_result, success] = canonical_delta::insert(s, tree_table, root_table, pool, repo);
+            auto [s_result, success] = root_table.insert(canonical_delta::insert(s, tree_table, pool, repo));
             const auto& s_root = s_result->first;
             const auto& s_idx = s_result->second;
 
@@ -240,7 +240,7 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionEdgeCasesTest)
 
     {
         const auto s0 = State {};
-        const auto [s0_result, success] = canonical_delta::insert(s0, tree_table, root_table, pool, repo);
+        const auto [s0_result, success] = root_table.insert(canonical_delta::insert(s0, tree_table, pool, repo));
         const auto& s0_root = s0_result->first;
         const auto& s0_idx = s0_result->second;
 
@@ -256,7 +256,7 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionEdgeCasesTest)
 
     {
         const auto s1 = State { 0 };
-        const auto [s1_result, success] = canonical_delta::insert(s1, tree_table, root_table, pool, repo);
+        const auto [s1_result, success] = root_table.insert(canonical_delta::insert(s1, tree_table, pool, repo));
         const auto& s1_root = s1_result->first;
         const auto& s1_idx = s1_result->second;
 
@@ -282,7 +282,7 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionIteratorTest)
 
     {
         const auto s0 = State { 1, 2, 4, 5, 6 };
-        const auto [s0_result, success] = canonical_delta::insert(s0, tree_table, root_table, pool, repo);
+        const auto [s0_result, success] = root_table.insert(canonical_delta::insert(s0, tree_table, pool, repo));
         const auto& s0_root = s0_result->first;
         const auto& s0_idx = s0_result->second;
 

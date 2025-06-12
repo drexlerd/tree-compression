@@ -31,6 +31,9 @@
 
 namespace valla::plain
 {
+using RootSlotType = Slot;
+
+inline Slot get_empty_root_slot() { return Slot(0); }
 
 /// @brief Recursively insert the elements from `it` until `end` into the `table`.
 /// @param it points to the first element.
@@ -47,7 +50,7 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, IndexedH
         return *it;  ///< Skip node creation
 
     if (size == 2)
-        return table.insert_slot(make_slot(*it, *(it + 1))).first->second;
+        return table.insert(make_slot(*it, *(it + 1))).first->second;
 
     /* Divide */
     const auto mid = std::bit_floor(size - 1);
@@ -57,27 +60,27 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, IndexedH
     const auto i1 = insert_recursively(it, mid_it, mid, table);
     const auto i2 = insert_recursively(mid_it, end, size - mid, table);
 
-    return table.insert_slot(make_slot(i1, i2)).first->second;
+    return table.insert(make_slot(i1, i2)).first->second;
 }
 
-/// @brief Inserts the elements from the given `state` into the `tree_table` and the `root_table`.
+/// @brief Inserts the elements from the given `state` into the `tree_table`.
 /// @param state is the given state.
 /// @param tree_table is the tree table whose nodes encode the tree structure without size information.
 /// @param root_table is the root_table whose nodes encode the root tree index + the size of the state that defines the tree structure.
 /// @return A pair (it, bool) where it points to the entry in the root table and bool is true if and only if the state was newly inserted.
 template<std::ranges::input_range Range>
     requires std::same_as<std::ranges::range_value_t<Range>, Index>
-auto insert(const Range& state, IndexedHashSet& tree_table, IndexedHashSet& root_table)
+auto insert(const Range& state, IndexedHashSet& tree_table)
 {
     assert(std::is_sorted(state.begin(), state.end()));
 
     // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
     const auto size = static_cast<size_t>(std::distance(state.begin(), state.end()));
 
-    if (size == 0)                                                     ///< Special case for empty state.
-        return root_table.insert_slot(make_slot(Index(0), Index(0)));  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
+    if (size == 0)                     ///< Special case for empty state.
+        return get_empty_root_slot();  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
 
-    return root_table.insert_slot(make_slot(insert_recursively(state.begin(), state.end(), size, tree_table), size));
+    return make_slot(insert_recursively(state.begin(), state.end(), size, tree_table), size);
 }
 
 /// @brief Recursively reads the state from the tree induced by the given `index` and the `len`.
@@ -132,10 +135,10 @@ inline void read_state(Index tree_index, size_t size, const IndexedHashSet& tree
 /// @param tree_table is the tree table.
 /// @param root_table is the root table.
 /// @param out_state is the output state.
-inline void read_state(Index root_index, const IndexedHashSet& tree_table, const IndexedHashSet& root_table, State& out_state)
+inline void read_state(Slot root_slot, const IndexedHashSet& tree_table, State& out_state)
 {
     /* Observe: a root slot wraps the root tree_index together with the length that defines the tree structure! */
-    const auto [tree_index, size] = read_slot(root_table.get_slot(root_index));
+    const auto [tree_index, size] = read_slot(root_slot);
 
     read_state(tree_index, size, tree_table, out_state);
 }

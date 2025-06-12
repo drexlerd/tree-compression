@@ -55,7 +55,7 @@ static void BM_TreeCompressionRead(benchmark::State& state)
     for (size_t rep = 0; rep < repetitions; ++rep)
     {
         for (const auto& s : all_states)
-            all_roots.push_back(v::insert(s, tree_table, root_table).first->second);
+            all_roots.push_back(root_table.insert(v::insert(s, tree_table)).first->first);
     }
 
     for (auto _ : state)
@@ -66,7 +66,7 @@ static void BM_TreeCompressionRead(benchmark::State& state)
         {
             for (const auto& r : all_roots)
             {
-                v::read_state(r, tree_table, root_table, state);
+                v::read_state(r, tree_table, state);
                 benchmark::DoNotOptimize(state);
             }
         }
