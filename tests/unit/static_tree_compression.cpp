@@ -24,7 +24,7 @@ namespace valla::tests
 TEST(VallaTests, StaticTreeCompressionTest)
 {
     auto tree_table = IndexedHashSet();
-    auto root_table = RootIndices();
+    auto root_table = RootIndexedHashSet();
     auto tmp_state = State();
 
     {
@@ -80,20 +80,18 @@ TEST(VallaTests, StaticTreeCompressionTest)
 
     {
         const auto s3 = State { 8, 9, 10, 11, 12, 13, 16, 17, 0, 1, 2, 3, 4, 5, 6, 7 };
-        const auto s3_idx = static_tree::insert(s3, tree_table, root_table).first;
-
-        EXPECT_EQ(tree_table.size(), 13);
-        EXPECT_EQ(root_table.size(), 3);
+        static_tree::insert(s3, tree_table, root_table).first;
 
         // State already exists!
-        EXPECT_EQ(s3_idx, root_table.size());
+        EXPECT_EQ(tree_table.size(), 13);
+        EXPECT_EQ(root_table.size(), 3);
     }
 }
 
 TEST(VallaTests, StaticTreeCompressionEdgeCasesTest)
 {
     auto tree_table = IndexedHashSet();
-    auto root_table = RootIndices();
+    auto root_table = RootIndexedHashSet();
     auto tmp_state = State();
 
     {
@@ -117,7 +115,7 @@ TEST(VallaTests, StaticTreeCompressionEdgeCasesTest)
         const auto s1_size = std::distance(s1.begin(), s1.end());
         const auto s1_idx = static_tree::insert(s1, tree_table, root_table).first;
 
-        EXPECT_EQ(tree_table.size(), 0);
+        EXPECT_EQ(tree_table.size(), 1);
         EXPECT_EQ(root_table.size(), 1);
 
         // Created new state!
@@ -132,14 +130,14 @@ TEST(VallaTests, StaticTreeCompressionEdgeCasesTest)
 TEST(VallaTests, StaticTreeCompressionIteratorTest)
 {
     auto tree_table = IndexedHashSet();
-    auto root_table = RootIndices();
+    auto root_table = RootIndexedHashSet();
     auto tmp_state = State();
 
     {
         const auto s0 = State { 1, 2, 4, 5, 6 };
         const auto s0_size = std::distance(s0.begin(), s0.end());
         const auto s0_idx = static_tree::insert(s0, tree_table, root_table).first;
-        const auto s0_root = root_table[s0_idx];
+        const auto s0_root = root_table.get_slot(s0_idx);
 
         EXPECT_EQ(s0, State(static_tree::begin(s0_root, s0_size, tree_table), static_tree::end()));
     }

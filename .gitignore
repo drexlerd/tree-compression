@@ -40,3 +40,7 @@
 /dependencies/build
 /dependencies/installs
 **/cmake-build-debug/
+
+build/
+
+tests/unit/CMakeCache.txt

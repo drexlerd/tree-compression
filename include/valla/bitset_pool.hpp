@@ -145,7 +145,7 @@ public:
 
 inline BitsetView::BitsetView() : m_blocks(nullptr), m_num_blocks(0), m_index(0) {}
 
-inline BitsetView::BitsetView(uint64_t* blocks, uint32_t num_blocks, Index index) : m_blocks(blocks), m_num_blocks(num_blocks), m_index(index) {}
+    inline BitsetView::BitsetView(uint64_t* blocks, uint32_t num_blocks, Index index) : m_blocks(blocks), m_num_blocks(num_blocks), m_index(index) {}
 
 inline bool BitsetView::get(size_t bit) const
 {

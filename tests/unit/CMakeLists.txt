@@ -21,3 +21,5 @@ add_gtest(canonical_tree_compression               "canonical_tree_compression.c
 add_gtest(delta_tree_compression                   "delta_tree_compression.cpp")
 
 add_gtest(static_tree_compression                  "static_tree_compression.cpp")
+
+add_gtest(fixed_tree_compression                  "fixed_tree_compression.cpp")

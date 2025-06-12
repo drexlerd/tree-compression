@@ -28,6 +28,8 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
+#include "fixed_hash_set.hpp"
+#include "hash.h"
 
 namespace valla
 {
@@ -81,6 +83,49 @@ inline void hash_combine(size_t& seed, const T& value)
 
 inline uint64_t cantor_pair(uint64_t a, uint64_t b) { return (((a + b) * (a + b + 1)) >> 1) + b; }
 
+
+
+
+
+
+template<typename LHS, typename RHS>
+struct SlotStruct {
+    LHS lhs;
+    RHS rhs;
+    static constexpr SlotStruct sentinel{std::numeric_limits<LHS>::max(), std::numeric_limits<RHS>::max()};
+
+    bool operator==(const SlotStruct& other) const {
+        return lhs == other.lhs && rhs == other.rhs;
+    }
+    bool operator!=(const SlotStruct& other) const {
+        return this->operator==(other) == false;
+    }
+};
+constexpr SlotStruct SlotSentinel{std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max()};
+
+
+using IndexSlot = SlotStruct<uint32_t, uint32_t>;
+
+struct Hasher {
+    std::size_t operator()(const IndexSlot& slot) const {
+        utils::HashState hash_state;
+        hash_state.feed(slot.lhs);
+        hash_state.feed(slot.rhs);
+        return hash_state.get_hash64();
+    }
+};
+
+struct SlotEqual {
+    bool operator()(const IndexSlot& lhs, const IndexSlot& rhs) const {
+        return lhs.lhs == rhs.lhs && lhs.rhs == rhs.rhs;
+    }
+};
+
+using FixedHashSetSlot = FixedHashSet<IndexSlot, SlotSentinel, Hasher, SlotEqual>;
+
+
 }
+
+
 
 #endif
