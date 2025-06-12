@@ -31,8 +31,6 @@
 #include <unordered_set>
 #include <utility>
 #include <vector>
-#include "fixed_hash_set.hpp"
-#include "hash.h"
 
 namespace valla
 {
@@ -91,31 +89,24 @@ struct SlotHash
     size_t operator()(Slot el) const { return cantor_pair(read_pos(el, 0), read_pos(el, 1)); }
 };
 
-
-
-
-
-
 template<typename LHS, typename RHS>
-struct SlotStruct {
+struct SlotStruct
+{
     LHS lhs;
     RHS rhs;
-    static constexpr SlotStruct sentinel{std::numeric_limits<LHS>::max(), std::numeric_limits<RHS>::max()};
+    static constexpr SlotStruct sentinel { std::numeric_limits<LHS>::max(), std::numeric_limits<RHS>::max() };
 
-    bool operator==(const SlotStruct& other) const {
-        return lhs == other.lhs && rhs == other.rhs;
-    }
-    bool operator!=(const SlotStruct& other) const {
-        return this->operator==(other) == false;
-    }
+    bool operator==(const SlotStruct& other) const { return lhs == other.lhs && rhs == other.rhs; }
+    bool operator!=(const SlotStruct& other) const { return this->operator==(other) == false; }
 };
-constexpr SlotStruct SlotSentinel{std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max()};
-
+constexpr SlotStruct SlotSentinel { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() };
 
 using IndexSlot = SlotStruct<uint32_t, uint32_t>;
 
-struct Hasher {
-    std::size_t operator()(const IndexSlot& slot) const {
+struct Hasher
+{
+    std::size_t operator()(const IndexSlot& slot) const
+    {
         utils::HashState hash_state;
         hash_state.feed(slot.lhs);
         hash_state.feed(slot.rhs);
@@ -123,17 +114,13 @@ struct Hasher {
     }
 };
 
-struct SlotEqual {
-    bool operator()(const IndexSlot& lhs, const IndexSlot& rhs) const {
-        return lhs.lhs == rhs.lhs && lhs.rhs == rhs.rhs;
-    }
+struct SlotEqual
+{
+    bool operator()(const IndexSlot& lhs, const IndexSlot& rhs) const { return lhs.lhs == rhs.lhs && lhs.rhs == rhs.rhs; }
 };
 
 using FixedHashSetSlot = FixedHashSet<IndexSlot, SlotSentinel, Hasher, SlotEqual>;
 
-
 }
-
-
 
 #endif
