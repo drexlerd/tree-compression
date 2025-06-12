@@ -34,9 +34,18 @@
 
 namespace valla::canonical_delta
 {
+
+/**
+ * Utility
+ */
+
 using RootSlotType = RootSlot;
 
 inline RootSlot get_empty_root_slot(const BitsetRepository& repo) { return RootSlot(0, &repo.get_empty_bitset()); }
+
+/**
+ * Insert recursively
+ */
 
 /// @brief Recursively insert the elements from `it` until `end` into the `table`.
 /// @param it points to the first element.
@@ -128,6 +137,10 @@ auto insert(const Range& state, IndexedHashSet& tree_table, BitsetPool& pool, Bi
     return RootSlot(make_slot(tree_index, size), &*result.first);
 }
 
+/**
+ * Read recursively
+ */
+
 /// @brief Recursively reads the state from the tree induced by the given `index` and the `len`.
 /// @param index is the index of the slot in the tree table.
 /// @param size is the length of the state that defines the shape of the tree at the index.
@@ -196,6 +209,10 @@ inline void read_state(const RootSlot& root_slot, const IndexedHashSet& tree_tab
     read_state(tree_index, size, ordering, tree_table, out_state);
 }
 
+/**
+ * ConstIterator
+ */
+
 struct Entry
 {
     Index m_index;
@@ -220,7 +237,6 @@ private:
     const IndexedHashSet* m_tree_table;
     const Bitset* m_ordering;
     SharedMemoryPoolPtr<std::vector<Entry>> m_stack;
-
     Index m_value;
 
     static constexpr const Index END_POS = Index(-1);
@@ -273,19 +289,20 @@ public:
     using iterator_category = std::input_iterator_tag;
     using iterator_concept = std::input_iterator_tag;
 
-    const_iterator() : m_tree_table(nullptr), m_stack(s_stack_pool.get_or_allocate()), m_value(END_POS) {}
+    const_iterator() : m_tree_table(nullptr), m_stack(), m_value(END_POS) {}
     const_iterator(const IndexedHashSet* tree_table, const RootSlot* root, bool begin) :
         m_tree_table(tree_table),
         m_ordering(&root->get_ordering()),
-        m_stack(s_stack_pool.get_or_allocate()),
+        m_stack(),
         m_value(END_POS)
     {
         assert(m_tree_table && root);
 
-        m_stack->clear();
-
         if (begin)
         {
+            m_stack = s_stack_pool.get_or_allocate();
+            m_stack->clear();
+
             const auto [tree_idx, size] = read_slot(root->get_slot());
             if (size > 0)  ///< Push to stack only if there leafs
             {

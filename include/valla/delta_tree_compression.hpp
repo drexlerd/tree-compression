@@ -20,6 +20,7 @@
 
 #include "valla/bitset_pool.hpp"
 #include "valla/declarations.hpp"
+#include "valla/details/shared_memory_pool.hpp"
 #include "valla/indexed_hash_set.hpp"
 
 #include <algorithm>
@@ -32,9 +33,18 @@
 
 namespace valla::delta
 {
+
+/**
+ * Utility
+ */
+
 using RootSlotType = Slot;
 
 inline Slot get_empty_root_slot() { return Slot(0); }
+
+/**
+ * Insert recursively
+ */
 
 /// @brief Recursively insert the elements from `it` until `end` into the `table`.
 /// @param it points to the first element.
@@ -95,6 +105,10 @@ auto insert(const Range& state, IndexedHashSet& tree_table)
     auto prev = Index(0);
     return make_slot(insert_recursively(state.begin(), state.end(), size, tree_table, prev), size);
 }
+
+/**
+ * Read recursively
+ */
 
 /// @brief Recursively reads the state from the tree induced by the given `index` and the `len`.
 /// @param index is the index of the slot in the tree table.
@@ -157,29 +171,40 @@ inline void read_state(Slot root_slot, const IndexedHashSet& tree_table, State& 
     read_state(tree_index, size, tree_table, out_state);
 }
 
+/**
+ * ConstIterator
+ */
+
+struct Entry
+{
+    Index m_index;
+    Index m_size;
+    Index m_bit;
+};
+
+static thread_local SharedMemoryPool<std::vector<Entry>> s_stack_pool = SharedMemoryPool<std::vector<Entry>> {};
+
+inline void copy(const std::vector<Entry>& src, std::vector<Entry>& dst)
+{
+    dst.clear();
+    dst.insert(dst.end(), src.begin(), src.end());
+}
+
 class const_iterator
 {
 private:
     const IndexedHashSet* m_tree_table;
-
-    struct Entry
-    {
-        Index m_index;
-        Index m_size;
-    };
-
-    std::stack<Entry> m_stack;
-
+    SharedMemoryPoolPtr<std::vector<Entry>> m_stack;
     Index m_value;
 
     static constexpr const Index END_POS = Index(-1);
 
     void advance()
     {
-        while (!m_stack.empty())
+        while (!m_stack->empty())
         {
-            auto entry = m_stack.top();
-            m_stack.pop();
+            auto entry = m_stack->back();
+            m_stack->pop_back();
 
             if (entry.m_size == 1)
             {
@@ -192,8 +217,8 @@ private:
             Index mid = std::bit_floor(entry.m_size - 1);
 
             // Emplace i2 first to ensure i1 is visited first in dfs.
-            m_stack.emplace(i2, entry.m_size - mid);
-            m_stack.emplace(i1, mid);
+            m_stack->emplace_back(i2, entry.m_size - mid);
+            m_stack->emplace_back(i1, mid);
         }
 
         m_value = END_POS;
@@ -212,11 +237,14 @@ public:
     {
         if (begin)
         {
+            m_stack = s_stack_pool.get_or_allocate();
+            m_stack->clear();
+
             const auto [tree_idx, size] = read_slot(root);
             if (size > 0)  ///< Push to stack only if there leafs
             {
                 m_value = Index(0);
-                m_stack.emplace(tree_idx, size);
+                m_stack->emplace_back(tree_idx, size);
                 advance();
             }
         }
