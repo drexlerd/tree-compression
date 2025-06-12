@@ -33,10 +33,7 @@
 namespace valla::static_tree
 {
 
-    inline auto calc_mid(size_t size)
-    {
-        return size / 2 + (size % 2);
-    }
+inline auto calc_mid(size_t size) { return size / 2 + (size % 2); }
 
 /// @brief Recursively insert the elements from `it` until `end` into the `table`.
 /// @param it points to the first element.
@@ -75,18 +72,12 @@ template<std::forward_iterator Iterator>
 inline std::pair<unsigned long, bool> emplace_recursively(Iterator it, Iterator end, size_t size, IndexedHashSet& table)
 {
     if (size == 1)
-        return std::pair{static_cast<size_t>(*it), false};
+        return std::pair { static_cast<size_t>(*it), false };
 
-<<<<<<< HEAD
-    if (size == 2){
-        auto [iter, inserted] = table.insert_slot(make_slot(*it, *(it + 1)));
-        return std::pair{iter->second, inserted};
-=======
     if (size == 2)
     {
         auto [iter, inserted] = table.insert(make_slot(*it, *(it + 1)));
         return std::pair { iter->second, inserted };
->>>>>>> 6fa654f (refactoring: remove root table from tree construction. it is only used in the tests now)
     }
 
     /* Divide */
@@ -99,65 +90,63 @@ inline std::pair<unsigned long, bool> emplace_recursively(Iterator it, Iterator 
 
     auto [iter, inserted] = table.insert(make_slot(left_index, right_index));
 
-    return std::pair{iter->second, left_inserted || right_inserted || inserted};
-
-
+    return std::pair { iter->second, left_inserted || right_inserted || inserted };
 }
 
-    /// @brief Inserts the elements from the given `state` into the `tree_table` and the `root_table`.
-    /// @param state is the given state.
-    /// @param tree_table is the tree table whose nodes encode the tree structure without size information.
-    /// @param root_table is the root_table whose nodes encode the root tree index ONLY.
-    /// @return A pair (it, bool) where it points to the entry in the root table and bool is true if and only if the state was newly inserted.
-    template<std::ranges::forward_range Range>
-        requires std::same_as<std::ranges::range_value_t<Range>, Index>
-    auto insert(const Range& state, IndexedHashSet& tree_table, RootIndexedHashSet& root_table)
+/// @brief Inserts the elements from the given `state` into the `tree_table` and the `root_table`.
+/// @param state is the given state.
+/// @param tree_table is the tree table whose nodes encode the tree structure without size information.
+/// @param root_table is the root_table whose nodes encode the root tree index ONLY.
+/// @return A pair (it, bool) where it points to the entry in the root table and bool is true if and only if the state was newly inserted.
+template<std::ranges::forward_range Range>
+    requires std::same_as<std::ranges::range_value_t<Range>, Index>
+auto insert(const Range& state, IndexedHashSet& tree_table, RootIndexedHashSet& root_table)
+{
+    // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
+    const auto size = static_cast<size_t>(std::distance(state.begin(), state.end()));
+
+    if (size == 0)                                      ///< Special case for empty state.
+        return std::pair { root_table.size(), false };  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
+
+    if (size == 1)  ///< Special case for singletons.
     {
-        // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
-        const auto size = static_cast<size_t>(std::distance(state.begin(), state.end()));
+        auto [iter, inserted] = tree_table.insert(make_slot(*state.begin(), 0));
+        if (!inserted)
+            return std::pair { static_cast<size_t>(iter->second), false };  ///< The state already exists.
 
-        if (size == 0)                                                     ///< Special case for empty state.
-            return std::pair{root_table.size(), false};  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
-
-        if (size == 1)  ///< Special case for singletons.
-        {
-            auto [iter, inserted] = tree_table.insert_slot(make_slot(*state.begin(), 0));
-            if (!inserted)
-                return std::pair{static_cast<size_t>(iter->second), false};  ///< The state already exists.
-
-            root_table.insert_slot(iter->second);
-            return std::pair{root_table.size()-1, true};
-        }
-
-        auto [index, inserted] = emplace_recursively(state.begin(), state.end(), size, tree_table);
-        auto [it, exists] = root_table.insert_slot(index);
-        return std::pair{static_cast<size_t>(it->second), !exists};  ///< The state already exists.
+        root_table.insert_slot(iter->second);
+        return std::pair { root_table.size() - 1, true };
     }
 
-    /// @brief Inserts the elements from the given `state` into the `tree_table` and the `root_table`.
-    /// @param state is the given state.
-    /// @param tree_table is the tree table whose nodes encode the tree structure without size information.
-    /// @param root_table is the root_table whose nodes encode the root tree index ONLY.
-    /// @return A pair (it, bool) where it points to the entry in the root table and bool is true if and only if the state was newly inserted.
-    template<std::ranges::forward_range Range>
-        requires std::same_as<std::ranges::range_value_t<Range>, Index>
-    auto insert(const Range& state, IndexedHashSet& tree_table)
+    auto [index, inserted] = emplace_recursively(state.begin(), state.end(), size, tree_table);
+    auto [it, exists] = root_table.insert_slot(index);
+    return std::pair { static_cast<size_t>(it->second), !exists };  ///< The state already exists.
+}
+
+/// @brief Inserts the elements from the given `state` into the `tree_table` and the `root_table`.
+/// @param state is the given state.
+/// @param tree_table is the tree table whose nodes encode the tree structure without size information.
+/// @param root_table is the root_table whose nodes encode the root tree index ONLY.
+/// @return A pair (it, bool) where it points to the entry in the root table and bool is true if and only if the state was newly inserted.
+template<std::ranges::forward_range Range>
+    requires std::same_as<std::ranges::range_value_t<Range>, Index>
+auto insert(const Range& state, IndexedHashSet& tree_table)
+{
+    // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
+    const auto size = static_cast<size_t>(std::distance(state.begin(), state.end()));
+
+    if (size == 0)                                      ///< Special case for empty state.
+        return std::pair { tree_table.size(), false };  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
+
+    if (size == 1)  ///< Special case for singletons.
     {
-        // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
-        const auto size = static_cast<size_t>(std::distance(state.begin(), state.end()));
-
-        if (size == 0)                                                     ///< Special case for empty state.
-            return std::pair{tree_table.size(), false};  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
-
-        if (size == 1)  ///< Special case for singletons.
-        {
-            auto [iter, inserted] = tree_table.insert_slot(make_slot(*state.begin(), 0));
-            return std::pair{static_cast<size_t>(iter->second), !inserted};  ///< The state already exists.
-        }
-
-        auto [index, inserted] = emplace_recursively(state.begin(), state.end(), size, tree_table);
-        return std::pair{static_cast<size_t>(index), !inserted};  ///< The state already exists.
+        auto [iter, inserted] = tree_table.insert(make_slot(*state.begin(), 0));
+        return std::pair { static_cast<size_t>(iter->second), !inserted };  ///< The state already exists.
     }
+
+    auto [index, inserted] = emplace_recursively(state.begin(), state.end(), size, tree_table);
+    return std::pair { static_cast<size_t>(index), !inserted };  ///< The state already exists.
+}
 
 /// @brief Recursively reads the state from the tree induced by the given `index` and the `len`.
 /// @param index is the index of the slot in the tree table.
