@@ -18,6 +18,9 @@
 #ifndef VALLA_INCLUDE_DECLARATIONS_HPP_
 #define VALLA_INCLUDE_DECLARATIONS_HPP_
 
+#include <absl/container/flat_hash_map.h>
+#include <absl/container/node_hash_map.h>
+#include <absl/container/node_hash_set.h>
 #include <cassert>
 #include <functional>
 #include <iostream>
@@ -82,6 +85,11 @@ inline void hash_combine(size_t& seed, const T& value)
 }
 
 inline uint64_t cantor_pair(uint64_t a, uint64_t b) { return (((a + b) * (a + b + 1)) >> 1) + b; }
+
+struct SlotHash
+{
+    size_t operator()(Slot el) const { return cantor_pair(read_pos(el, 0), read_pos(el, 1)); }
+};
 
 
 

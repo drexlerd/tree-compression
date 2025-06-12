@@ -20,7 +20,6 @@
 
 #include "valla/declarations.hpp"
 
-#include <absl/container/flat_hash_map.h>
 #include <algorithm>
 #include <cassert>
 #include <cmath>
@@ -71,6 +70,7 @@ public:
     }
 
 private:
+    // SlotHash is not worth it here.
     absl::flat_hash_map<Slot, Index> m_slot_to_index;
     std::vector<Slot> m_index_to_slot;
 };

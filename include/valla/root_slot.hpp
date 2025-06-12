@@ -27,27 +27,32 @@ namespace valla
 struct RootSlot
 {
     Slot slot;
-    BitsetConstView ordering;
+    const Bitset* ordering;
 
     RootSlot() : slot(0), ordering() {}
-    RootSlot(Slot slot, BitsetConstView ordering) : slot(slot), ordering(ordering) {}
+    RootSlot(Slot slot, const Bitset* ordering) : slot(slot), ordering(ordering) {}
 
     Slot get_slot() const { return slot; }
     Index get_index() const { return read_pos(slot, 0); }
     Index get_size() const { return read_pos(slot, 1); }
-    BitsetConstView get_ordering() const { return ordering; }
+    const Bitset& get_ordering() const
+    {
+        assert(ordering);
+        return *ordering;
+    }
 };
+
+static_assert(sizeof(RootSlot) == 16);
+static_assert(sizeof(RootSlot*) == 8);
 
 struct RootSlotHash
 {
-public:
-    size_t operator()(RootSlot el) const { return cantor_pair(cantor_pair(el.get_index(), el.get_size()), el.get_ordering().get_index()); }
+    size_t operator()(const RootSlot& el) const { return cantor_pair(SlotHash {}(el.slot), el.get_ordering().get_index()); }
 };
 
 struct RootSlotEqualTo
 {
-public:
-    bool operator()(RootSlot lhs, RootSlot rhs) const
+    bool operator()(const RootSlot& lhs, const RootSlot& rhs) const
     {
         return lhs.get_slot() == rhs.get_slot() && lhs.get_ordering().get_index() == rhs.get_ordering().get_index();
     }
@@ -55,45 +60,24 @@ public:
 
 class RootIndexedHashSet
 {
+private:
 public:
-    RootIndexedHashSet() : m_slot_to_index(), m_index_to_slot() {}
+    const RootSlot& get_empty_root() const { return m_empty_root; }
 
-    auto insert_slot(RootSlot slot)
+    auto insert_slot(RootSlot slot) { return m_slot_to_index.emplace(slot, m_slot_to_index.size()); }
+
+    explicit RootIndexedHashSet(const BitsetRepository& repository) :
+        m_slot_to_index(),
+        m_empty_root(insert_slot(RootSlot(0, &repository.get_empty_bitset())).first->first)
     {
-        const auto result = m_slot_to_index.emplace(slot, m_slot_to_index.size());
-
-        if (result.second)
-        {
-            m_index_to_slot.push_back(slot);
-        }
-
-        return result;
     }
 
-    RootSlot get_slot(Index index) const
-    {
-        assert(index < m_index_to_slot.size() && "Index out of bounds");
-
-        return m_index_to_slot[index];
-    }
-
-    size_t size() const { return m_index_to_slot.size(); }
-
-    size_t get_memory_usage() const
-    {
-        size_t usage = 0;
-
-        usage += m_slot_to_index.capacity() * (sizeof(RootSlot) + sizeof(Index));
-        usage += m_slot_to_index.capacity();
-
-        usage += m_index_to_slot.capacity() * sizeof(RootSlot);
-
-        return usage;
-    }
+    size_t size() const { return m_slot_to_index.size(); }
 
 private:
-    absl::flat_hash_map<RootSlot, Index, RootSlotHash, RootSlotEqualTo> m_slot_to_index;
-    std::vector<RootSlot> m_index_to_slot;
+    absl::node_hash_map<RootSlot, Index, RootSlotHash, RootSlotEqualTo> m_slot_to_index;
+
+    const RootSlot& m_empty_root;
 };
 }
 
