@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1749733561077,
+  "lastUpdate": 1749736266899,
   "repoUrl": "https://github.com/drexlerd/tree-compression",
   "entries": {
     "Benchmark": [
@@ -2784,6 +2784,102 @@ window.BENCHMARK_DATA = {
             "value": 155959118.39999416,
             "unit": "ns/iter",
             "extra": "iterations: 5\ncpu: 155665878.19999996 ns\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "oliverhsj@hotmail.dk",
+            "name": "Oliver Harold",
+            "username": "ThatGuyIKnow"
+          },
+          "committer": {
+            "email": "oliverhsj@hotmail.dk",
+            "name": "Oliver Harold",
+            "username": "ThatGuyIKnow"
+          },
+          "distinct": true,
+          "id": "34c9ccc9a3f5eec469e19e8b75628d68877aebb0",
+          "message": "Refactoring",
+          "timestamp": "2025-06-12T15:45:26+02:00",
+          "tree_id": "a302d8e560ab2d24c5fa3ed71f181c9cca1d8b54",
+          "url": "https://github.com/drexlerd/tree-compression/commit/34c9ccc9a3f5eec469e19e8b75628d68877aebb0"
+        },
+        "date": 1749736265581,
+        "tool": "googlecpp",
+        "benches": [
+          {
+            "name": "valla::benchmarks::BM_TreeCompressionInsert/100/50/1",
+            "value": 165705.25958986676,
+            "unit": "ns/iter",
+            "extra": "iterations: 4145\ncpu: 165483.71218335346 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_TreeCompressionInsert/100/50/5",
+            "value": 340750.933438976,
+            "unit": "ns/iter",
+            "extra": "iterations: 1893\ncpu: 340701.0512414157 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_TreeCompressionInsert/1000/100/1",
+            "value": 4296666.147239163,
+            "unit": "ns/iter",
+            "extra": "iterations: 163\ncpu: 4296254.564417177 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_TreeCompressionInsert/1000/100/5",
+            "value": 11510629.360656343,
+            "unit": "ns/iter",
+            "extra": "iterations: 61\ncpu: 11509419.409836065 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_TreeCompressionInsert/10000/200/1",
+            "value": 97029720.14286257,
+            "unit": "ns/iter",
+            "extra": "iterations: 7\ncpu: 96691322.57142861 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_TreeCompressionInsert/10000/200/5",
+            "value": 524552951.4999987,
+            "unit": "ns/iter",
+            "extra": "iterations: 2\ncpu: 524468673.49999994 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_TreeCompressionRead/100/50/1",
+            "value": 13072.975564883925,
+            "unit": "ns/iter",
+            "extra": "iterations: 55985\ncpu: 13071.557292131822 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_TreeCompressionRead/100/50/5",
+            "value": 309934.7094170382,
+            "unit": "ns/iter",
+            "extra": "iterations: 2230\ncpu: 309894.7686098654 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_TreeCompressionRead/1000/100/1",
+            "value": 257242.56081332755,
+            "unit": "ns/iter",
+            "extra": "iterations: 2705\ncpu: 257160.4842883549 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_TreeCompressionRead/1000/100/5",
+            "value": 6411152.522935861,
+            "unit": "ns/iter",
+            "extra": "iterations: 109\ncpu: 6410261.825688074 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_TreeCompressionRead/10000/200/1",
+            "value": 5867001.525861963,
+            "unit": "ns/iter",
+            "extra": "iterations: 116\ncpu: 5866002.42241379 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_TreeCompressionRead/10000/200/5",
+            "value": 151531244.4000074,
+            "unit": "ns/iter",
+            "extra": "iterations: 5\ncpu: 151509287.20000002 ns\nthreads: 1"
           }
         ]
       }
