@@ -29,7 +29,6 @@
 #include <stack>
 
 #include "fixed_hash_set.hpp"
-#include "hash.h"
 
 namespace valla::fixed_tree
 {
@@ -54,7 +53,7 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size,
         return *it;  ///< Skip node creation
 
     if (size == 2)
-        return table.insert({*it, *(it + 1)}).first;
+        return table.insert(make_slot(*it, *(it + 1))).first;
 
     /* Divide */
     const auto mid = calc_mid(size);
@@ -64,7 +63,7 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size,
     const auto left_index = insert_recursively(it, mid_it, mid, table);
     const auto right_index = insert_recursively(mid_it, end, size - mid, table);
 
-    return table.insert({left_index, right_index}).first;
+    return table.insert(make_slot(left_index, right_index)).first;
 }
 
 /// @brief Recursively insert the elements from `it` until `end` into the `table`.
@@ -80,7 +79,7 @@ inline std::pair<unsigned long, bool> emplace_recursively(Iterator it, Iterator 
         return std::pair{static_cast<size_t>(*it), false};
 
     if (size == 2){
-        auto [idx, inserted] = table.insert({*it, *(it + 1)});
+        auto [idx, inserted] = table.insert(make_slot(*it, *(it + 1)));
         return std::pair{idx, inserted};
     }
 
@@ -92,7 +91,7 @@ inline std::pair<unsigned long, bool> emplace_recursively(Iterator it, Iterator 
     const auto [left_index, left_inserted] = emplace_recursively(it, mid_it, mid, table);
     const auto [right_index, right_inserted] = emplace_recursively(mid_it, end, size - mid, table);
 
-    auto [idx, inserted] = table.insert({left_index, right_index});
+    auto [idx, inserted] = table.insert(make_slot(left_index, right_index));
 
     return std::pair{idx, inserted};
 
@@ -116,7 +115,7 @@ inline std::pair<unsigned long, bool> emplace_recursively(Iterator it, Iterator 
 
         if (size == 1)  ///< Special case for singletons.
         {
-            auto [idx, inserted] = tree_table.insert({*state.begin(), 0});
+            auto [idx, inserted] = tree_table.insert(make_slot(*state.begin(), 0));
             return std::pair{idx, !inserted};  ///< The state already exists.
         }
 
@@ -139,7 +138,7 @@ inline void read_state_recursively(Index index, size_t size, const FixedHashSetS
         return;
     }
 
-    const auto [left_index, right_index] = tree_table.get(index);
+    const auto [left_index, right_index] = read_slot(tree_table.get(index));
 
     /* Base case */
     if (size == 2)
@@ -173,7 +172,7 @@ inline void read_state(Index tree_index, size_t size, const FixedHashSetSlot& tr
 
     if (size == 1)  ///< Special case for singletons.
     {
-        out_state.push_back(tree_table.get(tree_index).lhs);
+        out_state.push_back(read_slot(tree_table.get(tree_index)).first);
         return;
     }
 

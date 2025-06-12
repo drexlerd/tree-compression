@@ -19,7 +19,6 @@
 #define VALLA_INCLUDE_DECLARATIONS_HPP_
 
 #include "fixed_hash_set.hpp"
-#include "hash.h"
 
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/node_hash_map.h>
@@ -92,38 +91,9 @@ struct SlotHash
     size_t operator()(Slot el) const { return cantor_pair(read_pos(el, 0), read_pos(el, 1)); }
 };
 
-template<typename LHS, typename RHS>
-struct SlotStruct
-{
-    LHS lhs;
-    RHS rhs;
-    static constexpr SlotStruct sentinel { std::numeric_limits<LHS>::max(), std::numeric_limits<RHS>::max() };
 
-    bool operator==(const SlotStruct& other) const { return lhs == other.lhs && rhs == other.rhs; }
-    bool operator!=(const SlotStruct& other) const { return this->operator==(other) == false; }
-};
-constexpr SlotStruct SlotSentinel { std::numeric_limits<uint32_t>::max(), std::numeric_limits<uint32_t>::max() };
-
-using IndexSlot = SlotStruct<uint32_t, uint32_t>;
-
-struct Hasher
-{
-    std::size_t operator()(const IndexSlot& slot) const
-    {
-        utils::HashState hash_state;
-        hash_state.feed(slot.lhs);
-        hash_state.feed(slot.rhs);
-        return hash_state.get_hash64();
-    }
-};
-
-struct SlotEqual
-{
-    bool operator()(const IndexSlot& lhs, const IndexSlot& rhs) const { return lhs.lhs == rhs.lhs && lhs.rhs == rhs.rhs; }
-};
-
-using FixedHashSetSlot = FixedHashSet<IndexSlot, SlotSentinel, Hasher, SlotEqual>;
-
+constexpr Slot SlotSentinel = std::numeric_limits<Slot>::max();
+using FixedHashSetSlot = FixedHashSet<Slot, SlotSentinel, SlotHash>;
 }
 
 #endif

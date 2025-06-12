@@ -23,7 +23,7 @@ namespace valla::tests
 
 TEST(VallaTests, FixedTreeCompressionTest)
 {
-    auto tree_table = valla::FixedHashSetSlot(1000, Hasher(), SlotEqual());
+    auto tree_table = valla::FixedHashSetSlot(1000, SlotHash());
     auto tmp_state = State();
 
     {
@@ -66,7 +66,7 @@ TEST(VallaTests, FixedTreeCompressionTest)
 
     {
         const auto s3 = State { 8, 9, 10, 11, 12, 13, 16, 17, 0, 1, 2, 3, 4, 5, 6, 7 };
-        const auto s3_idx = fixed_tree::insert(s3, tree_table).first;
+        fixed_tree::insert(s3, tree_table).first;
 
         EXPECT_EQ(tree_table.size(), 20);
     }
@@ -74,7 +74,7 @@ TEST(VallaTests, FixedTreeCompressionTest)
 
 TEST(VallaTests, FixedTreeCompressionEdgeCasesTest)
 {
-    auto tree_table = valla::FixedHashSetSlot(1000, Hasher(), SlotEqual());
+    auto tree_table = valla::FixedHashSetSlot(1000, SlotHash());
     auto tmp_state = State();
 
     {
@@ -103,7 +103,7 @@ TEST(VallaTests, FixedTreeCompressionEdgeCasesTest)
 }
 TEST(VallaTests, FixedTreeCompressionResizeTest)
 {
-    auto tree_table = valla::FixedHashSetSlot(30, Hasher(), SlotEqual());
+    auto tree_table = valla::FixedHashSetSlot(30, SlotHash());
     auto tmp_state = State();
 
     {

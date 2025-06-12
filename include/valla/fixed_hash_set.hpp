@@ -23,8 +23,7 @@ constexpr std::size_t PROBE_STRIDE = 8;  // Adjust based on cache line size and 
 template<
     TrivialCopyable T,
     T EmptySentinel,
-    typename Hash,
-    typename Equal
+    typename Hash
 >
 class FixedHashSet {
     static constexpr double load_factor_ = 0.75;
@@ -37,7 +36,6 @@ class FixedHashSet {
     std::size_t size_ = 0;
     std::size_t _max_grow_size = 1 << 20;
     Hash hash_;
-    Equal eq_;
 
     static constexpr std::size_t ILLEGAL_INDEX = static_cast<std::size_t>(-1);
 
@@ -68,13 +66,11 @@ class FixedHashSet {
 public:
     FixedHashSet(
         std::size_t initial_cap,
-        Hash hash,
-        Equal eq)
+        Hash hash)
         : total_capacity_(initial_cap),
           initial_cap_(initial_cap),
           resize_at_(static_cast<std::size_t>(initial_cap * load_factor_)),
-          hash_(std::move(hash)),
-          eq_(std::move(eq))
+          hash_(std::move(hash))
     {
         table_.emplace_back(Segment(initial_cap, EmptySentinel));
     }
@@ -109,7 +105,7 @@ public:
                         ++size_;
                         return {segment_to_logical(seg, offset), true};
                     }
-                    if(eq_(slot, value))
+                    if(slot == value)
                         return {segment_to_logical(seg, offset), false};
 
                     ++probe[seg];
@@ -139,7 +135,7 @@ public:
                     const T& slot = table_[seg][offset];
 
                     if(slot == EmptySentinel) break; // End-of-chain for this segment
-                    if(eq_(slot, value)) return true;
+                    if(slot == value) return true;
                     ++probe[seg];
                 }
             }
@@ -163,7 +159,7 @@ public:
                     const T& slot = table_[seg][offset];
 
                     if(slot == EmptySentinel) return {ILLEGAL_INDEX, false};
-                    if(eq_(slot, value)) return {segment_to_logical(seg, offset), true};
+                    if(slot == value) return {segment_to_logical(seg, offset), true};
                     ++probe[seg];
                 }
             }
@@ -190,7 +186,7 @@ public:
                 std::size_t idx = (h + probe_idx) % seg_cap;
                 T& slot = table_[seg][idx];
                 if(slot == EmptySentinel) break;
-                if(eq_(slot, value)) {
+                    if(slot == value) {
                     slot = EmptySentinel; --size_;
                     return true;
                 }
