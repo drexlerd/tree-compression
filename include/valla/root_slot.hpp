@@ -26,35 +26,30 @@ namespace valla
 /// @brief `RootSlot` encapsulates a base slot consisting of the slot encoding the tree node index and the size, and the ordering bitset.
 struct RootSlot
 {
-    Slot slot;
-    const Bitset* ordering;
+    Index index;
+    Index size;
+    Index ordering;
 
-    RootSlot() : slot(0), ordering() {}
-    RootSlot(Slot slot, const Bitset* ordering) : slot(slot), ordering(ordering) {}
+    RootSlot() : index(0), size(0), ordering(0) {}
+    RootSlot(Index index, Index size, Index ordering) : index(index), size(size), ordering(ordering) {}
 
-    Slot get_slot() const { return slot; }
-    Index get_index() const { return read_pos(slot, 0); }
-    Index get_size() const { return read_pos(slot, 1); }
-    const Bitset& get_ordering() const
-    {
-        assert(ordering);
-        return *ordering;
-    }
+    Index get_index() const { return index; }
+    Index get_size() const { return size; }
+    Index get_ordering() const { return ordering; }
 };
 
-static_assert(sizeof(RootSlot) == 16);
-static_assert(sizeof(RootSlot*) == 8);
+static_assert(sizeof(RootSlot) == 12);
 
 struct RootSlotHash
 {
-    size_t operator()(const RootSlot& el) const { return cantor_pair(SlotHash {}(el.slot), el.get_ordering().get_index()); }
+    size_t operator()(const RootSlot& el) const { return cantor_pair(cantor_pair(el.get_index(), el.get_size()), el.get_ordering()); }
 };
 
 struct RootSlotEqualTo
 {
     bool operator()(const RootSlot& lhs, const RootSlot& rhs) const
     {
-        return lhs.get_slot() == rhs.get_slot() && lhs.get_ordering().get_index() == rhs.get_ordering().get_index();
+        return lhs.get_index() == rhs.get_index() && lhs.get_size() == rhs.get_size() && lhs.get_ordering() == rhs.get_ordering();
     }
 };
 
@@ -68,7 +63,7 @@ public:
 
     explicit RootIndexedHashSet(const BitsetRepository& repository) :
         m_slot_to_index(),
-        m_empty_root(insert(RootSlot(0, &repository.get_empty_bitset())).first->first)
+        m_empty_root(insert(RootSlot(0, 0, repository.get_empty_bitset().get_index())).first->first)
     {
     }
 

@@ -64,6 +64,16 @@ struct BitsetEqualTo
     bool operator()(const Bitset& lhs, const Bitset& rhs) const;
 };
 
+struct DerefBitsetHash
+{
+    size_t operator()(const Bitset* el) const;
+};
+
+struct DerefBitsetEqualTo
+{
+    bool operator()(const Bitset* lhs, const Bitset* rhs) const;
+};
+
 class BitsetPool
 {
 private:
@@ -95,14 +105,26 @@ public:
 class BitsetRepository
 {
 private:
-    absl::node_hash_set<Bitset, BitsetHash, BitsetEqualTo> m_uniqueness;
+    std::vector<std::vector<Bitset>> m_segments;
+    size_t m_offset;
+    size_t m_size;
 
-    const Bitset& m_empty_bitset;
+    absl::flat_hash_set<const Bitset*, DerefBitsetHash, DerefBitsetEqualTo> m_uniqueness;
+
+    const Bitset* m_empty_bitset;
+
+    static size_t get_index(size_t pos) { return std::countr_zero(std::bit_floor(pos + 1)); }
+
+    static size_t get_offset(size_t pos) { return pos - (std::bit_floor(pos + 1) - 1); }
+
+    void resize_to_fit();
 
 public:
     explicit BitsetRepository(BitsetPool& pool);
 
     const Bitset& get_empty_bitset() const;
+
+    const Bitset& operator[](size_t pos) const;
 
     auto insert(Bitset bitset);
 
@@ -169,6 +191,18 @@ inline bool BitsetEqualTo::operator()(const Bitset& lhs, const Bitset& rhs) cons
         return false;
     return std::equal(lhs.get_blocks(), lhs.get_blocks() + lhs.get_num_blocks(), rhs.get_blocks());
 }
+
+/**
+ * BitsetHash
+ */
+
+inline size_t DerefBitsetHash::operator()(const Bitset* el) const { return BitsetHash {}(*el); }
+
+/**
+ * BitsetEqualTo
+ */
+
+inline bool DerefBitsetEqualTo::operator()(const Bitset* lhs, const Bitset* rhs) const { return BitsetEqualTo {}(*lhs, *rhs); }
 
 /**
  * BitsetPool
@@ -239,11 +273,51 @@ inline size_t BitsetPool::size() const { return m_size; }
  * BitsetRepository
  */
 
-inline const Bitset& BitsetRepository::get_empty_bitset() const { return m_empty_bitset; }
+inline void BitsetRepository::resize_to_fit()
+{
+    const auto remaining_entries = m_segments.back().size() - m_offset;
 
-inline auto BitsetRepository::insert(Bitset bitset) { return m_uniqueness.emplace(bitset); }
+    if (remaining_entries == 0)
+    {
+        const auto new_segment_size = m_segments.back().size() * 2;
+        m_segments.push_back(std::vector<Bitset>(new_segment_size));
+        m_offset = 0;
+    }
+}
 
-inline BitsetRepository::BitsetRepository(BitsetPool& pool) : m_uniqueness(), m_empty_bitset(*insert(pool.allocate(0)).first) {}
+inline const Bitset& BitsetRepository::get_empty_bitset() const { return *m_empty_bitset; }
+
+inline const Bitset& BitsetRepository::operator[](size_t pos) const
+{
+    assert(pos < size());
+    const auto index = get_index(pos);
+    const auto offset = get_offset(pos);
+    return m_segments[index][offset];
+}
+
+inline auto BitsetRepository::insert(Bitset bitset)
+{
+    resize_to_fit();
+
+    auto& element = m_segments.back()[m_offset] = bitset;
+
+    auto result = m_uniqueness.insert(&element);
+
+    if (result.second)
+    {
+        ++m_offset;
+        ++m_size;
+    }
+
+    return result;
+}
+
+inline BitsetRepository::BitsetRepository(BitsetPool& pool) : m_segments(), m_offset(0), m_size(0), m_uniqueness(), m_empty_bitset(nullptr)
+{
+    m_segments.resize(1);
+    m_segments.back().resize(1);
+    m_empty_bitset = *insert(pool.allocate(0)).first;
+}
 
 inline size_t BitsetRepository::size() const { return m_uniqueness.size(); }
 }

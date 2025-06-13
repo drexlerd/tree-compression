@@ -42,7 +42,7 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionTest)
         // Created new state!
         EXPECT_EQ(s0_idx, 1);
 
-        canonical_delta::read_state(s0_root, tree_table, tmp_state);
+        canonical_delta::read_state(s0_root, tree_table, repo, tmp_state);
         EXPECT_EQ(tmp_state, s0);
     }
 
@@ -58,7 +58,7 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionTest)
         // Created new state!
         EXPECT_EQ(s1_idx, 2);
 
-        canonical_delta::read_state(s1_root, tree_table, tmp_state);
+        canonical_delta::read_state(s1_root, tree_table, repo, tmp_state);
         EXPECT_EQ(tmp_state, s1);
     }
 
@@ -74,7 +74,7 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionTest)
         // Created new state!
         EXPECT_EQ(s2_idx, 3);
 
-        canonical_delta::read_state(s2_root, tree_table, tmp_state);
+        canonical_delta::read_state(s2_root, tree_table, repo, tmp_state);
         EXPECT_EQ(tmp_state, s2);
     }
 
@@ -90,7 +90,7 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionTest)
         // State already exists!
         EXPECT_EQ(s3_idx, 3);
 
-        canonical_delta::read_state(s3_root, tree_table, tmp_state);
+        canonical_delta::read_state(s3_root, tree_table, repo, tmp_state);
         EXPECT_EQ(tmp_state, s3);
     }
 }
@@ -116,11 +116,11 @@ TEST(VallaTests, CanonicalDeltaTreeCompression2Test)
         // Created new state!
         EXPECT_EQ(s0_idx, 1);
 
-        canonical_delta::read_state(s0_root, tree_table, tmp_state);
+        canonical_delta::read_state(s0_root, tree_table, repo, tmp_state);
         EXPECT_EQ(tmp_state, s0);
 
         tmp_state.clear();
-        EXPECT_EQ(s0, State(canonical_delta::begin(s0_root, tree_table), canonical_delta::end()));
+        EXPECT_EQ(s0, State(canonical_delta::begin(s0_root, tree_table, repo), canonical_delta::end()));
     }
 
     {
@@ -135,11 +135,11 @@ TEST(VallaTests, CanonicalDeltaTreeCompression2Test)
         // Created new state!
         EXPECT_EQ(s1_idx, 2);
 
-        canonical_delta::read_state(s1_root, tree_table, tmp_state);
+        canonical_delta::read_state(s1_root, tree_table, repo, tmp_state);
         EXPECT_EQ(tmp_state, s1);
 
         tmp_state.clear();
-        EXPECT_EQ(s1, State(canonical_delta::begin(s1_root, tree_table), canonical_delta::end()));
+        EXPECT_EQ(s1, State(canonical_delta::begin(s1_root, tree_table, repo), canonical_delta::end()));
     }
 }
 
@@ -182,13 +182,13 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionRandomTest)
             const auto& s_root = s_result->first;
             const auto& s_idx = s_result->second;
 
-            canonical_delta::read_state(s_root, tree_table, tmp_state);
+            canonical_delta::read_state(s_root, tree_table, repo, tmp_state);
             EXPECT_EQ(tmp_state, s);
             assert(tmp_state == s);
 
             tmp_state.clear();
-            EXPECT_EQ(s, State(canonical_delta::begin(s_root, tree_table), canonical_delta::end()));
-            assert(s == State(canonical_delta::begin(s_root, tree_table), canonical_delta::end()));
+            EXPECT_EQ(s, State(canonical_delta::begin(s_root, tree_table, repo), canonical_delta::end()));
+            assert(s == State(canonical_delta::begin(s_root, tree_table, repo), canonical_delta::end()));
         }
     }
 }
@@ -219,12 +219,12 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionExhaustiveTest)
             const auto& s_root = s_result->first;
             const auto& s_idx = s_result->second;
 
-            canonical_delta::read_state(s_root, tree_table, tmp_state);
+            canonical_delta::read_state(s_root, tree_table, repo, tmp_state);
             EXPECT_EQ(tmp_state, s);
             assert(tmp_state == s);
 
             tmp_state.clear();
-            EXPECT_EQ(s, State(canonical_delta::begin(s_root, tree_table), canonical_delta::end()));
+            EXPECT_EQ(s, State(canonical_delta::begin(s_root, tree_table, repo), canonical_delta::end()));
         }
     }
 }
@@ -250,7 +250,7 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionEdgeCasesTest)
         // Created new state!
         EXPECT_EQ(s0_idx, 0);
 
-        canonical_delta::read_state(s0_root, tree_table, tmp_state);
+        canonical_delta::read_state(s0_root, tree_table, repo, tmp_state);
         EXPECT_EQ(tmp_state, s0);
     }
 
@@ -266,7 +266,7 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionEdgeCasesTest)
         // Created new state!
         EXPECT_EQ(s1_idx, 1);
 
-        canonical_delta::read_state(s1_root, tree_table, tmp_state);
+        canonical_delta::read_state(s1_root, tree_table, repo, tmp_state);
         EXPECT_EQ(tmp_state, s1);
     }
 }
@@ -286,12 +286,12 @@ TEST(VallaTests, CanonicalDeltaTreeCompressionIteratorTest)
         const auto& s0_root = s0_result->first;
         const auto& s0_idx = s0_result->second;
 
-        EXPECT_EQ(s0, State(canonical_delta::begin(s0_root, tree_table), canonical_delta::end()));
+        EXPECT_EQ(s0, State(canonical_delta::begin(s0_root, tree_table, repo), canonical_delta::end()));
     }
 
     {
         const auto s0 = State {};
-        EXPECT_EQ(s0, State(canonical_delta::begin(root_table.get_empty_root(), tree_table), canonical_delta::end()));
+        EXPECT_EQ(s0, State(canonical_delta::begin(root_table.get_empty_root(), tree_table, repo), canonical_delta::end()));
     }
 }
 }

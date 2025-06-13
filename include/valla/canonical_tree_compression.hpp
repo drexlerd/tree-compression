@@ -41,7 +41,7 @@ namespace valla::canonical
 
 using RootSlotType = RootSlot;
 
-inline RootSlot get_empty_root_slot(const BitsetRepository& repo) { return RootSlot(0, &repo.get_empty_bitset()); }
+inline RootSlot get_empty_root_slot() { return RootSlot(0, 0, 0); }
 
 /**
  * Insert recursively
@@ -114,8 +114,8 @@ auto insert(const Range& state, IndexedHashSet& tree_table, BitsetPool& pool, Bi
     // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
     const auto size = static_cast<size_t>(std::distance(state.begin(), state.end()));
 
-    if (size == 0)                         ///< Special case for empty state.
-        return get_empty_root_slot(repo);  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
+    if (size == 0)                     ///< Special case for empty state.
+        return get_empty_root_slot();  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
 
     // Since we represent the ordering as a binary tree, there is some padding because we round up to use 64 bit blocks for efficiency.
     // std::cout << "num bits=" << std::bit_ceil(size) << std::endl;
@@ -133,7 +133,7 @@ auto insert(const Range& state, IndexedHashSet& tree_table, BitsetPool& pool, Bi
         pool.pop_allocation();
     }
 
-    return RootSlot(make_slot(tree_index, size), &*result.first);
+    return RootSlot(tree_index, size, (*result.first)->get_index());
 }
 
 /**
@@ -204,13 +204,10 @@ inline void read_state(Index tree_index, size_t size, const Bitset& ordering, co
 /// @param tree_table is the tree table.
 /// @param root_table is the root table.
 /// @param out_state is the output state.
-inline void read_state(const RootSlot& root_slot, const IndexedHashSet& tree_table, State& out_state)
+inline void read_state(const RootSlot& root_slot, const IndexedHashSet& tree_table, const BitsetRepository& repository, State& out_state)
 {
     /* Observe: a root slot wraps the root tree_index together with the length that defines the tree structure! */
-    const auto [tree_index, size] = read_slot(root_slot.slot);
-    const auto ordering = root_slot.get_ordering();
-
-    read_state(tree_index, size, ordering, tree_table, out_state);
+    read_state(root_slot.get_index(), root_slot.get_size(), repository[root_slot.get_ordering()], tree_table, out_state);
 }
 
 /**
@@ -291,24 +288,22 @@ public:
     using iterator_concept = std::input_iterator_tag;
 
     const_iterator() : m_tree_table(nullptr), m_stack(), m_value(END_POS) {}
-    const_iterator(const IndexedHashSet* tree_table, const RootSlot* root, bool begin) :
-        m_tree_table(tree_table),
-        m_ordering(&root->get_ordering()),
+    const_iterator(const RootSlot& root, const IndexedHashSet& tree_table, const BitsetRepository& repository, bool begin) :
+        m_tree_table(&tree_table),
+        m_ordering(&repository[root.get_ordering()]),
         m_stack(),
         m_value(END_POS)
     {
-        assert(m_tree_table && root);
-
         if (begin)
         {
             m_stack = s_stack_pool.get_or_allocate();
             m_stack->clear();
 
-            const auto [tree_idx, size] = read_slot(root->get_slot());
+            const auto size = root.get_size();
 
             if (size > 0)  ///< Push to stack only if there leafs
             {
-                m_stack->emplace_back(tree_idx, size, 0);
+                m_stack->emplace_back(root.get_index(), size, 0);
                 advance();
             }
         }
@@ -332,7 +327,10 @@ public:
 
 static_assert(std::input_iterator<const_iterator>);
 
-inline const_iterator begin(const RootSlot& root, const IndexedHashSet& tree_table) { return const_iterator(&tree_table, &root, true); }
+inline const_iterator begin(const RootSlot& root, const IndexedHashSet& tree_table, const BitsetRepository& repository)
+{
+    return const_iterator(root, tree_table, repository, true);
+}
 
 inline const_iterator end() { return const_iterator(); }
 
