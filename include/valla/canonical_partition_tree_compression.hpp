@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef VALLA_INCLUDE_CANONICAL_EVEN_TREE_COMPRESSION_HPP_
-#define VALLA_INCLUDE_CANONICAL_EVEN_TREE_COMPRESSION_HPP_
+#ifndef VALLA_INCLUDE_CANONICAL_PARTITION_TREE_COMPRESSION_HPP_
+#define VALLA_INCLUDE_CANONICAL_PARTITION_TREE_COMPRESSION_HPP_
 
 #include "valla/bitset_pool.hpp"
 #include "valla/declarations.hpp"
@@ -55,20 +55,20 @@ inline RootSlot get_empty_root_slot() { return RootSlot(0, 0, 0); }
 /// @param bit is the position in the ordering for the next tree node being created.
 /// @param table is the table to uniquely insert the slots.
 /// @return the index of the slot at the root.
-template<std::input_iterator Iterator, size_t N>
+template<size_t N, std::input_iterator Iterator>
     requires std::same_as<std::iter_value_t<Iterator>, Index>
 inline Index insert_recursively(Iterator it, Iterator end, size_t size, Bitset view, size_t bit, IndexedHashSet& table)
 {
     /* Base cases */
     if (size == 1)
-        return *it;  ///< Skip node creation
+    {
+        return *it;
+    }
 
     if (size == 2)
     {
         Index i1 = *it;
         Index i2 = *(it + 1);
-
-        // std::cout << "base_insert: i1=" << i1 << " i2=" << i2 << " bit=" << bit << " comp" << (i2 < i1) << std::endl;
 
         if (i2 < i1)
         {
@@ -78,20 +78,19 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, Bitset v
 
         if constexpr (N > 0)
         {
-            // Increase i1 and i2 to multiplicative depending on N, i.e., N=1 => multiplicative of 2, N=2 => multiplicative of 4, ...
-            // std::cout << "base: bit=" << bit << std::endl;
             for (size_t j = 0; j < N; ++j)
             {
                 if (i1 & (1 << j))
                     view.set(bit + 1 + j);
-                if (i2 & (1 << j))
+                if (!(i2 & (1 << j)))
                     view.set(bit + 1 + j + N);
             }
 
-            constexpr Index mask = ~((1 << N) - 1);
+            constexpr Index mask1 = ~((1 << N) - 1);
+            constexpr Index mask2 = ((1 << N) - 1);
 
-            i1 &= mask;
-            i2 &= mask;
+            i1 &= mask1;
+            i2 |= mask2;
         }
 
         return table.insert(make_slot(i1, i2)).first->second;
@@ -103,12 +102,9 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, Bitset v
     /* Conquer */
     const auto mid_it = it + mid;
 
-    // std::cout << "inductive: bit=" << bit << " " << 2 * bit + 1 + N << " " << 2 * bit + 2 + N + N << std::endl;
-
-    Index i1 = insert_recursively<Iterator, N>(it, mid_it, mid, view, 2 * bit + 1 + N, table);
-    Index i2 = insert_recursively<Iterator, N>(mid_it, end, size - mid, view, 2 * bit + 2 + N + N, table);
-
-    // std::cout << "inductive_insert: i1=" << i1 << " i2=" << i2 << " bit=" << bit << " comp" << (i2 < i1) << std::endl;
+    constexpr size_t stride = 2 * N + 1;
+    Index i1 = insert_recursively<N>(it, mid_it, mid, view, stride * (2 * (bit / stride) + 1), table);
+    Index i2 = insert_recursively<N>(mid_it, end, size - mid, view, stride * (2 * (bit / stride) + 2), table);
 
     if (i2 < i1)
     {
@@ -118,19 +114,23 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, Bitset v
 
     if constexpr (N > 0)
     {
-        // Increase i1 and i2 to multiplicative depending on N, i.e., N=1 => multiplicative of 2, N=2 => multiplicative of 4, ...
         for (size_t j = 0; j < N; ++j)
         {
             if (i1 & (1 << j))
+            {
                 view.set(bit + 1 + j);
-            if (i2 & (1 << j))
+            }
+            if (!(i2 & (1 << j)))
+            {
                 view.set(bit + 1 + j + N);
+            }
         }
 
-        constexpr Index mask = ~((1 << N) - 1);
+        constexpr Index mask1 = ~((1 << N) - 1);
+        constexpr Index mask2 = ((1 << N) - 1);
 
-        i1 &= mask;
-        i2 &= mask;
+        i1 &= mask1;
+        i2 |= mask2;
     }
 
     return table.insert(make_slot(i1, i2)).first->second;
@@ -142,7 +142,7 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, Bitset v
 /// @param pool is the bitset pool for allocation.
 /// @param repo is the bitset repository for uniqueness.
 /// @return A pair (it, bool) where it points to the entry in the root table and bool is true if and only if the state was newly inserted.
-template<std::ranges::input_range Range, size_t N = 1>
+template<size_t N, std::ranges::input_range Range>
     requires std::same_as<std::ranges::range_value_t<Range>, Index>
 auto insert(const Range& state, IndexedHashSet& tree_table, BitsetPool& pool, BitsetRepository& repo)
 {
@@ -155,13 +155,11 @@ auto insert(const Range& state, IndexedHashSet& tree_table, BitsetPool& pool, Bi
         return get_empty_root_slot();  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
 
     // Since we represent the ordering as a binary tree, there is some padding because we round up to use 64 bit blocks for efficiency.
-    // std::cout << "num bits=" << (2 * N + 1) * std::bit_ceil(size) << std::endl;
     auto ordering = pool.allocate((2 * N + 1) * std::bit_ceil(size));
 
-    // std::cout << "bitset_ptr=" << ordering.get_blocks() << std::endl;
-
     const auto bit = size_t(0);
-    const auto tree_index = insert_recursively<std::ranges::iterator_t<const Range>, N>(state.begin(), state.end(), size, ordering, bit, tree_table);
+
+    const auto tree_index = insert_recursively<N>(state.begin(), state.end(), size, ordering, bit, tree_table);
 
     // Undo the bitset allocation when proven that an identical bitset already exists
     const auto result = repo.insert(ordering);
@@ -182,13 +180,12 @@ auto insert(const Range& state, IndexedHashSet& tree_table, BitsetPool& pool, Bi
 /// @param size is the length of the state that defines the shape of the tree at the index.
 /// @param tree_table is the tree table.
 /// @param out_state is the output state.
-template<size_t N = 1>
+template<size_t N>
 inline void read_state_recursively(Index index, size_t size, size_t bit, const Bitset& ordering, const IndexedHashSet& tree_table, State& ref_state)
 {
     /* Base case */
     if (size == 1)
     {
-        // TODO: we lost track whether this is the left or right child bit...
         ref_state.push_back(index);
         return;
     }
@@ -196,14 +193,24 @@ inline void read_state_recursively(Index index, size_t size, size_t bit, const B
     auto [i1, i2] = read_slot(tree_table.get_slot(index));
 
     const auto must_swap = ordering.get(bit);
+
+    if constexpr (N > 0)
+    {
+        for (size_t j = 0; j < N; ++j)
+        {
+            if (ordering.get(bit + 1 + j))
+                i1 |= 1 << j;
+            if (ordering.get(bit + 1 + j + N))
+                i2 &= ~(1 << j);
+        }
+    }
+
     if (must_swap)
         std::swap(i1, i2);
 
     /* Base case */
     if (size == 2)
     {
-        // std::cout << "base_read: i1=" << i1 << " i2=" << i2 << " bit=" << bit << " comp" << must_swap << std::endl;
-
         ref_state.push_back(i1);
         ref_state.push_back(i2);
         return;
@@ -212,11 +219,10 @@ inline void read_state_recursively(Index index, size_t size, size_t bit, const B
     /* Divide */
     const auto mid = std::bit_floor(size - 1);
 
-    // std::cout << "inductive_read: i1=" << i1 << " i2=" << i2 << " bit=" << bit << " comp" << must_swap << std::endl;
-
     /* Conquer */
-    read_state_recursively<N>(i1, mid, 2 * bit + 1 + N, ordering, tree_table, ref_state);
-    read_state_recursively<N>(i2, size - mid, 2 * bit + 2 + N + N, ordering, tree_table, ref_state);
+    constexpr size_t stride = 2 * N + 1;
+    read_state_recursively<N>(i1, mid, stride * (2 * (bit / stride) + 1), ordering, tree_table, ref_state);
+    read_state_recursively<N>(i2, size - mid, stride * (2 * (bit / stride) + 2), ordering, tree_table, ref_state);
 }
 
 /// @brief Read the `out_state` from the given `tree_index` from the `tree_table`.
@@ -224,7 +230,7 @@ inline void read_state_recursively(Index index, size_t size, size_t bit, const B
 /// @param size
 /// @param tree_table
 /// @param out_state
-template<size_t N = 1>
+template<size_t N>
 inline void read_state(Index tree_index, size_t size, const Bitset& ordering, const IndexedHashSet& tree_table, State& out_state)
 {
     out_state.clear();
@@ -233,8 +239,6 @@ inline void read_state(Index tree_index, size_t size, const Bitset& ordering, co
         return;
 
     const auto bit = size_t(0);
-
-    // std::cout << "bitset_ptr=" << ordering.get_blocks() << std::endl;
 
     read_state_recursively<N>(tree_index, size, bit, ordering, tree_table, out_state);
 }
@@ -270,6 +274,7 @@ inline void copy(const std::vector<Entry>& src, std::vector<Entry>& dst)
     dst.insert(dst.end(), src.begin(), src.end());
 }
 
+template<size_t N>
 class const_iterator
 {
 private:
@@ -279,6 +284,8 @@ private:
     Index m_value;
 
     static constexpr const Index END_POS = Index(-1);
+
+    static constexpr size_t stride = 2 * N + 1;
 
     const_iterator(const IndexedHashSet* tree_table, const Bitset* ordering, SharedMemoryPoolPtr<std::vector<Entry>> stack, Index value) :
         m_tree_table(tree_table),
@@ -307,14 +314,25 @@ private:
 
             const auto must_swap = m_ordering->get(entry.m_bit);
 
+            if constexpr (N > 0)
+            {
+                for (size_t j = 0; j < N; ++j)
+                {
+                    if (m_ordering->get(entry.m_bit + 1 + j))
+                        i1 |= 1 << j;
+                    if (m_ordering->get(entry.m_bit + 1 + j + N))
+                        i2 &= ~(1 << j);
+                }
+            }
+
             if (must_swap)
                 std::swap(i1, i2);
 
             Index mid = std::bit_floor(entry.m_size - 1);
 
             // Emplace right first to ensure left is visited first in dfs.
-            m_stack->emplace_back(i2, entry.m_size - mid, 2 * entry.m_bit + 2);
-            m_stack->emplace_back(i1, mid, 2 * entry.m_bit + 1);
+            m_stack->emplace_back(i2, entry.m_size - mid, stride * (2 * (entry.m_bit / stride) + 2));
+            m_stack->emplace_back(i1, mid, stride * (2 * (entry.m_bit / stride) + 1));
         }
 
         m_value = END_POS;
@@ -366,14 +384,19 @@ public:
     bool operator!=(const const_iterator& other) const { return !(*this == other); }
 };
 
-static_assert(std::input_iterator<const_iterator>);
+static_assert(std::input_iterator<const_iterator<1>>);
 
-inline const_iterator begin(const RootSlot& root, const IndexedHashSet& tree_table, const BitsetRepository& repository)
+template<size_t N>
+inline const_iterator<N> begin(const RootSlot& root, const IndexedHashSet& tree_table, const BitsetRepository& repository)
 {
-    return const_iterator(root, tree_table, repository, true);
+    return const_iterator<N>(root, tree_table, repository, true);
 }
 
-inline const_iterator end() { return const_iterator(); }
+template<size_t N>
+inline const_iterator<N> end()
+{
+    return const_iterator<N>();
+}
 
 }
 

@@ -16,7 +16,7 @@
  */
 
 #include <gtest/gtest.h>
-#include <valla/canonical_even_tree_compression.hpp>
+#include <valla/canonical_partition_tree_compression.hpp>
 
 namespace valla::tests
 {
@@ -32,7 +32,7 @@ TEST(VallaTests, CanonicalTreeCompressionTest)
 
     {
         const auto s0 = State { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
-        const auto [s0_result, success] = root_table.insert(canonical_even::insert(s0, tree_table, pool, repo));
+        const auto [s0_result, success] = root_table.insert(canonical_even::insert<1>(s0, tree_table, pool, repo));
         const auto& s0_root = s0_result->first;
         const auto& s0_idx = s0_result->second;
 
@@ -48,7 +48,7 @@ TEST(VallaTests, CanonicalTreeCompressionTest)
 
     {
         const auto s1 = State { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-        const auto [s1_result, success] = root_table.insert(canonical_even::insert(s1, tree_table, pool, repo));
+        const auto [s1_result, success] = root_table.insert(canonical_even::insert<1>(s1, tree_table, pool, repo));
         const auto& s1_root = s1_result->first;
         const auto& s1_idx = s1_result->second;
 
@@ -64,7 +64,7 @@ TEST(VallaTests, CanonicalTreeCompressionTest)
 
     {
         const auto s2 = State { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
-        const auto [s2_result, success] = root_table.insert(canonical_even::insert(s2, tree_table, pool, repo));
+        const auto [s2_result, success] = root_table.insert(canonical_even::insert<1>(s2, tree_table, pool, repo));
         const auto& s2_root = s2_result->first;
         const auto& s2_idx = s2_result->second;
 
@@ -80,7 +80,7 @@ TEST(VallaTests, CanonicalTreeCompressionTest)
 
     {
         const auto s3 = State { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
-        const auto [s3_result, success] = root_table.insert(canonical_even::insert(s3, tree_table, pool, repo));
+        const auto [s3_result, success] = root_table.insert(canonical_even::insert<1>(s3, tree_table, pool, repo));
         const auto& s3_root = s3_result->first;
         const auto& s3_idx = s3_result->second;
 
@@ -106,11 +106,11 @@ TEST(VallaTests, CanonicalTreeCompression2Test)
 
     {
         const auto s0 = State { 0, 2, 4, 6, 8, 10, 12, 14 };
-        const auto [s0_result, success] = root_table.insert(canonical_even::insert(s0, tree_table, pool, repo));
+        const auto [s0_result, success] = root_table.insert(canonical_even::insert<1>(s0, tree_table, pool, repo));
         const auto& s0_root = s0_result->first;
         const auto& s0_idx = s0_result->second;
 
-        EXPECT_EQ(tree_table.size(), 7);
+        EXPECT_EQ(tree_table.size(), 6);
         EXPECT_EQ(root_table.size(), 2);
 
         // Created new state!
@@ -120,16 +120,16 @@ TEST(VallaTests, CanonicalTreeCompression2Test)
         EXPECT_EQ(tmp_state, s0);
 
         tmp_state.clear();
-        EXPECT_EQ(s0, State(canonical_even::begin(s0_root, tree_table, repo), canonical_even::end()));
+        EXPECT_EQ(s0, State(canonical_even::begin<1>(s0_root, tree_table, repo), canonical_even::end<1>()));
     }
 
     {
         const auto s1 = State { 3, 4, 8, 10, 12, 14 };
-        const auto [s1_result, success] = root_table.insert(canonical_even::insert(s1, tree_table, pool, repo));
+        const auto [s1_result, success] = root_table.insert(canonical_even::insert<1>(s1, tree_table, pool, repo));
         const auto& s1_root = s1_result->first;
         const auto& s1_idx = s1_result->second;
 
-        EXPECT_EQ(tree_table.size(), 9);
+        EXPECT_EQ(tree_table.size(), 7);
         EXPECT_EQ(root_table.size(), 3);
 
         // Created new state!
@@ -139,7 +139,7 @@ TEST(VallaTests, CanonicalTreeCompression2Test)
         EXPECT_EQ(tmp_state, s1);
 
         tmp_state.clear();
-        EXPECT_EQ(s1, State(canonical_even::begin(s1_root, tree_table, repo), canonical_even::end()));
+        EXPECT_EQ(s1, State(canonical_even::begin<1>(s1_root, tree_table, repo), canonical_even::end<1>()));
     }
 }
 
@@ -178,7 +178,7 @@ TEST(VallaTests, CanonicalTreeCompressionRandomTest)
     {
         for (const auto& s : all_states)
         {
-            auto [s_result, success] = root_table.insert(canonical_even::insert(s, tree_table, pool, repo));
+            auto [s_result, success] = root_table.insert(canonical_even::insert<1>(s, tree_table, pool, repo));
             const auto& s_root = s_result->first;
             const auto& s_idx = s_result->second;
 
@@ -187,8 +187,8 @@ TEST(VallaTests, CanonicalTreeCompressionRandomTest)
             assert(tmp_state == s);
 
             tmp_state.clear();
-            EXPECT_EQ(s, State(canonical_even::begin(s_root, tree_table, repo), canonical_even::end()));
-            assert(s == State(canonical_even::begin(s_root, tree_table, repo), canonical_even::end()));
+            EXPECT_EQ(s, State(canonical_even::begin<1>(s_root, tree_table, repo), canonical_even::end<1>()));
+            assert(s == State(canonical_even::begin<1>(s_root, tree_table, repo), canonical_even::end<1>()));
         }
     }
 }
@@ -215,7 +215,7 @@ TEST(VallaTests, CanonicalTreeCompressionExhaustiveTest)
     {
         for (const auto& s : all_states)
         {
-            auto [s_result, success] = root_table.insert(canonical_even::insert(s, tree_table, pool, repo));
+            auto [s_result, success] = root_table.insert(canonical_even::insert<1>(s, tree_table, pool, repo));
             const auto& s_root = s_result->first;
             const auto& s_idx = s_result->second;
 
@@ -224,7 +224,7 @@ TEST(VallaTests, CanonicalTreeCompressionExhaustiveTest)
             assert(tmp_state == s);
 
             tmp_state.clear();
-            EXPECT_EQ(s, State(canonical_even::begin(s_root, tree_table, repo), canonical_even::end()));
+            EXPECT_EQ(s, State(canonical_even::begin<1>(s_root, tree_table, repo), canonical_even::end<1>()));
         }
     }
 }
@@ -240,7 +240,7 @@ TEST(VallaTests, CanonicalTreeCompressionEdgeCasesTest)
 
     {
         const auto s0 = State {};
-        const auto [s0_result, success] = root_table.insert(canonical_even::insert(s0, tree_table, pool, repo));
+        const auto [s0_result, success] = root_table.insert(canonical_even::insert<1>(s0, tree_table, pool, repo));
         const auto& s0_root = s0_result->first;
         const auto& s0_idx = s0_result->second;
 
@@ -256,7 +256,7 @@ TEST(VallaTests, CanonicalTreeCompressionEdgeCasesTest)
 
     {
         const auto s1 = State { 0 };
-        const auto [s1_result, success] = root_table.insert(canonical_even::insert(s1, tree_table, pool, repo));
+        const auto [s1_result, success] = root_table.insert(canonical_even::insert<1>(s1, tree_table, pool, repo));
         const auto& s1_root = s1_result->first;
         const auto& s1_idx = s1_result->second;
 
@@ -282,16 +282,16 @@ TEST(VallaTests, CanonicalTreeCompressionIteratorTest)
 
     {
         const auto s0 = State { 1, 2, 4, 5, 6 };
-        const auto [s0_result, success] = root_table.insert(canonical_even::insert(s0, tree_table, pool, repo));
+        const auto [s0_result, success] = root_table.insert(canonical_even::insert<1>(s0, tree_table, pool, repo));
         const auto& s0_root = s0_result->first;
         const auto& s0_idx = s0_result->second;
 
-        EXPECT_EQ(s0, State(canonical_even::begin(s0_root, tree_table, repo), canonical_even::end()));
+        EXPECT_EQ(s0, State(canonical_even::begin<1>(s0_root, tree_table, repo), canonical_even::end<1>()));
     }
 
     {
         const auto s0 = State {};
-        EXPECT_EQ(s0, State(canonical_even::begin(root_table.get_empty_root(), tree_table, repo), canonical_even::end()));
+        EXPECT_EQ(s0, State(canonical_even::begin<1>(root_table.get_empty_root(), tree_table, repo), canonical_even::end<1>()));
     }
 }
 }
