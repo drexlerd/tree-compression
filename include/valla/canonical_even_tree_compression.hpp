@@ -55,7 +55,7 @@ inline RootSlot get_empty_root_slot() { return RootSlot(0, 0, 0); }
 /// @param bit is the position in the ordering for the next tree node being created.
 /// @param table is the table to uniquely insert the slots.
 /// @return the index of the slot at the root.
-template<std::input_iterator Iterator>
+template<std::input_iterator Iterator, size_t N>
     requires std::same_as<std::iter_value_t<Iterator>, Index>
 inline Index insert_recursively(Iterator it, Iterator end, size_t size, Bitset view, size_t bit, IndexedHashSet& table)
 {
@@ -76,6 +76,24 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, Bitset v
             view.set(bit);
         }
 
+        if constexpr (N > 0)
+        {
+            // Increase i1 and i2 to multiplicative depending on N, i.e., N=1 => multiplicative of 2, N=2 => multiplicative of 4, ...
+            // std::cout << "base: bit=" << bit << std::endl;
+            for (size_t j = 0; j < N; ++j)
+            {
+                if (i1 & (1 << j))
+                    view.set(bit + 1 + j);
+                if (i2 & (1 << j))
+                    view.set(bit + 1 + j + N);
+            }
+
+            constexpr Index mask = ~((1 << N) - 1);
+
+            i1 &= mask;
+            i2 &= mask;
+        }
+
         return table.insert(make_slot(i1, i2)).first->second;
     }
 
@@ -85,8 +103,10 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, Bitset v
     /* Conquer */
     const auto mid_it = it + mid;
 
-    Index i1 = insert_recursively(it, mid_it, mid, view, 2 * bit + 1, table);
-    Index i2 = insert_recursively(mid_it, end, size - mid, view, 2 * bit + 2, table);
+    // std::cout << "inductive: bit=" << bit << " " << 2 * bit + 1 + N << " " << 2 * bit + 2 + N + N << std::endl;
+
+    Index i1 = insert_recursively<Iterator, N>(it, mid_it, mid, view, 2 * bit + 1 + N, table);
+    Index i2 = insert_recursively<Iterator, N>(mid_it, end, size - mid, view, 2 * bit + 2 + N + N, table);
 
     // std::cout << "inductive_insert: i1=" << i1 << " i2=" << i2 << " bit=" << bit << " comp" << (i2 < i1) << std::endl;
 
@@ -94,6 +114,23 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, Bitset v
     {
         std::swap(i1, i2);
         view.set(bit);
+    }
+
+    if constexpr (N > 0)
+    {
+        // Increase i1 and i2 to multiplicative depending on N, i.e., N=1 => multiplicative of 2, N=2 => multiplicative of 4, ...
+        for (size_t j = 0; j < N; ++j)
+        {
+            if (i1 & (1 << j))
+                view.set(bit + 1 + j);
+            if (i2 & (1 << j))
+                view.set(bit + 1 + j + N);
+        }
+
+        constexpr Index mask = ~((1 << N) - 1);
+
+        i1 &= mask;
+        i2 &= mask;
     }
 
     return table.insert(make_slot(i1, i2)).first->second;
@@ -105,7 +142,7 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, Bitset v
 /// @param pool is the bitset pool for allocation.
 /// @param repo is the bitset repository for uniqueness.
 /// @return A pair (it, bool) where it points to the entry in the root table and bool is true if and only if the state was newly inserted.
-template<std::ranges::input_range Range>
+template<std::ranges::input_range Range, size_t N = 1>
     requires std::same_as<std::ranges::range_value_t<Range>, Index>
 auto insert(const Range& state, IndexedHashSet& tree_table, BitsetPool& pool, BitsetRepository& repo)
 {
@@ -118,13 +155,13 @@ auto insert(const Range& state, IndexedHashSet& tree_table, BitsetPool& pool, Bi
         return get_empty_root_slot();  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
 
     // Since we represent the ordering as a binary tree, there is some padding because we round up to use 64 bit blocks for efficiency.
-    // std::cout << "num bits=" << std::bit_ceil(size) << std::endl;
-    auto ordering = pool.allocate(std::bit_ceil(size));
+    // std::cout << "num bits=" << (2 * N + 1) * std::bit_ceil(size) << std::endl;
+    auto ordering = pool.allocate((2 * N + 1) * std::bit_ceil(size));
 
     // std::cout << "bitset_ptr=" << ordering.get_blocks() << std::endl;
 
     const auto bit = size_t(0);
-    const auto tree_index = insert_recursively(state.begin(), state.end(), size, ordering, bit, tree_table);
+    const auto tree_index = insert_recursively<std::ranges::iterator_t<const Range>, N>(state.begin(), state.end(), size, ordering, bit, tree_table);
 
     // Undo the bitset allocation when proven that an identical bitset already exists
     const auto result = repo.insert(ordering);
@@ -145,11 +182,13 @@ auto insert(const Range& state, IndexedHashSet& tree_table, BitsetPool& pool, Bi
 /// @param size is the length of the state that defines the shape of the tree at the index.
 /// @param tree_table is the tree table.
 /// @param out_state is the output state.
+template<size_t N = 1>
 inline void read_state_recursively(Index index, size_t size, size_t bit, const Bitset& ordering, const IndexedHashSet& tree_table, State& ref_state)
 {
     /* Base case */
     if (size == 1)
     {
+        // TODO: we lost track whether this is the left or right child bit...
         ref_state.push_back(index);
         return;
     }
@@ -176,8 +215,8 @@ inline void read_state_recursively(Index index, size_t size, size_t bit, const B
     // std::cout << "inductive_read: i1=" << i1 << " i2=" << i2 << " bit=" << bit << " comp" << must_swap << std::endl;
 
     /* Conquer */
-    read_state_recursively(i1, mid, 2 * bit + 1, ordering, tree_table, ref_state);
-    read_state_recursively(i2, size - mid, 2 * bit + 2, ordering, tree_table, ref_state);
+    read_state_recursively<N>(i1, mid, 2 * bit + 1 + N, ordering, tree_table, ref_state);
+    read_state_recursively<N>(i2, size - mid, 2 * bit + 2 + N + N, ordering, tree_table, ref_state);
 }
 
 /// @brief Read the `out_state` from the given `tree_index` from the `tree_table`.
@@ -185,6 +224,7 @@ inline void read_state_recursively(Index index, size_t size, size_t bit, const B
 /// @param size
 /// @param tree_table
 /// @param out_state
+template<size_t N = 1>
 inline void read_state(Index tree_index, size_t size, const Bitset& ordering, const IndexedHashSet& tree_table, State& out_state)
 {
     out_state.clear();
@@ -196,7 +236,7 @@ inline void read_state(Index tree_index, size_t size, const Bitset& ordering, co
 
     // std::cout << "bitset_ptr=" << ordering.get_blocks() << std::endl;
 
-    read_state_recursively(tree_index, size, bit, ordering, tree_table, out_state);
+    read_state_recursively<N>(tree_index, size, bit, ordering, tree_table, out_state);
 }
 
 /// @brief Read the `out_state` from the given `root_index` from the `root_table`.
@@ -204,10 +244,11 @@ inline void read_state(Index tree_index, size_t size, const Bitset& ordering, co
 /// @param tree_table is the tree table.
 /// @param root_table is the root table.
 /// @param out_state is the output state.
+template<size_t N = 1>
 inline void read_state(const RootSlot& root_slot, const IndexedHashSet& tree_table, const BitsetRepository& repository, State& out_state)
 {
     /* Observe: a root slot wraps the root tree_index together with the length that defines the tree structure! */
-    read_state(root_slot.get_index(), root_slot.get_size(), repository[root_slot.get_ordering()], tree_table, out_state);
+    read_state<N>(root_slot.get_index(), root_slot.get_size(), repository[root_slot.get_ordering()], tree_table, out_state);
 }
 
 /**
