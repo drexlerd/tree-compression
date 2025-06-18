@@ -33,13 +33,13 @@ static void BM_TreeCompressionInsert(benchmark::State& state)
     std::mt19937 rng(42);  // fixed seed for reproducibility
     std::uniform_int_distribution<Index> dist(0, 10'000);
 
-    std::vector<State> all_states;
+    std::vector<IndexList> all_states;
     all_states.reserve(state_num);
 
     // Generate sorted random states
     for (size_t i = 0; i < state_num; ++i)
     {
-        State s(state_size);
+        IndexList s(state_size);
         for (auto& v : s)
             v = dist(rng);
 
@@ -49,8 +49,8 @@ static void BM_TreeCompressionInsert(benchmark::State& state)
 
     for (auto _ : state)
     {
-        IndexedHashSet tree_table;
-        IndexedHashSet root_table;
+        IndexedHashSet<Slot> tree_table;
+        IndexedHashSet<Slot> root_table;
 
         for (size_t rep = 0; rep < repetitions; ++rep)
         {

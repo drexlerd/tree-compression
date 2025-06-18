@@ -23,12 +23,12 @@ namespace valla::tests
 
 TEST(VallaTests, TreeCompressionTest)
 {
-    auto tree_table = IndexedHashSet();
-    auto root_table = IndexedHashSet();
-    auto tmp_state = State();
+    auto tree_table = IndexedHashSet<Slot>();
+    auto root_table = IndexedHashSet<Slot>();
+    auto tmp_state = IndexList();
 
     {
-        const auto s0 = State { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+        const auto s0 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
         const auto [s0_result, success] = root_table.insert(plain::insert(s0, tree_table));
         const auto& s0_root = s0_result->first;
         const auto& s0_idx = s0_result->second;
@@ -44,7 +44,7 @@ TEST(VallaTests, TreeCompressionTest)
     }
 
     {
-        const auto s1 = State { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+        const auto s1 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
         const auto [s1_result, success] = root_table.insert(plain::insert(s1, tree_table));
         const auto& s1_root = s1_result->first;
         const auto& s1_idx = s1_result->second;
@@ -60,7 +60,7 @@ TEST(VallaTests, TreeCompressionTest)
     }
 
     {
-        const auto s2 = State { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
+        const auto s2 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
         const auto [s2_result, success] = root_table.insert(plain::insert(s2, tree_table));
         const auto& s2_root = s2_result->first;
         const auto& s2_idx = s2_result->second;
@@ -76,7 +76,7 @@ TEST(VallaTests, TreeCompressionTest)
     }
 
     {
-        const auto s3 = State { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
+        const auto s3 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
         const auto [s3_result, success] = root_table.insert(plain::insert(s3, tree_table));
         const auto& s3_root = s3_result->first;
         const auto& s3_idx = s3_result->second;
@@ -84,7 +84,7 @@ TEST(VallaTests, TreeCompressionTest)
         EXPECT_EQ(tree_table.size(), 11);
         EXPECT_EQ(root_table.size(), 3);
 
-        // State already exists!
+        // IndexList already exists!
         EXPECT_EQ(s3_idx, 2);
 
         plain::read_state(s3_root, tree_table, tmp_state);
@@ -94,12 +94,12 @@ TEST(VallaTests, TreeCompressionTest)
 
 TEST(VallaTests, TreeCompressionEdgeCasesTest)
 {
-    auto tree_table = IndexedHashSet();
-    auto root_table = IndexedHashSet();
-    auto tmp_state = State();
+    auto tree_table = IndexedHashSet<Slot>();
+    auto root_table = IndexedHashSet<Slot>();
+    auto tmp_state = IndexList();
 
     {
-        const auto s0 = State {};
+        const auto s0 = IndexList {};
         const auto [s0_result, success] = root_table.insert(plain::insert(s0, tree_table));
         const auto& s0_root = s0_result->first;
         const auto& s0_idx = s0_result->second;
@@ -115,7 +115,7 @@ TEST(VallaTests, TreeCompressionEdgeCasesTest)
     }
 
     {
-        const auto s1 = State { 0 };
+        const auto s1 = IndexList { 0 };
         const auto [s1_result, success] = root_table.insert(plain::insert(s1, tree_table));
         const auto& s1_root = s1_result->first;
         const auto& s1_idx = s1_result->second;
@@ -133,22 +133,22 @@ TEST(VallaTests, TreeCompressionEdgeCasesTest)
 
 TEST(VallaTests, TreeCompressionIteratorTest)
 {
-    auto tree_table = IndexedHashSet();
-    auto root_table = IndexedHashSet();
-    auto tmp_state = State();
+    auto tree_table = IndexedHashSet<Slot>();
+    auto root_table = IndexedHashSet<Slot>();
+    auto tmp_state = IndexList();
 
     {
-        const auto s0 = State { 1, 2, 4, 5, 6 };
+        const auto s0 = IndexList { 1, 2, 4, 5, 6 };
         const auto [s0_result, success] = root_table.insert(plain::insert(s0, tree_table));
         const auto& s0_root = s0_result->first;
         const auto& s0_idx = s0_result->second;
 
-        EXPECT_EQ(s0, State(plain::begin(s0_root, tree_table), plain::end()));
+        EXPECT_EQ(s0, IndexList(plain::begin(s0_root, tree_table), plain::end()));
     }
 
     {
-        const auto s0 = State {};
-        EXPECT_EQ(s0, State(plain::begin(Slot(), tree_table), plain::end()));
+        const auto s0 = IndexList {};
+        EXPECT_EQ(s0, IndexList(plain::begin(Slot(), tree_table), plain::end()));
     }
 }
 

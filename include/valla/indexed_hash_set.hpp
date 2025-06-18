@@ -29,14 +29,11 @@ namespace valla
 {
 /// @brief `IndexedHashSet` encapsulates a bijective function f : Slot -> Index with inverse mapping f^{-1} : Index -> Slot
 /// where the indices in the image are enumerated 0,1,2,... and so on.
-///
-/// TODO: think more about how to implement this using a Cleary table!
-/// Current understanding: reduces current memory overhead from 5/2 to 1 at the cost of a bidirectional probing search!!!
-/// Found some code on this: https://github.com/DaanWoltgens/ClearyCuckooParallel/tree/main
+template<typename S>
 class IndexedHashSet
 {
 public:
-    auto insert(Slot slot)
+    auto insert(S slot)
     {
         const auto result = m_slot_to_index.emplace(slot, m_slot_to_index.size());
 
@@ -48,7 +45,7 @@ public:
         return result;
     }
 
-    Slot get_slot(Index index) const
+    S get_slot(Index index) const
     {
         assert(index < m_index_to_slot.size() && "Index out of bounds");
 
@@ -57,22 +54,9 @@ public:
 
     size_t size() const { return m_index_to_slot.size(); }
 
-    size_t get_memory_usage() const
-    {
-        size_t usage = 0;
-
-        usage += m_slot_to_index.capacity() * (sizeof(Slot) + sizeof(Index));
-        usage += m_slot_to_index.capacity();
-
-        usage += m_index_to_slot.capacity() * sizeof(Slot);
-
-        return usage;
-    }
-
 private:
-    // SlotHash is not worth it here.
-    absl::flat_hash_map<Slot, Index> m_slot_to_index;
-    std::vector<Slot> m_index_to_slot;
+    absl::flat_hash_map<S, Index, SlotHash<S>> m_slot_to_index;
+    std::vector<S> m_index_to_slot;
 };
 }
 

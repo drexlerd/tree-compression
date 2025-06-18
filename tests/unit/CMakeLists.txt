@@ -12,18 +12,8 @@ function(add_gtest test_name source_file)
 endfunction()
 
 # Add each test source file as a separate test executable
-add_gtest(bitset_pool                              "bitset_pool.cpp")
-
 add_gtest(tree_compression                         "tree_compression.cpp")
-
-add_gtest(canonical_delta_tree_compression         "canonical_delta_tree_compression.cpp")
-
-add_gtest(canonical_tree_compression               "canonical_tree_compression.cpp")
-
-add_gtest(canonical_partition_tree_compression     "canonical_partition_tree_compression.cpp")
 
 add_gtest(delta_tree_compression                   "delta_tree_compression.cpp")
 
-add_gtest(static_tree_compression                  "static_tree_compression.cpp")
-
-add_gtest(fixed_tree_compression                   "fixed_tree_compression.cpp")
+add_gtest(double_tree_compression                   "double_tree_compression.cpp")
