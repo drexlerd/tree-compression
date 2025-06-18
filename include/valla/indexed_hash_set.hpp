@@ -24,6 +24,7 @@
 #include <cassert>
 #include <cmath>
 #include <iostream>
+#include <stack>
 
 namespace valla
 {
@@ -57,6 +58,79 @@ public:
 private:
     absl::flat_hash_map<S, Index, SlotHash<S>> m_slot_to_index;
     std::vector<S> m_index_to_slot;
+};
+
+template<>
+class IndexedHashSet<double>
+{
+public:
+    struct Value
+    {
+        uint32_t index;
+        uint32_t ref_count;
+    };
+
+    auto insert(double slot)
+    {
+        Index index;
+        if (m_free_list.empty())
+        {
+            index = m_slot_to_index.size();
+        }
+        else
+        {
+            index = m_free_list.top();
+            m_free_list.pop();
+        }
+
+        auto result = m_slot_to_index.emplace(slot, Value { index, 1 });
+
+        if (result.second)
+        {
+            if (index == m_index_to_slot.size())
+            {
+                m_index_to_slot.push_back(slot);
+            }
+            else
+            {
+                m_index_to_slot[index] = slot;
+            }
+        }
+        else
+        {
+            ++result.first->second.ref_count;
+        }
+
+        return result;
+    }
+
+    void erase(double slot)
+    {
+        auto it = m_slot_to_index.find(slot);
+        assert(it != m_slot_to_index.end());
+
+        --it->second.ref_count;
+
+        if (it->second.ref_count == 0)
+        {
+            m_free_list.push(it->second.index);
+            m_slot_to_index.erase(it);
+        }
+    }
+
+    double get_slot(Index index) const
+    {
+        assert(index < m_index_to_slot.size() && "Index out of bounds");
+
+        return m_index_to_slot[index];
+    }
+
+    size_t size() const { return m_index_to_slot.size(); }
+
+private:
+    absl::flat_hash_map<double, Value, SlotHash<double>> m_slot_to_index;
+    std::vector<double> m_index_to_slot;
+    std::stack<Index> m_free_list;
 };
 }
 

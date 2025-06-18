@@ -52,10 +52,10 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, IndexedH
 {
     /* Base cases */
     if (size == 1)
-        return double_table.insert(*it).first->second;  ///< Skip node creation
+        return double_table.insert(*it).first->second.index;  ///< Skip node creation
 
     if (size == 2)
-        return tree_table.insert(make_slot(double_table.insert(*it).first->second, double_table.insert(*(it + 1)).first->second)).first->second;
+        return tree_table.insert(make_slot(double_table.insert(*it).first->second.index, double_table.insert(*(it + 1)).first->second.index)).first->second;
 
     /* Divide */
     const auto mid = std::bit_floor(size - 1);
