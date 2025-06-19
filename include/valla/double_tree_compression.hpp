@@ -72,8 +72,6 @@ template<std::ranges::input_range Range>
     requires std::same_as<std::ranges::range_value_t<Range>, double>
 auto insert(const Range& state, IndexedHashSet<Slot>& tree_table, IndexedHashSet<double>& double_table)
 {
-    assert(std::is_sorted(state.begin(), state.end()));
-
     // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
     const auto size = static_cast<size_t>(std::distance(state.begin(), state.end()));
 
@@ -146,6 +144,29 @@ inline void read_state(Slot root_slot, const IndexedHashSet<Slot>& tree_table, c
     const auto [tree_index, size] = read_slot(root_slot);
 
     read_state(tree_index, size, tree_table, double_table, out_state);
+}
+
+/// @brief Reads a value at a specific position in time that is logarithmic in the size of the tree.
+/// @param root_slot
+/// @param pos
+/// @param tree_table
+/// @param double_table
+/// @return
+inline double read_value(Slot root_slot, size_t pos, const IndexedHashSet<Slot>& tree_table, const IndexedHashSet<double>& double_table)
+{
+    auto [index, size] = read_slot(root_slot);
+
+    assert(pos < size);
+
+    while (size > 1)
+    {
+        const auto [i1, i2] = read_slot(tree_table[index]);
+        const size_t mid = std::bit_floor(size - 1);
+        std::cout << pos << " " << i1 << " " << i2 << " " << mid << std::endl;
+        index = (pos < mid) ? i1 : i2;
+        size = (pos < mid) ? mid : size - mid;
+    }
+    return double_table[index];
 }
 
 /**

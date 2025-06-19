@@ -36,6 +36,8 @@ class IndexedHashSet
 public:
     auto insert(S slot)
     {
+        assert(m_slot_to_index.size() != std::numeric_limits<Index>::max() && "IndexedHashSet: Index overflow! The maximum number of slots reached.");
+
         const auto result = m_slot_to_index.emplace(slot, m_slot_to_index.size());
 
         if (result.second)
@@ -72,6 +74,8 @@ public:
 
     auto insert(double slot)
     {
+        assert(m_slot_to_index.size() != std::numeric_limits<Index>::max() && "IndexedHashSet: Index overflow! The maximum number of slots reached.");
+
         Index index;
         if (m_free_list.empty())
         {

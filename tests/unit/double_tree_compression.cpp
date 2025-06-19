@@ -42,6 +42,11 @@ TEST(VallaTests, DoubleTreeCompressionTest)
 
         doubles::plain::read_state(s0_root, tree_table, double_table, tmp_state);
         EXPECT_EQ(tmp_state, s0);
+
+        EXPECT_EQ(doubles::plain::read_value(s0_root, 0, tree_table, double_table), 0);
+        EXPECT_EQ(doubles::plain::read_value(s0_root, 7, tree_table, double_table), 7);
+        EXPECT_EQ(doubles::plain::read_value(s0_root, 8, tree_table, double_table), 8);
+        EXPECT_EQ(doubles::plain::read_value(s0_root, 15, tree_table, double_table), 15);
     }
 
     {
