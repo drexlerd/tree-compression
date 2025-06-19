@@ -46,7 +46,7 @@ public:
         return result;
     }
 
-    S get_slot(Index index) const
+    S operator[](Index index) const
     {
         assert(index < m_index_to_slot.size() && "Index out of bounds");
 
@@ -118,7 +118,7 @@ public:
         }
     }
 
-    double get_slot(Index index) const
+    double operator[](Index index) const
     {
         assert(index < m_index_to_slot.size() && "Index out of bounds");
 

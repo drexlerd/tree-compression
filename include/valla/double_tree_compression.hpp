@@ -98,17 +98,17 @@ read_state_recursively(Index index, size_t size, const IndexedHashSet<Slot>& tre
     /* Base case */
     if (size == 1)
     {
-        ref_state.push_back(double_table.get_slot(index));
+        ref_state.push_back(double_table[index]);
         return;
     }
 
-    const auto [i1, i2] = read_slot(tree_table.get_slot(index));
+    const auto [i1, i2] = read_slot(tree_table[index]);
 
     /* Base case */
     if (size == 2)
     {
-        ref_state.push_back(double_table.get_slot(i1));
-        ref_state.push_back(double_table.get_slot(i2));
+        ref_state.push_back(double_table[i1]);
+        ref_state.push_back(double_table[i2]);
         return;
     }
 
@@ -177,18 +177,16 @@ private:
 
     static constexpr const Index END_POS = Index(-1);
 
-    const_iterator(const IndexedHashSet<Slot>& tree_table,
-                   const IndexedHashSet<double>& double_table,
-                   UniqueMemoryPoolPtr<std::vector<Entry>> stack,
-                   Index value) :
-        m_tree_table(&tree_table),
-        m_double_table(&double_table),
-        m_stack(stack),
-        m_value(value)
+    const IndexedHashSet<Slot>& tree_table() const
     {
+        assert(m_tree_table);
+        return *m_tree_table;
     }
-
-    const_iterator clone() const { return const_iterator(*m_tree_table, *m_double_table, m_stack.clone(), m_value); }
+    const IndexedHashSet<double>& double_table() const
+    {
+        assert(m_double_table);
+        return *m_double_table;
+    }
 
     void advance()
     {
@@ -199,11 +197,11 @@ private:
 
             if (entry.m_size == 1)
             {
-                m_value = m_double_table->get_slot(entry.m_index);
+                m_value = double_table()[entry.m_index];
                 return;
             }
 
-            const auto [i1, i2] = read_slot(m_tree_table->get_slot(entry.m_index));
+            const auto [i1, i2] = read_slot(tree_table()[entry.m_index]);
 
             Index mid = std::bit_floor(entry.m_size - 1);
 
@@ -224,6 +222,26 @@ public:
     using iterator_concept = std::input_iterator_tag;
 
     const_iterator() : m_tree_table(nullptr), m_stack(), m_value(END_POS) {}
+    const_iterator(const const_iterator& other) :
+        m_tree_table(other.m_tree_table),
+        m_double_table(other.m_double_table),
+        m_stack(other.m_stack.clone()),
+        m_value(other.m_value)
+    {
+    }
+    const_iterator& operator=(const const_iterator& other)
+    {
+        if (*this != other)
+        {
+            m_tree_table = other.m_tree_table;
+            m_double_table = other.m_double_table;
+            m_stack = other.m_stack.clone();
+            m_value = other.m_value;
+        }
+        return *this;
+    }
+    const_iterator(const_iterator&& other) = default;
+    const_iterator& operator=(const_iterator&& other) = default;
     const_iterator(const IndexedHashSet<Slot>& tree_table, const IndexedHashSet<double>& double_table, Slot root, bool begin) :
         m_tree_table(&tree_table),
         m_double_table(&double_table),

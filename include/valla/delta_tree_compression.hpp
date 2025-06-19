@@ -124,7 +124,7 @@ inline void read_state_recursively(Index index, size_t size, const IndexedHashSe
         return;
     }
 
-    const auto [i1, i2] = read_slot(tree_table.get_slot(index));
+    const auto [i1, i2] = read_slot(tree_table[index]);
 
     /* Base case */
     if (size == 2)
@@ -199,6 +199,12 @@ private:
 
     static constexpr const Index END_POS = Index(-1);
 
+    const IndexedHashSet<Slot>& tree_table() const
+    {
+        assert(m_tree_table);
+        return *m_tree_table;
+    }
+
     void advance()
     {
         while (!m_stack->empty())
@@ -212,7 +218,7 @@ private:
                 return;
             }
 
-            const auto [i1, i2] = read_slot(m_tree_table->get_slot(entry.m_index));
+            const auto [i1, i2] = read_slot(tree_table()[entry.m_index]);
 
             Index mid = std::bit_floor(entry.m_size - 1);
 
@@ -233,6 +239,19 @@ public:
     using iterator_concept = std::input_iterator_tag;
 
     const_iterator() : m_tree_table(nullptr), m_stack(), m_value(END_POS) {}
+    const_iterator(const const_iterator& other) : m_tree_table(other.m_tree_table), m_stack(other.m_stack.clone()), m_value(other.m_value) {}
+    const_iterator& operator=(const const_iterator& other)
+    {
+        if (*this != other)
+        {
+            m_tree_table = other.m_tree_table;
+            m_stack = other.m_stack.clone();
+            m_value = other.m_value;
+        }
+        return *this;
+    }
+    const_iterator(const_iterator&& other) = default;
+    const_iterator& operator=(const_iterator&& other) = default;
     const_iterator(const IndexedHashSet<Slot>& tree_table, Slot root, bool begin) : m_tree_table(&tree_table), m_stack(), m_value(END_POS)
     {
         if (begin)
