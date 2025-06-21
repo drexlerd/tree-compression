@@ -9,3 +9,7 @@ target_link_libraries(insert benchmark::benchmark)
 add_executable(read "read.cpp")
 target_link_libraries(read valla::core)
 target_link_libraries(read benchmark::benchmark)
+
+add_executable(iterator "iterator.cpp")
+target_link_libraries(iterator valla::core)
+target_link_libraries(iterator benchmark::benchmark)
