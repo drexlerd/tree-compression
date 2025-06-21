@@ -47,8 +47,8 @@ static void BM_TreeCompressionRead(benchmark::State& state)
         all_states.push_back(std::move(s));
     }
 
-    IndexedHashSet<Slot> tree_table;
-    IndexedHashSet<Slot> root_table;
+    IndexedHashSet tree_table;
+    IndexedHashSet root_table;
 
     auto all_roots = std::vector<Slot> {};
 

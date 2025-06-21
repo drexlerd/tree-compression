@@ -23,8 +23,8 @@ namespace valla::tests
 
 TEST(VallaTests, TreeCompressionTest)
 {
-    auto tree_table = IndexedHashSet<Slot>();
-    auto root_table = IndexedHashSet<Slot>();
+    auto tree_table = IndexedHashSet();
+    auto root_table = IndexedHashSet();
     auto tmp_state = IndexList();
 
     {
@@ -94,8 +94,8 @@ TEST(VallaTests, TreeCompressionTest)
 
 TEST(VallaTests, TreeCompressionEdgeCasesTest)
 {
-    auto tree_table = IndexedHashSet<Slot>();
-    auto root_table = IndexedHashSet<Slot>();
+    auto tree_table = IndexedHashSet();
+    auto root_table = IndexedHashSet();
     auto tmp_state = IndexList();
 
     {
@@ -133,8 +133,8 @@ TEST(VallaTests, TreeCompressionEdgeCasesTest)
 
 TEST(VallaTests, TreeCompressionIteratorTest)
 {
-    auto tree_table = IndexedHashSet<Slot>();
-    auto root_table = IndexedHashSet<Slot>();
+    auto tree_table = IndexedHashSet();
+    auto root_table = IndexedHashSet();
     auto tmp_state = IndexList();
 
     {

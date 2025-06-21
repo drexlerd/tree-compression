@@ -6,7 +6,6 @@ add_library(core STATIC
     "../include/valla/indexed_hash_set.hpp"
     "../include/valla/tree_compression.hpp"
     "../include/valla/delta_tree_compression.hpp"
-    "../include/valla/double_tree_compression.hpp"
 )
 set_target_properties(core PROPERTIES OUTPUT_NAME valla_core)
 

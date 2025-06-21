@@ -15,5 +15,3 @@ endfunction()
 add_gtest(tree_compression                         "tree_compression.cpp")
 
 add_gtest(delta_tree_compression                   "delta_tree_compression.cpp")
-
-add_gtest(double_tree_compression                   "double_tree_compression.cpp")

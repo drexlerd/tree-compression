@@ -49,8 +49,8 @@ static void BM_TreeCompressionInsert(benchmark::State& state)
 
     for (auto _ : state)
     {
-        IndexedHashSet<Slot> tree_table;
-        IndexedHashSet<Slot> root_table;
+        IndexedHashSet tree_table;
+        IndexedHashSet root_table;
 
         for (size_t rep = 0; rep < repetitions; ++rep)
         {
