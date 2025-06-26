@@ -1,7 +1,7 @@
 
 add_library(core STATIC
-    "../include/valla/details/shared_memory_pool.hpp"
-    "../include/valla/details/unique_memory_pool.hpp"
+    "../include/valla/details/shared_object_pool.hpp"
+    "../include/valla/details/unique_object_pool.hpp"
     "../include/valla/declarations.hpp"
     "../include/valla/indexed_hash_set.hpp"
     "../include/valla/tree_compression.hpp"

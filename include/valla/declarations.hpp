@@ -106,7 +106,7 @@ inline uint64_t fmix64(uint64_t k)
 
 struct SlotHash
 {
-    size_t operator()(Slot el) const { return fmix64(el); }
+    size_t operator()(Slot el) const { return cantor_pair(first(el), second(el)); }
 };
 
 }
