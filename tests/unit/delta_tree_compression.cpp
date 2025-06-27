@@ -141,14 +141,14 @@ TEST(VallaTests, TreeCompressionIteratorTest)
         const auto s0 = IndexList { 1, 2, 4, 5, 6 };
         const auto [s0_result, success] = root_table.insert(delta::insert(s0, tree_table));
         const auto& s0_root = s0_result->first;
-        const auto& s0_idx = s0_result->second;
+        [[maybe_unused]] const auto& s0_idx = s0_result->second;
 
         EXPECT_EQ(s0, IndexList(delta::begin(s0_root, tree_table), delta::end()));
     }
 
     {
         const auto s0 = IndexList {};
-        EXPECT_EQ(s0, IndexList(delta::begin(Slot(), tree_table), delta::end()));
+        EXPECT_EQ(s0, IndexList(delta::begin(delta::get_empty_root_slot(), tree_table), delta::end()));
     }
 }
 
