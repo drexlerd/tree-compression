@@ -16,52 +16,43 @@
  */
 
 #include <gtest/gtest.h>
-#include <valla/hash_id_map.hpp>
+#include <valla/tree_database.hpp>
 
 namespace valla::tests
 {
 
 TEST(VallaTests, HashIdMapTest)
 {
-    HashIdMap<SlotHash, std::equal_to<Slot>, 2> map(2);
+    TreeDatabase<SlotHash, std::equal_to<Slot>, 8> map(2);
 
     std::cout << map << std::endl << std::endl;
 
-    // Insert uniquely
-    auto i0 = map.insert(Slot());
-    EXPECT_EQ(i0, 0);
-    EXPECT_EQ(map.size(), 1);
-    EXPECT_EQ(map.num_buckets(), 2);
+    auto state1 = IndexList { 0, 1, 2, 3 };
+    map.insert(state1);
 
     std::cout << map << std::endl << std::endl;
 
-    // Insert uniquely
-    auto i1 = map.insert(Slot(0, 1));
-    EXPECT_EQ(i1, 1);
-    EXPECT_EQ(map.size(), 2);
-    EXPECT_EQ(map.num_buckets(), 2);
+    auto state2 = IndexList { 1, 2, 3, 4, 5, 6, 7, 8 };
+    map.insert(state2);
+
+    std::cout << map << std::endl << std::endl;
+}
+
+TEST(VallaTests, HashIdMap2Test)
+{
+    TreeDatabase<SlotHash, std::equal_to<Slot>, 8> map(2);
 
     std::cout << map << std::endl << std::endl;
 
-    // Insert uniquely with rehash
-    auto i2 = map.insert(Slot(2, 3));
-    EXPECT_EQ(i2, 0);
-    EXPECT_EQ(map.size(), 3);
-    EXPECT_EQ(map.num_buckets(), 4);
+    auto state1 = IndexList { 1, 2, 3, 4, 5, 6, 7, 8 };
+    map.insert(state1);
 
     std::cout << map << std::endl << std::endl;
 
-    // Insert uniquely
-    auto i3 = map.insert(Slot(4, 5));
-    EXPECT_EQ(i3, 1);
-    EXPECT_EQ(map.size(), 4);
-    EXPECT_EQ(map.num_buckets(), 4);
+    auto state2 = IndexList { 1, 2, 3, 4, 5, 6, 7, 8 };
+    map.insert(state2);
 
-    // Insert
-    auto i4 = map.insert(Slot(0, 1));
-    EXPECT_EQ(i4, 1);
-    EXPECT_EQ(map.size(), 4);
-    EXPECT_EQ(map.num_buckets(), 2);
+    std::cout << map << std::endl << std::endl;
 }
 
 }

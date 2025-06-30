@@ -58,8 +58,8 @@ private:
         RehashData(size_t num_buckets, size_t capacity) :
             num_buckets(num_buckets),
             capacity(capacity),
-            root_to_unstable(capacity),
-            unstable_to_root(capacity),
+            root_to_unstable(capacity, INDEX_SENTINEL),
+            unstable_to_root(capacity, INDEX_SENTINEL),
             bucket_data(capacity),
             bucket_sizes(num_buckets, 0),
             remapping(capacity, INDEX_SENTINEL)
@@ -100,9 +100,11 @@ private:
             if (tmp.bucket_sizes[h] == BucketSize)
                 throw RehashTriggered {};
 
-            Index unstable_index = offset + m_bucket_sizes[h]++;
+            Index unstable_index = offset + tmp.bucket_sizes[h]++;
 
-            m_bucket_data[unstable_index] = slot;
+            std::cout << "Base unstable index: " << unstable_index << std::endl;
+
+            tmp.bucket_data[unstable_index] = slot;
 
             return unstable_index;
         }
@@ -132,14 +134,16 @@ private:
 
         unstable_index = offset + tmp.bucket_sizes[h]++;
 
+        std::cout << "Inductive unstable index: " << unstable_index << std::endl;
+
         tmp.bucket_data[unstable_index] = new_slot;
-        ++m_size;
 
         return unstable_index;
     }
 
     void rehash(double factor = 2.)
     {
+        std::cout << "Rehash with factor: " << factor << std::endl;
         try
         {
             size_t new_num_buckets = factor * m_num_buckets;
@@ -266,6 +270,15 @@ public:
     size_t size() const { return m_size; }
     size_t capacity() const { return m_capacity; }
     size_t num_buckets() const { return m_num_buckets; }
+
+    friend std::ostream& operator<<(std::ostream& os, const HashIdMap& map)
+    {
+        os << "Bucket data: " << map.m_bucket_data << "\n"
+           << "Bucket sizes: " << map.m_bucket_sizes << "\n"
+           << "Root to unstable: " << map.m_root_to_unstable << "\n"
+           << "Unstable to root: " << map.m_unstable_to_root;
+        return os;
+    }
 };
 }
 

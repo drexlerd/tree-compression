@@ -26,6 +26,7 @@
 #include <iostream>
 #include <memory>
 #include <mutex>
+#include <ostream>
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
@@ -61,6 +62,12 @@ struct Slot
     constexpr Slot(Index i1, Index i2) : i1(i1), i2(i2) {}
 
     constexpr friend bool operator==(const Slot& lhs, const Slot& rhs) { return lhs.i1 == rhs.i1 && lhs.i2 == rhs.i2; }
+
+    friend std::ostream& operator<<(std::ostream& os, const Slot& slot)
+    {
+        os << "<" << slot.i1 << ", " << slot.i2 << ">";
+        return os;
+    }
 };
 
 static_assert(alignof(Slot) == 4);
@@ -73,12 +80,25 @@ using IndexList = std::vector<Index>;
  * Printing
  */
 
-inline std::ostream& operator<<(std::ostream& out, const IndexList& state)
+template<typename T>
+inline std::ostream& operator<<(std::ostream& out, const std::vector<T>& vec)
 {
     out << "[";
-    for (const auto x : state)
+    for (const auto x : vec)
     {
         out << x << ", ";
+    }
+    out << "]";
+
+    return out;
+}
+
+inline std::ostream& operator<<(std::ostream& out, const std::vector<uint8_t>& vec)
+{
+    out << "[";
+    for (const auto x : vec)
+    {
+        out << static_cast<uint32_t>(x) << ", ";
     }
     out << "]";
 
