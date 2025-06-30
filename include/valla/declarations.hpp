@@ -35,6 +35,17 @@
 namespace valla
 {
 
+// Code
+// https://github.com/kampersanda/bonsais
+// https://github.com/simongog/sdsl-lite/tree/master
+// https://github.com/tudocomp/tudocomp
+// https://github.com/Poyias/mBonsai
+
+// Papers:
+// https://arxiv.org/pdf/1906.06015
+// https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=b7620871f53d759a15cf9e820584b89f984f74c1
+// https://link.springer.com/article/10.1007/s00453-022-00996-y^
+
 using Index = uint32_t;  ///< Enough space for 4,294,967,295 indices
 
 /**
@@ -46,6 +57,7 @@ struct Slot
     Index i1;
     Index i2;
 
+    constexpr Slot() : i1(0), i2(0) {}
     constexpr Slot(Index i1, Index i2) : i1(i1), i2(i2) {}
 
     constexpr friend bool operator==(const Slot& lhs, const Slot& rhs) { return lhs.i1 == rhs.i1 && lhs.i2 == rhs.i2; }
