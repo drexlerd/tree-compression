@@ -67,40 +67,111 @@ private:
         }
     };
 
+    struct RehashTriggered : public std::exception
+    {
+    };
+
     Index rehash_recursively(Index unstable_index, size_t size, RehashData& tmp)
     {
         /* Base case 1: unstable index was already relocated */
         if (tmp.remapping[unstable_index] != INDEX_SENTINEL)
             return tmp.remapping[unstable_index];
+
+        /* Base case 2: skipped node creation */
+        if (size == 1)
+            return unstable_index;
+
+        const auto& slot = lookup(unstable_index);
+
+        /* Base case 3: rellocate slot */
+        if (size == 2)
+        {
+            size_t h = hash(slot, tmp.num_buckets);
+            size_t offset = BucketSize * h;
+
+            for (size_t i = 0; i < tmp.bucket_sizes[h]; ++i)
+            {
+                Index unstable_index = offset + i;
+
+                if (EqualTo {}(tmp.bucket_data[unstable_index], slot))
+                    return unstable_index;
+            }
+
+            if (tmp.bucket_sizes[h] == BucketSize)
+                throw RehashTriggered {};
+
+            Index unstable_index = offset + m_bucket_sizes[h]++;
+
+            m_bucket_data[unstable_index] = slot;
+
+            return unstable_index;
+        }
+
+        /* Divide */
+        const auto mid = std::bit_floor(size - 1);
+
+        /* Conquer */
+        Index i1 = rehash_recursively(slot.i1, mid, tmp);
+        Index i2 = rehash_recursively(slot.i2, size - mid, tmp);
+
+        Slot new_slot(i1, i2);
+
+        size_t h = hash(new_slot, tmp.num_buckets);
+        size_t offset = BucketSize * h;
+
+        for (size_t i = 0; i < tmp.bucket_sizes[h]; ++i)
+        {
+            Index unstable_index = offset + i;
+
+            if (EqualTo {}(tmp.bucket_data[unstable_index], new_slot))
+                return unstable_index;
+        }
+
+        if (tmp.bucket_sizes[h] == BucketSize)
+            throw RehashTriggered {};
+
+        unstable_index = offset + tmp.bucket_sizes[h]++;
+
+        tmp.bucket_data[unstable_index] = new_slot;
+        ++m_size;
+
+        return unstable_index;
     }
 
     void rehash(double factor = 2.)
     {
-        size_t new_num_buckets = factor * m_num_buckets;
-        size_t new_capacity = factor * m_capacity;
-
-        auto tmp = RehashData(new_num_buckets, new_capacity);
-
-        for (Index stable_index = 0; stable_index < m_size; ++stable_index)
+        try
         {
-            if (m_root_to_unstable[stable_index] != INDEX_SENTINEL)
+            size_t new_num_buckets = factor * m_num_buckets;
+            size_t new_capacity = factor * m_capacity;
+
+            auto tmp = RehashData(new_num_buckets, new_capacity);
+
+            for (Index stable_index = 0; stable_index < m_size; ++stable_index)
             {
-                const auto& root = lookup_root(stable_index);
-                Index unstable_index = root.i1;
-                Index size = root.i2;
-                unstable_index = rehash_recursively(unstable_index, size, tmp);
+                if (m_root_to_unstable[stable_index] != INDEX_SENTINEL)
+                {
+                    const auto& root = lookup_root(stable_index);
+                    Index unstable_index = root.i1;
+                    Index size = root.i2;
+                    unstable_index = rehash_recursively(unstable_index, size, tmp);
 
-                root_to_unstable[stable_index] = unstable_index;
-                unstable_to_root[unstable_index] = stable_index;
+                    tmp.root_to_unstable[stable_index] = unstable_index;
+                    tmp.unstable_to_root[unstable_index] = stable_index;
+                }
             }
-        }
 
-        m_num_buckets = new_num_buckets;
-        m_capacity = new_capacity;
-        std::swap(m_root_to_unstable, tmp.root_to_unstable);
-        std::swap(m_unstable_to_root, tmp.unstable_to_root);
-        std::swap(m_bucket_data, tmp.bucket_data);
-        std::swap(m_bucket_sizes, tmp.bucket_sizes);
+            m_num_buckets = new_num_buckets;
+            m_capacity = new_capacity;
+            std::swap(m_root_to_unstable, tmp.root_to_unstable);
+            std::swap(m_unstable_to_root, tmp.unstable_to_root);
+            std::swap(m_bucket_data, tmp.bucket_data);
+            std::swap(m_bucket_sizes, tmp.bucket_sizes);
+        }
+        catch (const RehashTriggered&)
+        {
+            rehash(2 * factor);
+        }
     }
 
 public:
@@ -127,7 +198,6 @@ public:
         while (true)
         {
             size_t h = hash(slot, m_num_buckets);
-
             size_t offset = BucketSize * h;
 
             for (size_t i = 0; i < m_bucket_sizes[h]; ++i)
@@ -135,9 +205,7 @@ public:
                 Index unstable_index = offset + i;
 
                 if (EqualTo {}(m_bucket_data[unstable_index], slot))
-                {
                     return unstable_index;
-                }
             }
 
             if (m_bucket_sizes[h] == BucketSize)
@@ -163,7 +231,6 @@ public:
         while (true)
         {
             size_t h = hash(slot, m_num_buckets);
-
             size_t offset = BucketSize * h;
 
             for (size_t i = 0; i < m_bucket_sizes[h]; ++i)
@@ -171,9 +238,7 @@ public:
                 Index unstable_index = offset + i;
 
                 if (EqualTo {}(m_bucket_data[unstable_index], slot))
-                {
                     return m_unstable_to_root[unstable_index];
-                }
             }
 
             if (m_bucket_sizes[h] == BucketSize)
