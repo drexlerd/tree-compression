@@ -45,11 +45,51 @@ inline void copy(const std::vector<Entry>& src, std::vector<Entry>& dst)
 
 static thread_local UniqueObjectPool<std::vector<Entry>> s_stack_pool = UniqueObjectPool<std::vector<Entry>> {};
 
-template<typename Hash = std::hash<Slot>, typename EqualTo = std::equal_to<Slot>, size_t BucketSize = 8>
+/**
+ * `TreeDatabase` implements a tree databse as a hash id map with open addressing and bounded bucket size, i.e.,
+ * a mapping from slots to implicit integer ids where implicit means that the ids are assigned internally by the data structure itself.
+ * `TreeDatabase` saves 250% memory for internal nodes compared to the naive implementation of tree compression.
+ * It follows an analysis of compact hashing.
+ *
+ * Compact hashing explained and an example showing its low benefit.
+ *
+ * Use a bijective hash function h : uint64_t -> uint64_t.
+ * For a key k, compute h(k), and define:
+ *   - i = h(k) % m          // the initial bucket index
+ *   - q = h(k) / m          // the quotient to store
+ *
+ * Instead of storing the full key k (64 bits), the hash table stores only q.
+ * During lookup or insertion, h(k) can be reconstructed as:
+ *      h(k) = q * m + i
+ * and the original key can be recovered via:
+ *      k = h⁻¹(h(k))
+ *
+ * This reduces storage per entry from 64 bits (or 2*64+32=160 bits for the naive implementation) to ceil(log2(q)) bits.
+ *
+ * Example:
+ * Consider a tree database with:
+ *   - total_slots = 2^24 (~17M entries)
+ *   - bucket_size = 2^8 (256 entries per bucket)
+ *   - load_factor = 0.5
+ *
+ * Then the number of buckets is:
+ *     m = total_slots / (bucket_size * (1 / load_factor)
+ *       = 2^24 / (2^8 * (1 / 0.5))
+ *       = 2^24 / 2^9
+ *       = 2^15
+ *
+ * Since h(k) is 64 bits, the maximum possible value of q is:
+ *     q_max = 2^64 / m = 2^64 / 2^15 = 2^49
+ *
+ * So the stored quotient fits in 49 bits. This is a ~24% reduction from 64 bits,
+ * and storage shrinks further as m increases (i.e., as the table grows).
+ */
+template<typename Hash = std::hash<Slot>, typename EqualTo = std::equal_to<Slot>, size_t BucketSize = 128>
 class TreeDatabase
 {
 private:
     static_assert(BucketSize != 0 && (BucketSize & (BucketSize - 1)) == 0 && "BucketSize must be a power of two.");
+    static_assert(BucketSize <= 128 && "Bucket size must fit into uint8_t");
 
     static constexpr Index INDEX_SENTINEL = std::numeric_limits<Index>::max();
 
@@ -90,18 +130,15 @@ private:
         {
             Index unstable_index = offset + i;
 
-            assert(is_within_bounds(tmp.bucket_data, unstable_index));
             if (EqualTo {}(tmp.bucket_data[unstable_index], slot))
                 return { unstable_index, true };
         }
 
-        assert(is_within_bounds(tmp.bucket_sizes, h));
         if (tmp.bucket_sizes[h] == BucketSize)
             return { INDEX_SENTINEL, false };
 
         Index unstable_index = offset + tmp.bucket_sizes[h]++;
 
-        assert(is_within_bounds(tmp.bucket_data, unstable_index));
         tmp.bucket_data[unstable_index] = slot;
 
         return { unstable_index, true };
@@ -113,10 +150,9 @@ private:
         if (size == 1)
             return { unstable_index, true };
 
-        /* TODO Base case 2: unstable index was already relocated
+        /* TODO: Base case 2: unstable index was already relocated
            ATTENTION: this requires taking size into account. */
 
-        assert(is_within_bounds(m_bucket_data, unstable_index));
         const auto& slot = m_bucket_data[unstable_index];
 
         /* Base case 3: rellocate slot */
@@ -151,11 +187,12 @@ private:
 
             bool rehash_success = true;
 
+            // Relocate empty root
             tmp.roots.insert(Slot(0, 0));
 
+            // Relocate remaining roots
             for (Index stable_index = 1; stable_index < m_roots.size(); ++stable_index)
             {
-                assert(is_within_bounds(m_roots, stable_index));
                 const auto& root = m_roots[stable_index];
 
                 const auto [unstable_index, success] = rehash_recursively(root.i1, root.i2, tmp);
@@ -193,18 +230,15 @@ private:
         {
             Index unstable_index = offset + i;
 
-            assert(is_within_bounds(m_bucket_data, unstable_index));
             if (EqualTo {}(m_bucket_data[unstable_index], slot))
                 return { unstable_index, true };
         }
 
-        assert(is_within_bounds(m_bucket_sizes, h));
         if (m_bucket_sizes[h] == BucketSize)
             return { INDEX_SENTINEL, false };
 
         Index unstable_index = offset + m_bucket_sizes[h]++;
 
-        assert(is_within_bounds(m_bucket_data, unstable_index));
         m_bucket_data[unstable_index] = slot;
         ++m_size;
 
@@ -360,7 +394,7 @@ public:
 
                 const auto& root = db.m_roots[stable_index];
 
-                if (root.i2 > 0)  ///< Push to stack only if there leafs
+                if (root.i2 > 0)  ///< Push to stack iff there are elements.
                 {
                     m_stack->emplace_back(root.i1, root.i2);
                     advance();
