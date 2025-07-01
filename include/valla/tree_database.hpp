@@ -20,6 +20,7 @@
 
 #include "valla/declarations.hpp"
 #include "valla/details/unique_object_pool.hpp"
+#include "valla/indexed_hash_set.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -52,9 +53,7 @@ private:
 
     static constexpr Index INDEX_SENTINEL = std::numeric_limits<Index>::max();
 
-    std::vector<Index> m_stable_to_unstable;
-    std::vector<Index> m_unstable_to_stable;
-    size_t m_num_stable;
+    IndexedHashSet m_roots;
 
     std::vector<Slot> m_bucket_data;
     std::vector<uint8_t> m_bucket_sizes;
@@ -68,29 +67,21 @@ private:
     {
         size_t num_buckets;
         size_t capacity;
-        std::vector<Index> stable_to_unstable;
-        std::vector<Index> unstable_to_stable;
+        IndexedHashSet roots;
         std::vector<Slot> bucket_data;
         std::vector<uint8_t> bucket_sizes;
-        std::vector<Index> remapping;
 
         RehashData(size_t num_buckets, size_t capacity) :
             num_buckets(num_buckets),
             capacity(capacity),
-            stable_to_unstable(capacity, INDEX_SENTINEL),
-            unstable_to_stable(capacity, INDEX_SENTINEL),
+            roots(),
             bucket_data(capacity),
-            bucket_sizes(num_buckets, 0),
-            remapping(capacity, INDEX_SENTINEL)
+            bucket_sizes(num_buckets, 0)
         {
         }
     };
 
-    struct RehashTriggered : public std::exception
-    {
-    };
-
-    Index insert(Slot slot, RehashData& tmp)
+    std::pair<Index, bool> insert(Slot slot, RehashData& tmp)
     {
         size_t h = hash(slot, tmp.num_buckets);
         size_t offset = BucketSize * h;
@@ -99,91 +90,101 @@ private:
         {
             Index unstable_index = offset + i;
 
+            assert(is_within_bounds(tmp.bucket_data, unstable_index));
             if (EqualTo {}(tmp.bucket_data[unstable_index], slot))
-                return unstable_index;
+                return { unstable_index, true };
         }
 
+        assert(is_within_bounds(tmp.bucket_sizes, h));
         if (tmp.bucket_sizes[h] == BucketSize)
-            throw RehashTriggered {};
+            return { INDEX_SENTINEL, false };
 
         Index unstable_index = offset + tmp.bucket_sizes[h]++;
 
+        assert(is_within_bounds(tmp.bucket_data, unstable_index));
         tmp.bucket_data[unstable_index] = slot;
 
-        return unstable_index;
+        return { unstable_index, true };
     }
 
-    Index rehash_recursively(Index unstable_index, size_t size, RehashData& tmp)
+    std::pair<Index, bool> rehash_recursively(Index unstable_index, size_t size, RehashData& tmp)
     {
-        /* Base case 1: unstable index was already relocated */
-        if (tmp.remapping[unstable_index] != INDEX_SENTINEL)
-            return tmp.remapping[unstable_index];
-
-        /* Base case 2: skipped node creation */
+        /* Base case 1: skipped node creation */
         if (size == 1)
-            return unstable_index;
+            return { unstable_index, true };
 
+        /* TODO Base case 2: unstable index was already relocated
+           ATTENTION: this requires taking size into account. */
+
+        assert(is_within_bounds(m_bucket_data, unstable_index));
         const auto& slot = m_bucket_data[unstable_index];
 
         /* Base case 3: rellocate slot */
         if (size == 2)
         {
-            Index new_unstable_index = insert(slot, tmp);
-            tmp.remapping[unstable_index] = new_unstable_index;
-            return new_unstable_index;
+            return insert(slot, tmp);
         }
 
         /* Divide */
+        assert(size >= 2);
         const auto mid = std::bit_floor(size - 1);
 
         /* Conquer */
-        Index i1 = rehash_recursively(slot.i1, mid, tmp);
-        Index i2 = rehash_recursively(slot.i2, size - mid, tmp);
+        const auto [i1, i1_success] = rehash_recursively(slot.i1, mid, tmp);
+        if (!i1_success)
+            return { i1, false };
+        const auto [i2, i2_success] = rehash_recursively(slot.i2, size - mid, tmp);
+        if (!i2_success)
+            return { i2, false };
 
-        Index new_unstable_index = insert(Slot(i1, i2), tmp);
-        tmp.remapping[unstable_index] = new_unstable_index;
-        return new_unstable_index;
+        return insert(Slot(i1, i2), tmp);
     }
 
     void rehash(double factor = 2.)
     {
-        try
+        while (true)
         {
             size_t new_num_buckets = factor * m_num_buckets;
             size_t new_capacity = factor * m_capacity;
 
             auto tmp = RehashData(new_num_buckets, new_capacity);
 
-            for (Index stable_index = 0; stable_index < m_num_stable; ++stable_index)
+            bool rehash_success = true;
+
+            tmp.roots.insert(Slot(0, 0));
+
+            for (Index stable_index = 1; stable_index < m_roots.size(); ++stable_index)
             {
-                assert(m_stable_to_unstable[stable_index] != INDEX_SENTINEL);
+                assert(is_within_bounds(m_roots, stable_index));
+                const auto& root = m_roots[stable_index];
 
-                Index unstable_index = m_stable_to_unstable[stable_index];
+                const auto [unstable_index, success] = rehash_recursively(root.i1, root.i2, tmp);
 
-                const auto& root = m_bucket_data[unstable_index];
+                if (!success)
+                {
+                    rehash_success = false;
+                    break;
+                }
 
-                assert(m_stable_to_unstable[stable_index] == root.i1);
+                tmp.roots.insert(Slot(unstable_index, root.i2));
+            }
 
-                Index new_unstable_index = insert(Slot(rehash_recursively(root.i1, root.i2, tmp), root.i2), tmp);
-                tmp.remapping[unstable_index] = new_unstable_index;
-                tmp.stable_to_unstable[stable_index] = new_unstable_index;
-                tmp.unstable_to_stable[new_unstable_index] = stable_index;
+            if (!rehash_success)
+            {
+                factor *= 2;
+                continue;
             }
 
             m_num_buckets = new_num_buckets;
             m_capacity = new_capacity;
-            std::swap(m_stable_to_unstable, tmp.stable_to_unstable);
-            std::swap(m_unstable_to_stable, tmp.unstable_to_stable);
+            std::swap(m_roots, tmp.roots);
             std::swap(m_bucket_data, tmp.bucket_data);
             std::swap(m_bucket_sizes, tmp.bucket_sizes);
-        }
-        catch (const RehashTriggered&)
-        {
-            rehash(2 * factor);
+            return;
         }
     }
 
-    Index insert(Slot slot)
+    std::pair<Index, bool> insert(Slot slot)
     {
         size_t h = hash(slot, m_num_buckets);
         size_t offset = BucketSize * h;
@@ -192,39 +193,18 @@ private:
         {
             Index unstable_index = offset + i;
 
+            assert(is_within_bounds(m_bucket_data, unstable_index));
             if (EqualTo {}(m_bucket_data[unstable_index], slot))
-                return unstable_index;
+                return { unstable_index, true };
         }
 
+        assert(is_within_bounds(m_bucket_sizes, h));
         if (m_bucket_sizes[h] == BucketSize)
-            throw RehashTriggered {};
+            return { INDEX_SENTINEL, false };
 
         Index unstable_index = offset + m_bucket_sizes[h]++;
 
-        m_bucket_data[unstable_index] = slot;
-        ++m_size;
-
-        return unstable_index;
-    }
-
-    std::pair<Index, bool> insert_checked(Slot slot)
-    {
-        size_t h = hash(slot, m_num_buckets);
-        size_t offset = BucketSize * h;
-
-        for (size_t i = 0; i < m_bucket_sizes[h]; ++i)
-        {
-            Index unstable_index = offset + i;
-
-            if (EqualTo {}(m_bucket_data[unstable_index], slot))
-                return { unstable_index, false };
-        }
-
-        if (m_bucket_sizes[h] == BucketSize)
-            throw RehashTriggered {};
-
-        Index unstable_index = offset + m_bucket_sizes[h]++;
-
+        assert(is_within_bounds(m_bucket_data, unstable_index));
         m_bucket_data[unstable_index] = slot;
         ++m_size;
 
@@ -233,41 +213,44 @@ private:
 
     template<std::input_iterator Iterator>
         requires std::same_as<std::iter_value_t<Iterator>, Index>
-    inline Index insert_recursively(Iterator it, Iterator end, size_t size)
+    inline std::pair<Index, bool> insert_recursively(Iterator it, Iterator end, size_t size)
     {
         /* Base cases */
         if (size == 1)
-            return *it;  ///< Skip node creation
+            return { *it, true };  ///< Skip node creation
 
         if (size == 2)
             return insert(Slot(*it, *(it + 1)));
 
         /* Divide */
+        assert(size >= 2);
         const auto mid = std::bit_floor(size - 1);
 
         /* Conquer */
         const auto mid_it = it + mid;
-        const auto i1 = insert_recursively(it, mid_it, mid);
-        const auto i2 = insert_recursively(mid_it, end, size - mid);
+        const auto [i1, i1_success] = insert_recursively(it, mid_it, mid);
+        if (!i1_success)
+            return { i1, false };
+        const auto [i2, i2_success] = insert_recursively(mid_it, end, size - mid);
+        if (!i2_success)
+            return { i2, false };
 
         return insert(Slot(i1, i2));
     }
 
 public:
     TreeDatabase(size_t num_buckets = 1024) :
-        m_stable_to_unstable(),
-        m_unstable_to_stable(),
-        m_num_stable(0),
+        m_roots(),
         m_bucket_data(),
         m_bucket_sizes(),
         m_num_buckets(num_buckets),
         m_size(0),
         m_capacity(num_buckets * BucketSize)
     {
-        m_stable_to_unstable.resize(m_capacity, INDEX_SENTINEL);
-        m_unstable_to_stable.resize(m_capacity, INDEX_SENTINEL);
         m_bucket_data.resize(m_capacity);
         m_bucket_sizes.resize(m_num_buckets, 0);
+
+        m_roots.insert(Slot(0, 0));
     }
 
     template<std::ranges::input_range Range>
@@ -280,30 +263,22 @@ public:
         const auto size = static_cast<Index>(std::distance(range.begin(), range.end()));
 
         if (size == 0)  ///< Special case for empty range.
-            return 0;   ///< Len 0 marks the empty range, the tree index can be arbitrary so we set it to 0.
+            return 0;   ///< 0 marks the empty range.
 
         double factor = 1.0;
 
         while (true)
         {
-            try
-            {
-                const auto [unstable_index, success] = insert_checked(Slot(insert_recursively(range.begin(), range.end(), size), size));
+            const auto [unstable_index, success] = insert_recursively(range.begin(), range.end(), size);
 
-                if (success)
-                {
-                    Index stable_index = m_num_stable++;
-                    m_stable_to_unstable[stable_index] = unstable_index;
-                    m_unstable_to_stable[unstable_index] = stable_index;
-                }
-
-                return m_unstable_to_stable[unstable_index];
-            }
-            catch (const RehashTriggered&)
+            if (!success)
             {
                 factor *= 2;
                 rehash(factor);
+                continue;
             }
+
+            return m_roots.insert(Slot(unstable_index, size)).first->second;
         }
     }
 
@@ -341,6 +316,7 @@ public:
 
                 const auto slot = db().m_bucket_data[entry.m_index];
 
+                assert(entry.m_size >= 0);
                 Index mid = std::bit_floor(entry.m_size - 1);
 
                 // Emplace i2 first to ensure i1 is visited first in dfs.
@@ -382,7 +358,7 @@ public:
                 m_stack = s_stack_pool.get_or_allocate();
                 m_stack->clear();
 
-                const auto& root = db.m_bucket_data[db.m_stable_to_unstable[stable_index]];
+                const auto& root = db.m_roots[stable_index];
 
                 if (root.i2 > 0)  ///< Push to stack only if there leafs
                 {
@@ -410,7 +386,7 @@ public:
     const_iterator begin(Index stable_index) const { return const_iterator(*this, stable_index, true); }
     const_iterator end() const { return const_iterator(); }
 
-    size_t num_stable() const { return m_num_stable; }
+    size_t num_roots() const { return m_roots.size(); }
     size_t size() const { return m_size; }
     size_t capacity() const { return m_capacity; }
     size_t num_buckets() const { return m_num_buckets; }
@@ -419,8 +395,8 @@ public:
     {
         os << "Bucket data: " << db.m_bucket_data << "\n"
            << "Bucket sizes: " << db.m_bucket_sizes << "\n"
-           << "Stable to unstable: " << db.m_stable_to_unstable << "\n"
-           << "Unstable to stable: " << db.m_unstable_to_stable;
+           << "Root indexed hash set: " << db.m_roots;
+
         return os;
     }
 };

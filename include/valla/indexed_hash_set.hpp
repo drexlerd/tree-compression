@@ -49,12 +49,18 @@ public:
 
     Slot operator[](Index index) const
     {
-        assert(index < m_index_to_slot.size() && "Index out of bounds");
+        assert(is_within_bounds(m_index_to_slot, index));
 
         return m_index_to_slot[index];
     }
 
     size_t size() const { return m_index_to_slot.size(); }
+
+    friend std::ostream& operator<<(std::ostream& os, const IndexedHashSet& set)
+    {
+        os << set.m_index_to_slot;
+        return os;
+    }
 
 private:
     absl::flat_hash_map<Slot, Index, SlotHash> m_slot_to_index;

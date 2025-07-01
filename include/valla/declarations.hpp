@@ -36,6 +36,12 @@
 namespace valla
 {
 
+template<typename Container>
+inline bool is_within_bounds(const Container& container, size_t index)
+{
+    return index < container.size();
+}
+
 // Code
 // https://github.com/kampersanda/bonsais
 // https://github.com/simongog/sdsl-lite/tree/master
