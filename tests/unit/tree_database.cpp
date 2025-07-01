@@ -23,36 +23,44 @@ namespace valla::tests
 
 TEST(VallaTests, HashIdMapTest)
 {
-    TreeDatabase<SlotHash, std::equal_to<Slot>, 8> map(2);
+    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>, 8> db(2);
 
-    std::cout << map << std::endl << std::endl;
+    std::cout << db << std::endl << std::endl;
 
-    auto state1 = IndexList { 0, 1, 2, 3 };
-    map.insert(state1);
+    auto s1 = IndexList { 0, 1, 2, 3 };
+    auto s1_root = db.insert(s1);
 
-    std::cout << map << std::endl << std::endl;
+    EXPECT_EQ(IndexList(db.begin(s1_root), db.end()), s1);
 
-    auto state2 = IndexList { 1, 2, 3, 4, 5, 6, 7, 8 };
-    map.insert(state2);
+    std::cout << db << std::endl << std::endl;
 
-    std::cout << map << std::endl << std::endl;
+    auto s2 = IndexList { 1, 2, 3, 4, 5, 6, 7, 8 };
+    auto s2_root = db.insert(s2);
+
+    EXPECT_EQ(IndexList(db.begin(s2_root), db.end()), s2);
+
+    std::cout << db << std::endl << std::endl;
 }
 
 TEST(VallaTests, HashIdMap2Test)
 {
-    TreeDatabase<SlotHash, std::equal_to<Slot>, 8> map(2);
+    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>, 8> db(2);
 
-    std::cout << map << std::endl << std::endl;
+    std::cout << db << std::endl << std::endl;
 
-    auto state1 = IndexList { 1, 2, 3, 4, 5, 6, 7, 8 };
-    map.insert(state1);
+    auto s1 = IndexList { 1, 2, 3, 4, 5, 6, 7, 8 };
+    auto s1_root = db.insert(s1);
 
-    std::cout << map << std::endl << std::endl;
+    EXPECT_EQ(IndexList(db.begin(s1_root), db.end()), s1);
 
-    auto state2 = IndexList { 1, 2, 3, 4, 5, 6, 7, 8 };
-    map.insert(state2);
+    std::cout << db << std::endl << std::endl;
 
-    std::cout << map << std::endl << std::endl;
+    auto s2 = IndexList { 1, 2, 3, 4, 5, 6, 7, 8 };
+    auto s2_root = db.insert(s2);
+
+    EXPECT_EQ(IndexList(db.begin(s2_root), db.end()), s2);
+
+    std::cout << db << std::endl << std::endl;
 }
 
 }

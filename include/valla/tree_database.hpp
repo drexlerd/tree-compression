@@ -19,13 +19,31 @@
 #define VALLA_INCLUDE_TREE_DATABASE_HPP_
 
 #include "valla/declarations.hpp"
+#include "valla/details/unique_object_pool.hpp"
 
 #include <cstddef>
 #include <cstdint>
 #include <vector>
 
-namespace valla
+namespace valla::tdb
 {
+
+struct Entry
+{
+    Index m_index;
+    Index m_size;
+
+    Entry(Index index, Index size) : m_index(index), m_size(size) {}
+};
+
+inline void copy(const std::vector<Entry>& src, std::vector<Entry>& dst)
+{
+    dst.clear();
+    dst.insert(dst.end(), src.begin(), src.end());
+}
+
+static thread_local UniqueObjectPool<std::vector<Entry>> s_stack_pool = UniqueObjectPool<std::vector<Entry>> {};
+
 template<typename Hash = std::hash<Slot>, typename EqualTo = std::equal_to<Slot>, size_t BucketSize = 8>
 class TreeDatabase
 {
@@ -34,9 +52,9 @@ private:
 
     static constexpr Index INDEX_SENTINEL = std::numeric_limits<Index>::max();
 
-    std::vector<Index> m_root_to_unstable;
-    std::vector<Index> m_unstable_to_root;
-    size_t m_num_roots;
+    std::vector<Index> m_stable_to_unstable;
+    std::vector<Index> m_unstable_to_stable;
+    size_t m_num_stable;
 
     std::vector<Slot> m_bucket_data;
     std::vector<uint8_t> m_bucket_sizes;
@@ -50,8 +68,8 @@ private:
     {
         size_t num_buckets;
         size_t capacity;
-        std::vector<Index> root_to_unstable;
-        std::vector<Index> unstable_to_root;
+        std::vector<Index> stable_to_unstable;
+        std::vector<Index> unstable_to_stable;
         std::vector<Slot> bucket_data;
         std::vector<uint8_t> bucket_sizes;
         std::vector<Index> remapping;
@@ -59,8 +77,8 @@ private:
         RehashData(size_t num_buckets, size_t capacity) :
             num_buckets(num_buckets),
             capacity(capacity),
-            root_to_unstable(capacity, INDEX_SENTINEL),
-            unstable_to_root(capacity, INDEX_SENTINEL),
+            stable_to_unstable(capacity, INDEX_SENTINEL),
+            unstable_to_stable(capacity, INDEX_SENTINEL),
             bucket_data(capacity),
             bucket_sizes(num_buckets, 0),
             remapping(capacity, INDEX_SENTINEL)
@@ -136,25 +154,26 @@ private:
 
             auto tmp = RehashData(new_num_buckets, new_capacity);
 
-            for (Index stable_index = 0; stable_index < m_num_roots; ++stable_index)
+            for (Index stable_index = 0; stable_index < m_num_stable; ++stable_index)
             {
-                assert(m_root_to_unstable[stable_index] != INDEX_SENTINEL);
-                assert(m_root_to_unstable[stable_index] == root.i1);
+                assert(m_stable_to_unstable[stable_index] != INDEX_SENTINEL);
 
-                Index unstable_index = m_root_to_unstable[stable_index];
+                Index unstable_index = m_stable_to_unstable[stable_index];
 
                 const auto& root = m_bucket_data[unstable_index];
 
+                assert(m_stable_to_unstable[stable_index] == root.i1);
+
                 Index new_unstable_index = insert(Slot(rehash_recursively(root.i1, root.i2, tmp), root.i2), tmp);
                 tmp.remapping[unstable_index] = new_unstable_index;
-                tmp.root_to_unstable[stable_index] = new_unstable_index;
-                tmp.unstable_to_root[new_unstable_index] = stable_index;
+                tmp.stable_to_unstable[stable_index] = new_unstable_index;
+                tmp.unstable_to_stable[new_unstable_index] = stable_index;
             }
 
             m_num_buckets = new_num_buckets;
             m_capacity = new_capacity;
-            std::swap(m_root_to_unstable, tmp.root_to_unstable);
-            std::swap(m_unstable_to_root, tmp.unstable_to_root);
+            std::swap(m_stable_to_unstable, tmp.stable_to_unstable);
+            std::swap(m_unstable_to_stable, tmp.unstable_to_stable);
             std::swap(m_bucket_data, tmp.bucket_data);
             std::swap(m_bucket_sizes, tmp.bucket_sizes);
         }
@@ -236,17 +255,17 @@ private:
 
 public:
     TreeDatabase(size_t num_buckets = 1024) :
-        m_root_to_unstable(),
-        m_unstable_to_root(),
-        m_num_roots(0),
+        m_stable_to_unstable(),
+        m_unstable_to_stable(),
+        m_num_stable(0),
         m_bucket_data(),
         m_bucket_sizes(),
         m_num_buckets(num_buckets),
         m_size(0),
         m_capacity(num_buckets * BucketSize)
     {
-        m_root_to_unstable.resize(m_capacity, INDEX_SENTINEL);
-        m_unstable_to_root.resize(m_capacity, INDEX_SENTINEL);
+        m_stable_to_unstable.resize(m_capacity, INDEX_SENTINEL);
+        m_unstable_to_stable.resize(m_capacity, INDEX_SENTINEL);
         m_bucket_data.resize(m_capacity);
         m_bucket_sizes.resize(m_num_buckets, 0);
     }
@@ -273,12 +292,12 @@ public:
 
                 if (success)
                 {
-                    Index stable_index = m_num_roots++;
-                    m_root_to_unstable[stable_index] = unstable_index;
-                    m_unstable_to_root[unstable_index] = stable_index;
+                    Index stable_index = m_num_stable++;
+                    m_stable_to_unstable[stable_index] = unstable_index;
+                    m_unstable_to_stable[unstable_index] = stable_index;
                 }
 
-                return m_unstable_to_root[unstable_index];
+                return m_unstable_to_stable[unstable_index];
             }
             catch (const RehashTriggered&)
             {
@@ -288,7 +307,110 @@ public:
         }
     }
 
-    size_t num_roots() const { return m_num_roots; }
+    /**
+     * ConstIterator
+     */
+
+    class const_iterator
+    {
+    private:
+        const TreeDatabase* m_db;
+        UniqueObjectPoolPtr<std::vector<Entry>> m_stack;
+        Index m_value;
+
+        static constexpr const Index END_POS = Index(-1);
+
+        const TreeDatabase& db() const
+        {
+            assert(m_db);
+            return *m_db;
+        }
+
+        void advance()
+        {
+            while (!m_stack->empty())
+            {
+                auto entry = m_stack->back();
+                m_stack->pop_back();
+
+                if (entry.m_size == 1)
+                {
+                    m_value = entry.m_index;
+                    return;
+                }
+
+                const auto slot = db().m_bucket_data[entry.m_index];
+
+                Index mid = std::bit_floor(entry.m_size - 1);
+
+                // Emplace i2 first to ensure i1 is visited first in dfs.
+                m_stack->emplace_back(slot.i2, entry.m_size - mid);
+                m_stack->emplace_back(slot.i1, mid);
+            }
+
+            m_value = END_POS;
+        }
+
+    public:
+        using difference_type = std::ptrdiff_t;
+        using value_type = Index;
+        using pointer = value_type*;
+        using reference = value_type;
+        using iterator_category = std::input_iterator_tag;
+        using iterator_concept = std::input_iterator_tag;
+
+        const_iterator() : m_db(nullptr), m_stack(), m_value(END_POS) {}
+        const_iterator(const const_iterator& other) : m_db(other.m_db), m_stack(other.m_stack.clone()), m_value(other.m_value) {}
+        const_iterator& operator=(const const_iterator& other)
+        {
+            if (*this != other)
+            {
+                m_db = other.m_db;
+                m_stack = other.m_stack.clone();
+                m_value = other.m_value;
+            }
+            return *this;
+        }
+        const_iterator(const_iterator&& other) = default;
+        const_iterator& operator=(const_iterator&& other) = default;
+        const_iterator(const TreeDatabase& db, Index stable_index, bool begin) : m_db(&db), m_stack(), m_value(END_POS)
+        {
+            assert(m_db);
+
+            if (begin)
+            {
+                m_stack = s_stack_pool.get_or_allocate();
+                m_stack->clear();
+
+                const auto& root = db.m_bucket_data[db.m_stable_to_unstable[stable_index]];
+
+                if (root.i2 > 0)  ///< Push to stack only if there leafs
+                {
+                    m_stack->emplace_back(root.i1, root.i2);
+                    advance();
+                }
+            }
+        }
+        value_type operator*() const { return m_value; }
+        const_iterator& operator++()
+        {
+            advance();
+            return *this;
+        }
+        const_iterator operator++(int)
+        {
+            auto it = *this;
+            ++it;
+            return it;
+        }
+        bool operator==(const const_iterator& other) const { return m_value == other.m_value; }
+        bool operator!=(const const_iterator& other) const { return !(*this == other); }
+    };
+
+    const_iterator begin(Index stable_index) const { return const_iterator(*this, stable_index, true); }
+    const_iterator end() const { return const_iterator(); }
+
+    size_t num_stable() const { return m_num_stable; }
     size_t size() const { return m_size; }
     size_t capacity() const { return m_capacity; }
     size_t num_buckets() const { return m_num_buckets; }
@@ -297,8 +419,8 @@ public:
     {
         os << "Bucket data: " << db.m_bucket_data << "\n"
            << "Bucket sizes: " << db.m_bucket_sizes << "\n"
-           << "Root to unstable: " << db.m_root_to_unstable << "\n"
-           << "Unstable to root: " << db.m_unstable_to_root;
+           << "Stable to unstable: " << db.m_stable_to_unstable << "\n"
+           << "Unstable to stable: " << db.m_unstable_to_stable;
         return os;
     }
 };
