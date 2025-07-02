@@ -24,6 +24,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <experimental/simd>
 #include <vector>
 
 namespace valla::tdb
@@ -84,7 +85,7 @@ static thread_local UniqueObjectPool<std::vector<Entry>> s_stack_pool = UniqueOb
  * So the stored quotient fits in 49 bits. This is a ~24% reduction from 64 bits,
  * and storage shrinks further as m increases (i.e., as the table grows).
  */
-template<typename Hash = std::hash<Slot>, typename EqualTo = std::equal_to<Slot>, size_t BucketSize = 64>
+template<typename Hash = std::hash<RawSlot>, typename EqualTo = std::equal_to<RawSlot>, size_t BucketSize = 32>
 class TreeDatabase
 {
 private:
@@ -95,7 +96,7 @@ private:
 
     IndexedHashSet m_roots;
 
-    std::vector<Slot> m_bucket_data;
+    std::vector<RawSlot> m_bucket_data;
     std::vector<uint8_t> m_bucket_sizes;
     size_t m_num_buckets;
     size_t m_size;
@@ -109,7 +110,7 @@ private:
         size_t num_buckets;
         size_t capacity;
         IndexedHashSet roots;
-        std::vector<Slot> bucket_data;
+        std::vector<RawSlot> bucket_data;
         std::vector<uint8_t> bucket_sizes;
 
         RehashData(size_t num_buckets, size_t capacity) :
@@ -122,7 +123,7 @@ private:
         }
     };
 
-    Index insert(Slot slot, RehashData& tmp)
+    Index insert(RawSlot slot, RehashData& tmp)
     {
         // The Power of Two Choices in Randomized Load Balancing:
         // https://www.eecs.harvard.edu/~michaelm/postscripts/mythesis.pdf?utm_source=chatgpt.com
@@ -132,21 +133,38 @@ private:
         size_t offset1 = BucketSize * h1;
         size_t offset2 = BucketSize * h2;
 
-        for (size_t i = 0; i < tmp.bucket_sizes[h1]; ++i)
+        using simd_t = std::experimental::native_simd<uint64_t>;
+        constexpr size_t simd_width = simd_t::size();
+
+        auto simd_lookup = [&](size_t offset, size_t size) -> Index
         {
-            Index unstable_index = offset1 + i;
+            size_t i = 0;
+            for (; i + simd_width <= size; i += simd_width)
+            {
+                simd_t values(&tmp.bucket_data[offset + i], std::experimental::element_aligned);
+                simd_t key(slot);
+                auto mask = values == key;
+                if (any_of(mask))
+                    return offset + i + find_first_set(mask);
+            }
 
-            if (m_equal_to(tmp.bucket_data[unstable_index], slot))
-                return unstable_index;
-        }
+            for (; i < size; ++i)
+            {
+                Index idx = offset + i;
+                if (m_equal_to(tmp.bucket_data[idx], slot))
+                    return idx;
+            }
 
-        for (size_t i = 0; i < tmp.bucket_sizes[h2]; ++i)
-        {
-            Index unstable_index = offset2 + i;
+            return INDEX_SENTINEL;
+        };
 
-            if (m_equal_to(tmp.bucket_data[unstable_index], slot))
-                return unstable_index;
-        }
+        Index found = simd_lookup(offset1, tmp.bucket_sizes[h1]);
+        if (found != INDEX_SENTINEL)
+            return found;
+
+        found = simd_lookup(offset2, tmp.bucket_sizes[h2]);
+        if (found != INDEX_SENTINEL)
+            return found;
 
         if (tmp.bucket_sizes[h1] > tmp.bucket_sizes[h2])
         {
@@ -188,20 +206,21 @@ private:
         const auto mid = std::bit_floor(size - 1);
 
         /* Conquer */
-        Index i1 = rehash_recursively(slot.i1, mid, tmp);
+        Index i1 = rehash_recursively(first(slot), mid, tmp);
         if (i1 == INDEX_SENTINEL)
             return i1;
-        Index i2 = rehash_recursively(slot.i2, size - mid, tmp);
+        Index i2 = rehash_recursively(second(slot), size - mid, tmp);
         if (i2 == INDEX_SENTINEL)
             return i2;
 
-        return insert(Slot(i1, i2), tmp);
+        return insert(make_slot(i1, i2), tmp);
     }
 
     void rehash(double factor = 2.)
     {
         while (true)
         {
+            std::cout << "Start rehash with load factor: " << load_factor() << std::endl;
             size_t new_num_buckets = factor * m_num_buckets;
             size_t new_capacity = factor * m_capacity;
 
@@ -239,11 +258,12 @@ private:
             std::swap(m_roots, tmp.roots);
             std::swap(m_bucket_data, tmp.bucket_data);
             std::swap(m_bucket_sizes, tmp.bucket_sizes);
+            std::cout << "Finish rehash with load factor: " << load_factor() << std::endl;
             return;
         }
     }
 
-    Index insert(Slot slot)
+    Index insert(RawSlot slot)
     {
         // The Power of Two Choices in Randomized Load Balancing:
         // https://www.eecs.harvard.edu/~michaelm/postscripts/mythesis.pdf?utm_source=chatgpt.com
@@ -253,21 +273,38 @@ private:
         size_t offset1 = BucketSize * h1;
         size_t offset2 = BucketSize * h2;
 
-        for (size_t i = 0; i < m_bucket_sizes[h1]; ++i)
+        using simd_t = std::experimental::native_simd<uint64_t>;
+        constexpr size_t simd_width = simd_t::size();
+
+        auto simd_lookup = [&](size_t offset, size_t size) -> Index
         {
-            Index unstable_index = offset1 + i;
+            size_t i = 0;
+            for (; i + simd_width <= size; i += simd_width)
+            {
+                simd_t values(&m_bucket_data[offset + i], std::experimental::element_aligned);
+                simd_t key(slot);
+                auto mask = values == key;
+                if (any_of(mask))
+                    return offset + i + find_first_set(mask);
+            }
 
-            if (m_equal_to(m_bucket_data[unstable_index], slot))
-                return unstable_index;
-        }
+            for (; i < size; ++i)
+            {
+                Index idx = offset + i;
+                if (m_equal_to(m_bucket_data[idx], slot))
+                    return idx;
+            }
 
-        for (size_t i = 0; i < m_bucket_sizes[h2]; ++i)
-        {
-            Index unstable_index = offset2 + i;
+            return INDEX_SENTINEL;
+        };
 
-            if (m_equal_to(m_bucket_data[unstable_index], slot))
-                return unstable_index;
-        }
+        Index found = simd_lookup(offset1, m_bucket_sizes[h1]);
+        if (found != INDEX_SENTINEL)
+            return found;
+
+        found = simd_lookup(offset2, m_bucket_sizes[h2]);
+        if (found != INDEX_SENTINEL)
+            return found;
 
         if (m_bucket_sizes[h1] > m_bucket_sizes[h2])
         {
@@ -298,7 +335,7 @@ private:
             return *it;  ///< Skip node creation
 
         if (size == 2)
-            return insert(Slot(*it, *(it + 1)));
+            return insert(make_slot(*it, *(it + 1)));
 
         /* Divide */
         assert(size >= 2);
@@ -313,7 +350,7 @@ private:
         if (i2 == INDEX_SENTINEL)
             return i2;
 
-        return insert(Slot(i1, i2));
+        return insert(make_slot(i1, i2));
     }
 
 public:
@@ -400,8 +437,8 @@ public:
                 Index mid = std::bit_floor(entry.m_size - 1);
 
                 // Emplace i2 first to ensure i1 is visited first in dfs.
-                m_stack->emplace_back(slot.i2, entry.m_size - mid);
-                m_stack->emplace_back(slot.i1, mid);
+                m_stack->emplace_back(second(slot), entry.m_size - mid);
+                m_stack->emplace_back(first(slot), mid);
             }
 
             m_value = END_POS;

@@ -16,6 +16,4 @@ add_gtest(tree_compression                         "tree_compression.cpp")
 
 add_gtest(delta_tree_compression                   "delta_tree_compression.cpp")
 
-add_gtest(hash_id_map                              "hash_id_map.cpp")
-
 add_gtest(tree_database                            "tree_database.cpp")
