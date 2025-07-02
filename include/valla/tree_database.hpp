@@ -86,23 +86,25 @@ static thread_local UniqueObjectPool<std::vector<Entry>> s_stack_pool = UniqueOb
  * So the stored quotient fits in 49 bits. This is a ~24% reduction from 64 bits,
  * and storage shrinks further as m increases (i.e., as the table grows).
  */
-template<typename Hash = std::hash<RawSlot>, typename EqualTo = std::equal_to<RawSlot>, size_t BucketSize = 64>
+template<typename Hash = std::hash<RawSlot>, typename EqualTo = std::equal_to<RawSlot>>
 class TreeDatabase
 {
 private:
-    static_assert(BucketSize != 0 && (BucketSize & (BucketSize - 1)) == 0 && "BucketSize must be a power of two.");
-    static_assert(BucketSize <= 128 && "Bucket size must fit into uint8_t");
+    static constexpr RawSlot SLOT_SENTINEL = std::numeric_limits<RawSlot>::max();
 
     static constexpr Index INDEX_SENTINEL = std::numeric_limits<Index>::max();  ///< used to indicate insertion failure to trigger a rehash.
 
-    static constexpr double MAX_LOAD_FACTOR = 0.9;
+    static constexpr uint8_t FINGERPRINT_SENTINEL = std::numeric_limits<uint8_t>::max();
+
+    static constexpr double MAX_LOAD_FACTOR = 0.7;
+
+    static constexpr size_t MAX_PROBE_COUNT = 256;
 
     IndexedHashSet m_roots;
 
     std::vector<RawSlot> m_bucket_data;
     std::vector<uint8_t> m_fingerprints;
-    std::vector<uint8_t> m_bucket_sizes;
-    size_t m_num_buckets;
+
     size_t m_size;
     size_t m_capacity;
 
@@ -120,98 +122,99 @@ private:
 
     struct RehashData
     {
-        size_t num_buckets;
         size_t capacity;
         IndexedHashSet roots;
         std::vector<RawSlot> bucket_data;
         std::vector<uint8_t> fingerprints;
-        std::vector<uint8_t> bucket_sizes;
 
-        RehashData(size_t num_buckets, size_t capacity) :
-            num_buckets(num_buckets),
+        explicit RehashData(size_t capacity) :
             capacity(capacity),
             roots(),
-            bucket_data(capacity),
-            fingerprints(capacity),
-            bucket_sizes(num_buckets, 0)
+            bucket_data(capacity + MAX_PROBE_COUNT, SLOT_SENTINEL),
+            fingerprints(capacity + MAX_PROBE_COUNT, FINGERPRINT_SENTINEL)
         {
         }
     };
 
-    Index lookup(RawSlot slot, size_t offset, size_t size, uint8_t target_fp, RehashData& tmp)
+    struct LookupResult
+    {
+        Index match = INDEX_SENTINEL;
+        Index free = INDEX_SENTINEL;
+    };
+
+    LookupResult lookup(RawSlot slot, size_t h, uint8_t target_fp, RehashData& tmp)
     {
         using simd_t = std::experimental::native_simd<uint8_t>;
         constexpr size_t simd_width = simd_t::size();
 
-        simd_t key(target_fp);
+        simd_t key_fp(target_fp);
+        simd_t key_free(FINGERPRINT_SENTINEL);
+
+        LookupResult result;
 
         size_t i = 0;
 
-        for (; i + simd_width <= size; i += simd_width)
+        for (; i + simd_width <= MAX_PROBE_COUNT; i += simd_width)
         {
-            simd_t fp_vec(&tmp.fingerprints[offset + i], std::experimental::element_aligned);
+            simd_t fp_vec(&tmp.fingerprints[h + i], std::experimental::element_aligned);
 
-            auto mask = (fp_vec == key);
+            auto fp_mask = (fp_vec == key_fp);
+            auto free_mask = (fp_vec == key_free);
 
-            if (any_of(mask))
+            for (size_t j = 0; j < simd_width; ++j)
             {
-                for (size_t j = 0; j < simd_width; ++j)
+                Index idx = h + i + j;
+
+                if (fp_mask[j])
                 {
-                    if (mask[j])
+                    if (m_equal_to(tmp.bucket_data[idx], slot))
                     {
-                        Index idx = offset + i + j;
-                        if (m_equal_to(tmp.bucket_data[idx], slot))
-                            return idx;
+                        result.match = idx;
+                        return result;
                     }
+                }
+
+                if (free_mask[j] && result.free == INDEX_SENTINEL)
+                {
+                    result.free = idx;
                 }
             }
         }
 
-        for (; i < size; ++i)
+        for (; i < MAX_PROBE_COUNT; ++i)
         {
-            Index idx = offset + i;
+            Index idx = h + i;
+
             if (tmp.fingerprints[idx] == target_fp && m_equal_to(tmp.bucket_data[idx], slot))
-                return idx;
+            {
+                result.match = idx;
+                return result;
+            }
+
+            if (tmp.fingerprints[idx] == FINGERPRINT_SENTINEL && result.free == INDEX_SENTINEL)
+            {
+                result.free = idx;
+            }
         }
 
-        return INDEX_SENTINEL;
+        return result;
     }
 
     Index insert(RawSlot slot, RehashData& tmp)
     {
-        // The Power of Two Choices in Randomized Load Balancing:
-        // https://www.eecs.harvard.edu/~michaelm/postscripts/mythesis.pdf?utm_source=chatgpt.com
-        size_t h = m_hash(slot);
-        size_t h1 = h % tmp.num_buckets;
-        size_t h2 = std::rotl(h, 23) % tmp.num_buckets;
-        size_t offset1 = BucketSize * h1;
-        size_t offset2 = BucketSize * h2;
+        size_t h = m_hash(slot) % tmp.capacity;
 
-        uint8_t fp = h >> 56;
-        Index found = lookup(slot, offset1, tmp.bucket_sizes[h1], fp, tmp);
-        if (found != INDEX_SENTINEL)
-            return found;
+        uint8_t fp = (h >> 56) & 0xFE;  // Avoids 0xFF sentinel
+        LookupResult result = lookup(slot, h, fp, tmp);
+        if (result.match != INDEX_SENTINEL)
+            return result.match;
 
-        found = lookup(slot, offset2, tmp.bucket_sizes[h2], fp, tmp);
-        if (found != INDEX_SENTINEL)
-            return found;
-
-        if (tmp.bucket_sizes[h1] > tmp.bucket_sizes[h2])
-        {
-            std::swap(h1, h2);
-            std::swap(offset1, offset2);
-        }
-
-        if (tmp.bucket_sizes[h1] == BucketSize)
-        {
-            assert(tmp.bucket_sizes[h2] == BucketSize);
+        Index unstable_index = result.free;
+        if (unstable_index == INDEX_SENTINEL)
             return INDEX_SENTINEL;
-        }
-
-        Index unstable_index = offset1 + tmp.bucket_sizes[h1]++;
 
         tmp.bucket_data[unstable_index] = slot;
-        tmp.fingerprints[unstable_index] = h >> 56;
+        tmp.fingerprints[unstable_index] = fp;
 
         return unstable_index;
     }
@@ -260,11 +263,10 @@ private:
             ++num_subsequent_rehashes;
             ++m_statistics.m_num_rehashes;
 
-            std::cout << "Start rehash with load factor: " << load_factor() << std::endl;
-            size_t new_num_buckets = factor * m_num_buckets;
+            // std::cout << "Start rehash with load factor: " << load_factor() << std::endl;
             size_t new_capacity = factor * m_capacity;
 
-            auto tmp = RehashData(new_num_buckets, new_capacity);
+            auto tmp = RehashData(new_capacity);
 
             bool rehash_success = true;
 
@@ -294,94 +296,91 @@ private:
             }
             m_statistics.m_max_num_subsequent_rehashes = std::max(m_statistics.m_max_num_subsequent_rehashes, num_subsequent_rehashes);
 
-            m_num_buckets = new_num_buckets;
             m_capacity = new_capacity;
             std::swap(m_roots, tmp.roots);
             std::swap(m_bucket_data, tmp.bucket_data);
             std::swap(m_fingerprints, tmp.fingerprints);
-            std::swap(m_bucket_sizes, tmp.bucket_sizes);
 
             auto end = clock::now();
             m_statistics.m_total_rehash_time += std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-            std::cout << "Finish rehash with load factor: " << load_factor() << std::endl;
+            // std::cout << "Finish rehash with load factor: " << load_factor() << std::endl;
             return;
         }
     }
 
-    Index lookup(RawSlot slot, size_t offset, size_t size, uint8_t target_fp)
+    LookupResult lookup(RawSlot slot, size_t h, uint8_t target_fp)
     {
         using simd_t = std::experimental::native_simd<uint8_t>;
         constexpr size_t simd_width = simd_t::size();
 
-        simd_t key(target_fp);
+        simd_t key_fp(target_fp);
+        simd_t key_free(FINGERPRINT_SENTINEL);
+
+        LookupResult result;
 
         size_t i = 0;
 
-        for (; i + simd_width <= size; i += simd_width)
+        for (; i + simd_width <= MAX_PROBE_COUNT; i += simd_width)
         {
-            simd_t fp_vec(&m_fingerprints[offset + i], std::experimental::element_aligned);
+            simd_t fp_vec(&m_fingerprints[h + i], std::experimental::element_aligned);
 
-            auto mask = (fp_vec == key);
+            auto fp_mask = (fp_vec == key_fp);
+            auto free_mask = (fp_vec == key_free);
 
-            if (any_of(mask))
+            for (size_t j = 0; j < simd_width; ++j)
             {
-                for (size_t j = 0; j < simd_width; ++j)
+                Index idx = h + i + j;
+
+                if (fp_mask[j])
                 {
-                    if (mask[j])
+                    if (m_equal_to(m_bucket_data[idx], slot))
                     {
-                        Index idx = offset + i + j;
-                        if (m_equal_to(m_bucket_data[idx], slot))
-                            return idx;
+                        result.match = idx;
+                        return result;
                     }
+                }
+
+                if (free_mask[j] && result.free == INDEX_SENTINEL)
+                {
+                    result.free = idx;
                 }
             }
         }
 
-        for (; i < size; ++i)
+        for (; i < MAX_PROBE_COUNT; ++i)
         {
-            Index idx = offset + i;
+            Index idx = h + i;
+
             if (m_fingerprints[idx] == target_fp && m_equal_to(m_bucket_data[idx], slot))
-                return idx;
+            {
+                result.match = idx;
+                return result;
+            }
+
+            if (m_fingerprints[idx] == FINGERPRINT_SENTINEL && result.free == INDEX_SENTINEL)
+            {
+                result.free = idx;
+            }
         }
 
-        return INDEX_SENTINEL;
+        return result;
     }
 
     Index insert(RawSlot slot)
     {
-        // if (load_factor() >= MAX_LOAD_FACTOR)
-        //     return INDEX_SENTINEL;
-
-        // The Power of Two Choices in Randomized Load Balancing:
-        // https://www.eecs.harvard.edu/~michaelm/postscripts/mythesis.pdf?utm_source=chatgpt.com
-        size_t h = m_hash(slot);
-        size_t h1 = h % m_num_buckets;
-        size_t h2 = std::rotl(h, 23) % m_num_buckets;
-        size_t offset1 = BucketSize * h1;
-        size_t offset2 = BucketSize * h2;
-
-        uint8_t fp = h >> 56;
-        Index found = lookup(slot, offset1, m_bucket_sizes[h1], fp);
-        if (found != INDEX_SENTINEL)
-            return found;
-
-        found = lookup(slot, offset2, m_bucket_sizes[h2], fp);
-        if (found != INDEX_SENTINEL)
-            return found;
-
-        if (m_bucket_sizes[h1] > m_bucket_sizes[h2])
-        {
-            std::swap(h1, h2);
-            std::swap(offset1, offset2);
-        }
-
-        if (m_bucket_sizes[h1] == BucketSize)
-        {
-            assert(m_bucket_sizes[h2] == BucketSize);
+        if (load_factor() >= MAX_LOAD_FACTOR)
             return INDEX_SENTINEL;
-        }
 
-        Index unstable_index = offset1 + m_bucket_sizes[h1]++;
+        size_t h = m_hash(slot) % m_capacity;
+
+        uint8_t fp = (h >> 56) & 0xFE;  // Avoids 0xFF sentinel
+        LookupResult result = lookup(slot, h, fp);
+        if (result.match != INDEX_SENTINEL)
+            return result.match;
+
+        Index unstable_index = result.free;
+        if (unstable_index == INDEX_SENTINEL)
+            return INDEX_SENTINEL;
 
         m_bucket_data[unstable_index] = slot;
         m_fingerprints[unstable_index] = h >> 56;
@@ -418,20 +417,10 @@ private:
     }
 
 public:
-    TreeDatabase(size_t num_buckets = 1024) :
-        m_roots(),
-        m_bucket_data(),
-        m_fingerprints(),
-        m_bucket_sizes(),
-        m_num_buckets(num_buckets),
-        m_size(0),
-        m_capacity(num_buckets * BucketSize),
-        m_hash(),
-        m_equal_to()
+    TreeDatabase(size_t capacity = 1024) : m_roots(), m_bucket_data(), m_fingerprints(), m_size(0), m_capacity(capacity), m_hash(), m_equal_to()
     {
-        m_bucket_data.resize(m_capacity);
-        m_fingerprints.resize(m_capacity);
-        m_bucket_sizes.resize(m_num_buckets, 0);
+        m_bucket_data.resize(m_capacity + MAX_PROBE_COUNT, SLOT_SENTINEL);
+        m_fingerprints.resize(m_capacity + MAX_PROBE_COUNT, FINGERPRINT_SENTINEL);
 
         m_roots.insert(Slot(0, 0));
     }
@@ -572,14 +561,12 @@ public:
     size_t num_roots() const { return m_roots.size(); }
     size_t size() const { return m_size; }
     size_t capacity() const { return m_capacity; }
-    size_t num_buckets() const { return m_num_buckets; }
     double load_factor() const { return static_cast<double>(m_size) / m_capacity; };
     const Statistics& statistics() const { return m_statistics; }
 
     friend std::ostream& operator<<(std::ostream& os, const TreeDatabase& db)
     {
         os << "Bucket data: " << db.m_bucket_data << "\n"
-           << "Bucket sizes: " << db.m_bucket_sizes << "\n"
            << "Root indexed hash set: " << db.m_roots << "\n"
            << "Load factor: " << db.load_factor();
 

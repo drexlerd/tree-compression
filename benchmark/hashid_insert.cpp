@@ -48,7 +48,7 @@ static void BM_TreeCompressionInsert(benchmark::State& state)
 
     for (auto _ : state)
     {
-        v::TreeDatabase<valla::RawSlotHash, std::equal_to<valla::RawSlot>, 64> db;
+        v::TreeDatabase<valla::RawSlotHash, std::equal_to<valla::RawSlot>> db;
 
         for (size_t rep = 0; rep < repetitions; ++rep)
         {
