@@ -84,14 +84,14 @@ static thread_local UniqueObjectPool<std::vector<Entry>> s_stack_pool = UniqueOb
  * So the stored quotient fits in 49 bits. This is a ~24% reduction from 64 bits,
  * and storage shrinks further as m increases (i.e., as the table grows).
  */
-template<typename Hash = std::hash<Slot>, typename EqualTo = std::equal_to<Slot>, size_t BucketSize = 128>
+template<typename Hash = std::hash<Slot>, typename EqualTo = std::equal_to<Slot>, size_t BucketSize = 64>
 class TreeDatabase
 {
 private:
     static_assert(BucketSize != 0 && (BucketSize & (BucketSize - 1)) == 0 && "BucketSize must be a power of two.");
     static_assert(BucketSize <= 128 && "Bucket size must fit into uint8_t");
 
-    static constexpr Index INDEX_SENTINEL = std::numeric_limits<Index>::max();
+    static constexpr Index INDEX_SENTINEL = std::numeric_limits<Index>::max();  ///< used to indicate insertion failure to trigger a rehash.
 
     IndexedHashSet m_roots;
 
@@ -100,8 +100,6 @@ private:
     size_t m_num_buckets;
     size_t m_size;
     size_t m_capacity;
-
-    static size_t hash(Slot slot, size_t num_buckets) { return Hash {}(slot) % num_buckets; }
 
     struct RehashData
     {
@@ -121,37 +119,58 @@ private:
         }
     };
 
-    std::pair<Index, bool> insert(Slot slot, RehashData& tmp)
+    Index insert(Slot slot, RehashData& tmp)
     {
-        size_t h = hash(slot, tmp.num_buckets);
-        size_t offset = BucketSize * h;
+        // The Power of Two Choices in Randomized Load Balancing:
+        // https://www.eecs.harvard.edu/~michaelm/postscripts/mythesis.pdf?utm_source=chatgpt.com
+        size_t h = Hash {}(slot);
+        size_t h1 = h % tmp.num_buckets;
+        size_t h2 = std::rotl(h, 23) % tmp.num_buckets;
+        size_t offset1 = BucketSize * h1;
+        size_t offset2 = BucketSize * h2;
 
-        for (size_t i = 0; i < tmp.bucket_sizes[h]; ++i)
+        for (size_t i = 0; i < tmp.bucket_sizes[h1]; ++i)
         {
-            Index unstable_index = offset + i;
+            Index unstable_index = offset1 + i;
 
             if (EqualTo {}(tmp.bucket_data[unstable_index], slot))
-                return { unstable_index, true };
+                return unstable_index;
         }
 
-        if (tmp.bucket_sizes[h] == BucketSize)
-            return { INDEX_SENTINEL, false };
+        for (size_t i = 0; i < tmp.bucket_sizes[h2]; ++i)
+        {
+            Index unstable_index = offset2 + i;
 
-        Index unstable_index = offset + tmp.bucket_sizes[h]++;
+            if (EqualTo {}(tmp.bucket_data[unstable_index], slot))
+                return unstable_index;
+        }
+
+        if (tmp.bucket_sizes[h1] > tmp.bucket_sizes[h2])
+        {
+            std::swap(h1, h2);
+            std::swap(offset1, offset2);
+        }
+
+        if (tmp.bucket_sizes[h1] == BucketSize)
+        {
+            assert(tmp.bucket_sizes[h2] == BucketSize);
+            return INDEX_SENTINEL;
+        }
+
+        Index unstable_index = offset1 + tmp.bucket_sizes[h1]++;
 
         tmp.bucket_data[unstable_index] = slot;
 
-        return { unstable_index, true };
+        return unstable_index;
     }
 
-    std::pair<Index, bool> rehash_recursively(Index unstable_index, size_t size, RehashData& tmp)
+    Index rehash_recursively(Index unstable_index, size_t size, RehashData& tmp)
     {
         /* Base case 1: skipped node creation */
         if (size == 1)
-            return { unstable_index, true };
+            return unstable_index;
 
-        /* TODO: Base case 2: unstable index was already relocated
-           ATTENTION: this requires taking size into account. */
+        /* Note: caching relocation is expensive to cache because the tree structure depends on size. */
 
         const auto& slot = m_bucket_data[unstable_index];
 
@@ -166,12 +185,12 @@ private:
         const auto mid = std::bit_floor(size - 1);
 
         /* Conquer */
-        const auto [i1, i1_success] = rehash_recursively(slot.i1, mid, tmp);
-        if (!i1_success)
-            return { i1, false };
-        const auto [i2, i2_success] = rehash_recursively(slot.i2, size - mid, tmp);
-        if (!i2_success)
-            return { i2, false };
+        Index i1 = rehash_recursively(slot.i1, mid, tmp);
+        if (i1 == INDEX_SENTINEL)
+            return i1;
+        Index i2 = rehash_recursively(slot.i2, size - mid, tmp);
+        if (i2 == INDEX_SENTINEL)
+            return i2;
 
         return insert(Slot(i1, i2), tmp);
     }
@@ -193,11 +212,11 @@ private:
             // Relocate remaining roots
             for (Index stable_index = 1; stable_index < m_roots.size(); ++stable_index)
             {
-                const auto& root = m_roots[stable_index];
+                const Slot& root = m_roots[stable_index];
 
-                const auto [unstable_index, success] = rehash_recursively(root.i1, root.i2, tmp);
+                Index unstable_index = rehash_recursively(root.i1, root.i2, tmp);
 
-                if (!success)
+                if (unstable_index == INDEX_SENTINEL)
                 {
                     rehash_success = false;
                     break;
@@ -221,37 +240,59 @@ private:
         }
     }
 
-    std::pair<Index, bool> insert(Slot slot)
+    Index insert(Slot slot)
     {
-        size_t h = hash(slot, m_num_buckets);
-        size_t offset = BucketSize * h;
+        // The Power of Two Choices in Randomized Load Balancing:
+        // https://www.eecs.harvard.edu/~michaelm/postscripts/mythesis.pdf?utm_source=chatgpt.com
+        size_t h = Hash {}(slot);
+        size_t h1 = h % m_num_buckets;
+        size_t h2 = std::rotl(h, 23) % m_num_buckets;
+        size_t offset1 = BucketSize * h1;
+        size_t offset2 = BucketSize * h2;
 
-        for (size_t i = 0; i < m_bucket_sizes[h]; ++i)
+        for (size_t i = 0; i < m_bucket_sizes[h1]; ++i)
         {
-            Index unstable_index = offset + i;
+            Index unstable_index = offset1 + i;
 
             if (EqualTo {}(m_bucket_data[unstable_index], slot))
-                return { unstable_index, true };
+                return unstable_index;
         }
 
-        if (m_bucket_sizes[h] == BucketSize)
-            return { INDEX_SENTINEL, false };
+        for (size_t i = 0; i < m_bucket_sizes[h2]; ++i)
+        {
+            Index unstable_index = offset2 + i;
 
-        Index unstable_index = offset + m_bucket_sizes[h]++;
+            if (EqualTo {}(m_bucket_data[unstable_index], slot))
+                return unstable_index;
+        }
+
+        if (m_bucket_sizes[h1] > m_bucket_sizes[h2])
+        {
+            std::swap(h1, h2);
+            std::swap(offset1, offset2);
+        }
+
+        if (m_bucket_sizes[h1] == BucketSize)
+        {
+            assert(m_bucket_sizes[h2] == BucketSize);
+            return INDEX_SENTINEL;
+        }
+
+        Index unstable_index = offset1 + m_bucket_sizes[h1]++;
 
         m_bucket_data[unstable_index] = slot;
         ++m_size;
 
-        return { unstable_index, true };
+        return unstable_index;
     }
 
     template<std::input_iterator Iterator>
         requires std::same_as<std::iter_value_t<Iterator>, Index>
-    inline std::pair<Index, bool> insert_recursively(Iterator it, Iterator end, size_t size)
+    inline Index insert_recursively(Iterator it, Iterator end, size_t size)
     {
         /* Base cases */
         if (size == 1)
-            return { *it, true };  ///< Skip node creation
+            return *it;  ///< Skip node creation
 
         if (size == 2)
             return insert(Slot(*it, *(it + 1)));
@@ -262,12 +303,12 @@ private:
 
         /* Conquer */
         const auto mid_it = it + mid;
-        const auto [i1, i1_success] = insert_recursively(it, mid_it, mid);
-        if (!i1_success)
-            return { i1, false };
-        const auto [i2, i2_success] = insert_recursively(mid_it, end, size - mid);
-        if (!i2_success)
-            return { i2, false };
+        Index i1 = insert_recursively(it, mid_it, mid);
+        if (i1 == INDEX_SENTINEL)
+            return i1;
+        Index i2 = insert_recursively(mid_it, end, size - mid);
+        if (i2 == INDEX_SENTINEL)
+            return i2;
 
         return insert(Slot(i1, i2));
     }
@@ -303,9 +344,9 @@ public:
 
         while (true)
         {
-            const auto [unstable_index, success] = insert_recursively(range.begin(), range.end(), size);
+            Index unstable_index = insert_recursively(range.begin(), range.end(), size);
 
-            if (!success)
+            if (unstable_index == INDEX_SENTINEL)
             {
                 factor *= 2;
                 rehash(factor);
@@ -424,12 +465,14 @@ public:
     size_t size() const { return m_size; }
     size_t capacity() const { return m_capacity; }
     size_t num_buckets() const { return m_num_buckets; }
+    double load_factor() const { return static_cast<double>(m_size) / m_capacity; };
 
     friend std::ostream& operator<<(std::ostream& os, const TreeDatabase& db)
     {
         os << "Bucket data: " << db.m_bucket_data << "\n"
            << "Bucket sizes: " << db.m_bucket_sizes << "\n"
-           << "Root indexed hash set: " << db.m_roots;
+           << "Root indexed hash set: " << db.m_roots << "\n"
+           << "Load factor: " << db.load_factor();
 
         return os;
     }

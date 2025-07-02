@@ -51,7 +51,7 @@ inline bool is_within_bounds(const Container& container, size_t index)
 // Papers:
 // https://arxiv.org/pdf/1906.06015
 // https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=b7620871f53d759a15cf9e820584b89f984f74c1
-// https://link.springer.com/article/10.1007/s00453-022-00996-y^
+// https://link.springer.com/article/10.1007/s00453-022-00996-y
 
 using Index = uint32_t;  ///< Enough space for 4,294,967,295 indices
 
