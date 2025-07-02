@@ -24,7 +24,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <experimental/simd>
 #include <vector>
 
 namespace valla::tdb
@@ -85,7 +84,7 @@ static thread_local UniqueObjectPool<std::vector<Entry>> s_stack_pool = UniqueOb
  * So the stored quotient fits in 49 bits. This is a ~24% reduction from 64 bits,
  * and storage shrinks further as m increases (i.e., as the table grows).
  */
-template<typename Hash = std::hash<RawSlot>, typename EqualTo = std::equal_to<RawSlot>, size_t BucketSize = 32>
+template<typename Hash = std::hash<RawSlot>, typename EqualTo = std::equal_to<RawSlot>, size_t BucketSize = 8>
 class TreeDatabase
 {
 private:
@@ -93,6 +92,8 @@ private:
     static_assert(BucketSize <= 128 && "Bucket size must fit into uint8_t");
 
     static constexpr Index INDEX_SENTINEL = std::numeric_limits<Index>::max();  ///< used to indicate insertion failure to trigger a rehash.
+
+    static constexpr double MAX_LOAD_FACTOR = 0.7;
 
     IndexedHashSet m_roots;
 
@@ -104,6 +105,14 @@ private:
 
     Hash m_hash;
     EqualTo m_equal_to;
+
+    struct Statistics
+    {
+        size_t m_num_rehashes = 0;
+        size_t m_max_num_subsequent_rehashes = 1;
+    };
+
+    Statistics m_statistics;
 
     struct RehashData
     {
@@ -133,38 +142,21 @@ private:
         size_t offset1 = BucketSize * h1;
         size_t offset2 = BucketSize * h2;
 
-        using simd_t = std::experimental::native_simd<uint64_t>;
-        constexpr size_t simd_width = simd_t::size();
-
-        auto simd_lookup = [&](size_t offset, size_t size) -> Index
+        for (size_t i = 0; i < tmp.bucket_sizes[h1]; ++i)
         {
-            size_t i = 0;
-            for (; i + simd_width <= size; i += simd_width)
-            {
-                simd_t values(&tmp.bucket_data[offset + i], std::experimental::element_aligned);
-                simd_t key(slot);
-                auto mask = values == key;
-                if (any_of(mask))
-                    return offset + i + find_first_set(mask);
-            }
+            Index unstable_index = offset1 + i;
 
-            for (; i < size; ++i)
-            {
-                Index idx = offset + i;
-                if (m_equal_to(tmp.bucket_data[idx], slot))
-                    return idx;
-            }
+            if (m_equal_to(tmp.bucket_data[unstable_index], slot))
+                return unstable_index;
+        }
 
-            return INDEX_SENTINEL;
-        };
+        for (size_t i = 0; i < tmp.bucket_sizes[h2]; ++i)
+        {
+            Index unstable_index = offset2 + i;
 
-        Index found = simd_lookup(offset1, tmp.bucket_sizes[h1]);
-        if (found != INDEX_SENTINEL)
-            return found;
-
-        found = simd_lookup(offset2, tmp.bucket_sizes[h2]);
-        if (found != INDEX_SENTINEL)
-            return found;
+            if (m_equal_to(tmp.bucket_data[unstable_index], slot))
+                return unstable_index;
+        }
 
         if (tmp.bucket_sizes[h1] > tmp.bucket_sizes[h2])
         {
@@ -218,8 +210,13 @@ private:
 
     void rehash(double factor = 2.)
     {
+        size_t num_subsequent_rehashes = 0;
+
         while (true)
         {
+            ++num_subsequent_rehashes;
+            ++m_statistics.m_num_rehashes;
+
             std::cout << "Start rehash with load factor: " << load_factor() << std::endl;
             size_t new_num_buckets = factor * m_num_buckets;
             size_t new_capacity = factor * m_capacity;
@@ -252,6 +249,7 @@ private:
                 factor *= 2;
                 continue;
             }
+            m_statistics.m_max_num_subsequent_rehashes = std::max(m_statistics.m_max_num_subsequent_rehashes, num_subsequent_rehashes);
 
             m_num_buckets = new_num_buckets;
             m_capacity = new_capacity;
@@ -265,6 +263,9 @@ private:
 
     Index insert(RawSlot slot)
     {
+        if (load_factor() >= MAX_LOAD_FACTOR)
+            return INDEX_SENTINEL;
+
         // The Power of Two Choices in Randomized Load Balancing:
         // https://www.eecs.harvard.edu/~michaelm/postscripts/mythesis.pdf?utm_source=chatgpt.com
         size_t h = m_hash(slot);
@@ -273,38 +274,21 @@ private:
         size_t offset1 = BucketSize * h1;
         size_t offset2 = BucketSize * h2;
 
-        using simd_t = std::experimental::native_simd<uint64_t>;
-        constexpr size_t simd_width = simd_t::size();
-
-        auto simd_lookup = [&](size_t offset, size_t size) -> Index
+        for (size_t i = 0; i < m_bucket_sizes[h1]; ++i)
         {
-            size_t i = 0;
-            for (; i + simd_width <= size; i += simd_width)
-            {
-                simd_t values(&m_bucket_data[offset + i], std::experimental::element_aligned);
-                simd_t key(slot);
-                auto mask = values == key;
-                if (any_of(mask))
-                    return offset + i + find_first_set(mask);
-            }
+            Index unstable_index = offset1 + i;
 
-            for (; i < size; ++i)
-            {
-                Index idx = offset + i;
-                if (m_equal_to(m_bucket_data[idx], slot))
-                    return idx;
-            }
+            if (m_equal_to(m_bucket_data[unstable_index], slot))
+                return unstable_index;
+        }
 
-            return INDEX_SENTINEL;
-        };
+        for (size_t i = 0; i < m_bucket_sizes[h2]; ++i)
+        {
+            Index unstable_index = offset2 + i;
 
-        Index found = simd_lookup(offset1, m_bucket_sizes[h1]);
-        if (found != INDEX_SENTINEL)
-            return found;
-
-        found = simd_lookup(offset2, m_bucket_sizes[h2]);
-        if (found != INDEX_SENTINEL)
-            return found;
+            if (m_equal_to(m_bucket_data[unstable_index], slot))
+                return unstable_index;
+        }
 
         if (m_bucket_sizes[h1] > m_bucket_sizes[h2])
         {
@@ -508,6 +492,7 @@ public:
     size_t capacity() const { return m_capacity; }
     size_t num_buckets() const { return m_num_buckets; }
     double load_factor() const { return static_cast<double>(m_size) / m_capacity; };
+    const Statistics& statistics() const { return m_statistics; }
 
     friend std::ostream& operator<<(std::ostream& os, const TreeDatabase& db)
     {
