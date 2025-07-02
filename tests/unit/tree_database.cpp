@@ -23,7 +23,7 @@ namespace valla::tests
 
 TEST(VallaTests, TreeDatabaseTest)
 {
-    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>, 8> db(2);
+    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>> db;
 
     std::cout << db << std::endl << std::endl;
 
@@ -44,7 +44,7 @@ TEST(VallaTests, TreeDatabaseTest)
 
 TEST(VallaTests, TreeDatabase2Test)
 {
-    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>, 8> db(2);
+    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>> db;
 
     std::cout << db << std::endl << std::endl;
 
@@ -65,7 +65,7 @@ TEST(VallaTests, TreeDatabase2Test)
 
 TEST(VallaTests, TreeDatabaseSpecialCasesTest)
 {
-    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>, 8> db(2);
+    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>> db;
 
     std::cout << db << std::endl << std::endl;
 
@@ -75,7 +75,7 @@ TEST(VallaTests, TreeDatabaseSpecialCasesTest)
 
 TEST(VallaTests, TreeDatabaseExhaustiveTest)
 {
-    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>, 4> db(2);
+    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>> db;
 
     const size_t state_num = 10000;  // number of states
     const size_t state_size = 999;   // size of each state

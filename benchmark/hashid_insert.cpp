@@ -48,13 +48,16 @@ static void BM_TreeCompressionInsert(benchmark::State& state)
 
     for (auto _ : state)
     {
-        v::TreeDatabase<valla::SlotHash, std::equal_to<valla::Slot>, 8> db;
+        v::TreeDatabase<valla::SlotHash, std::equal_to<valla::Slot>> db;
 
         for (size_t rep = 0; rep < repetitions; ++rep)
         {
             for (const auto& s : all_states)
                 benchmark::DoNotOptimize(db.insert(s));
         }
+
+        // std::cout << "Num probes: " << db.statistics().m_num_probes << "\n"  //
+        //           << "Average probe length: " << static_cast<double>(db.statistics().m_sum_probe_lengths) / db.statistics().m_num_probes << std::endl;
 
         benchmark::ClobberMemory();
     }
