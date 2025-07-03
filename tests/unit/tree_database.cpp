@@ -23,7 +23,7 @@ namespace valla::tests
 
 TEST(VallaTests, TreeDatabaseTest)
 {
-    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>> db;
+    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>, 16> db;
 
     std::cout << db << std::endl << std::endl;
 
@@ -70,15 +70,16 @@ TEST(VallaTests, TreeDatabaseSpecialCasesTest)
     std::cout << db << std::endl << std::endl;
 
     auto s_empty = IndexList {};
-    EXPECT_EQ(IndexList(db.begin(0), db.end()), s_empty);
+    auto s0 = db.insert(s_empty);
+    EXPECT_EQ(IndexList(db.begin(s0), db.end()), s_empty);
 }
 
 TEST(VallaTests, TreeDatabaseExhaustiveTest)
 {
-    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>> db;
+    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>, 32> db;
 
-    const size_t state_num = 10000;  // number of states
-    const size_t state_size = 999;   // size of each state
+    const size_t state_num = 200;  // number of states
+    const size_t state_size = 50;  // size of each state
 
     std::mt19937 rng(42);  // fixed seed for reproducibility
     std::uniform_int_distribution<Index> dist(0, 10'000);

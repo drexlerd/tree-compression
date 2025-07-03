@@ -23,7 +23,7 @@ project(valla VERSION 0.1 LANGUAGES C CXX)
 
 include(GNUInstallDirs)
 
-# Compilation flags, some configuration-specific
+# Compilation flags, some configuration-specific  -fsanitize=address -fsanitize-recover=address
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wextra -pedantic -fPIC")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG -fomit-frame-pointer")
 set(CMAKE_CXX_FLAGS_DEBUG "-O3 -DDEBUG")

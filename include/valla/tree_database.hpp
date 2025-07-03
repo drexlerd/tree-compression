@@ -103,7 +103,8 @@ private:
         kSentinel = -1,  // 0b11111111
     };
 
-    IndexedHashSet m_roots;
+    std::vector<Index> m_stable_to_unstable;
+    absl::flat_hash_map<Index, Index> m_unstable_to_stable;
 
     std::vector<Slot> m_slots;
     std::vector<ctrl_t> m_controls;
@@ -126,14 +127,19 @@ private:
     struct RehashData
     {
         size_t capacity;
-        IndexedHashSet roots;
         std::vector<Slot> slots;
         std::vector<ctrl_t> controls;
 
-        explicit RehashData(size_t capacity) : capacity(capacity), roots(), slots(capacity), controls(capacity, ctrl_t::kEmpty) {}
+        explicit RehashData(size_t capacity) : capacity(capacity), slots(capacity), controls()
+        {
+            // Sentinel-padded rolling buffer
+            controls.reserve(capacity + 16);
+            controls.resize(capacity, ctrl_t::kEmpty);
+            controls.resize(capacity + 16, ctrl_t::kSentinel);
+        }
     };
 
-    alignas(16) inline static const __m128i kEmptyPattern = _mm_set1_epi8(static_cast<int8_t>(ctrl_t::kEmpty));
+    alignas(16) inline static const __m128i kEmptyPattern = _mm_set1_epi8(static_cast<signed char>(ctrl_t::kEmpty));
 
     Index insert(Slot slot, RehashData& tmp)
     {
@@ -141,39 +147,53 @@ private:
         size_t mask = (tmp.capacity - 1);
         size_t i = h & mask;
         ctrl_t ctrl = static_cast<ctrl_t>(h >> 57);
+        assert(static_cast<int8_t>(ctrl) >= 0);
 
         while (true)
         {
             // Load 16 control bytes
             __m128i ctrl_block = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&tmp.controls[i]));
+            __m128i broadcast_ctrl = _mm_set1_epi8(static_cast<signed char>(ctrl));
 
-            // Compare with kEmpty
-            __m128i cmp = _mm_cmpeq_epi8(ctrl_block, kEmptyPattern);
+            // Compare against ctrl byte
+            __m128i cmp_ctrl = _mm_cmpeq_epi8(ctrl_block, broadcast_ctrl);
+            int mask_ctrl = _mm_movemask_epi8(cmp_ctrl);
 
-            // Create bitmask from comparison
-            int mask16 = _mm_movemask_epi8(cmp);
-
-            // First: check all 16 for equality
-            for (int offset = 0; offset < 16; ++offset)
+            // Check if slot exists
+            while (mask_ctrl != 0)
             {
+                int offset = __builtin_ctz(mask_ctrl);
                 size_t idx = (i + offset) & mask;
+
                 if (m_equal_to(tmp.slots[idx], slot))
                 {
                     m_statistics.m_sum_probe_lengths += offset;
                     return idx;
                 }
+
+                mask_ctrl &= mask_ctrl - 1;  // Clear the lowest set bit
             }
 
+            // Compare against kEmpty
+            __m128i cmp_empty = _mm_cmpeq_epi8(ctrl_block, kEmptyPattern);
+            int mask_empty = _mm_movemask_epi8(cmp_empty);
+
             // Second: insert into first empty slot if found
-            if (mask16 != 0)
+            if (mask_empty != 0)
             {
-                int offset = __builtin_ctz(mask16);
-                size_t idx = (i + offset) & mask;
-                tmp.slots[idx] = slot;
-                tmp.controls[idx] = ctrl;
-                ++m_statistics.m_num_probes;
+                int offset = __builtin_ctz(mask_empty);
                 m_statistics.m_sum_probe_lengths += offset;
-                return idx;
+                size_t idx = (i + offset) & mask;
+
+                if (tmp.controls[idx] == ctrl_t::kEmpty)
+                {
+                    assert(tmp.controls[idx] == ctrl_t::kEmpty && "Unexpected overwrite!");
+
+                    tmp.slots[idx] = slot;
+                    tmp.controls[idx] = ctrl;
+                    ++m_statistics.m_num_probes;
+                    return idx;
+                }
             }
 
             // Else probe further
@@ -213,37 +233,37 @@ private:
 
         auto start = clock::now();  // Start timing
 
-        while (true)
+        ++m_statistics.m_num_rehashes;
+
+        size_t new_capacity = factor * m_capacity;
+
+        auto tmp = RehashData(new_capacity);
+
+        // Relocate trees underlying the stable indices
+        m_unstable_to_stable.clear();
+
+        // Skip the empty root.
+        for (Index stable_index = 1; stable_index < m_stable_to_unstable.size(); ++stable_index)
         {
-            ++m_statistics.m_num_rehashes;
+            Index unstable_index = m_stable_to_unstable[stable_index];
 
-            // std::cout << "Start rehash with load factor: " << load_factor() << std::endl;
-            size_t new_capacity = factor * m_capacity;
+            const Slot& root = m_slots[unstable_index];
 
-            auto tmp = RehashData(new_capacity);
+            assert(root.i2 > 0);  // Ensure nonempty.
 
-            // Relocate remaining roots
-            for (Index stable_index = 0; stable_index < m_roots.size(); ++stable_index)
-            {
-                const Slot& root = m_roots[stable_index];
+            unstable_index = rehash_recursively(root.i1, root.i2, tmp);
+            unstable_index = insert(Slot(unstable_index, root.i2), tmp);
 
-                if (root.i2 > 0)
-                {
-                    Index unstable_index = rehash_recursively(root.i1, root.i2, tmp);
-
-                    tmp.roots.insert(Slot(unstable_index, root.i2));
-                }
-            }
-
-            m_capacity = new_capacity;
-            std::swap(m_roots, tmp.roots);
-            std::swap(m_slots, tmp.slots);
-            std::swap(m_controls, tmp.controls);
-            auto end = clock::now();
-            m_statistics.m_total_rehash_time += std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-            // std::cout << "Finish rehash with load factor: " << load_factor() << std::endl;
-            return;
+            m_unstable_to_stable.emplace(unstable_index, stable_index);
+            m_stable_to_unstable[stable_index] = unstable_index;
         }
+
+        m_capacity = new_capacity;
+        std::swap(m_slots, tmp.slots);
+        std::swap(m_controls, tmp.controls);
+
+        auto end = clock::now();
+        m_statistics.m_total_rehash_time += std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     }
 
     Index insert(Slot slot)
@@ -252,40 +272,57 @@ private:
         size_t mask = (m_capacity - 1);
         size_t i = h & mask;
         ctrl_t ctrl = static_cast<ctrl_t>(h >> 57);
+        assert(static_cast<int8_t>(ctrl) >= 0);
 
         while (true)
         {
             // Load 16 control bytes
             __m128i ctrl_block = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&m_controls[i]));
+            __m128i broadcast_ctrl = _mm_set1_epi8(static_cast<signed char>(ctrl));
 
-            // Compare with kEmpty
-            __m128i cmp = _mm_cmpeq_epi8(ctrl_block, kEmptyPattern);
+            // Compare against ctrl byte
+            __m128i cmp_ctrl = _mm_cmpeq_epi8(ctrl_block, broadcast_ctrl);
+            int mask_ctrl = _mm_movemask_epi8(cmp_ctrl);
 
-            // Create bitmask from comparison
-            int mask16 = _mm_movemask_epi8(cmp);
-
-            // First: check all 16 for equality
-            for (int offset = 0; offset < 16; ++offset)
+            // Check if slot exists
+            while (mask_ctrl != 0)
             {
+                int offset = __builtin_ctz(mask_ctrl);
                 size_t idx = (i + offset) & mask;
+
+                assert(m_controls[idx] == ctrl);
+
                 if (m_equal_to(m_slots[idx], slot))
                 {
                     m_statistics.m_sum_probe_lengths += offset;
                     return idx;
                 }
+
+                mask_ctrl &= mask_ctrl - 1;  // Clear the lowest set bit
             }
 
+            // Compare against kEmpty
+            __m128i cmp_empty = _mm_cmpeq_epi8(ctrl_block, kEmptyPattern);
+            int mask_empty = _mm_movemask_epi8(cmp_empty);
+
             // Second: insert into first empty slot if found
-            if (mask16 != 0)
+            if (mask_empty != 0)
             {
-                int offset = __builtin_ctz(mask16);
+                int offset = __builtin_ctz(mask_empty);
                 m_statistics.m_sum_probe_lengths += offset;
                 size_t idx = (i + offset) & mask;
-                m_slots[idx] = slot;
-                m_controls[idx] = ctrl;
-                ++m_size;
-                ++m_statistics.m_num_probes;
-                return idx;
+
+                if (m_controls[idx] == ctrl_t::kEmpty)
+                {
+                    assert(m_controls[idx] == ctrl_t::kEmpty && "Unexpected overwrite!");
+
+                    m_slots[idx] = slot;
+                    m_controls[idx] = ctrl;
+                    ++m_size;
+                    ++m_statistics.m_num_probes;
+
+                    return idx;
+                }
             }
 
             // Else probe further
@@ -318,10 +355,16 @@ private:
     }
 
 public:
-    TreeDatabase() : m_roots(), m_slots(), m_controls(), m_size(0), m_capacity(InitialCapacity), m_hash(), m_equal_to()
+    TreeDatabase() : m_stable_to_unstable(), m_unstable_to_stable(), m_slots(), m_controls(), m_size(0), m_capacity(InitialCapacity), m_hash(), m_equal_to()
     {
         m_slots.resize(m_capacity);
+
+        // Sentinel-padded rolling buffer
+        m_controls.reserve(m_capacity + 16);
         m_controls.resize(m_capacity, ctrl_t::kEmpty);
+        m_controls.resize(m_capacity + 16, ctrl_t::kSentinel);
+
+        m_stable_to_unstable.push_back(0);  // dummy
     }
 
     template<std::ranges::input_range Range>
@@ -333,15 +376,19 @@ public:
         // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
         const auto size = static_cast<Index>(std::distance(range.begin(), range.end()));
 
-        if (size == 0)                                        ///< Special case for empty range.
-            return m_roots.insert(Slot(0, 0)).first->second;  ///< 0 marks the empty range.
+        if (size == 0)  ///< Special case for empty range.
+            return 0;
 
         if ((static_cast<double>(m_size + 2 * size) / m_capacity) >= MAX_LOAD_FACTOR)
             rehash(2.0);
 
-        Index unstable_index = insert_recursively(range.begin(), range.end(), size);
+        Index unstable_index = insert(Slot(insert_recursively(range.begin(), range.end(), size), size));
 
-        return m_roots.insert(Slot(unstable_index, size)).first->second;
+        auto result = m_unstable_to_stable.emplace(unstable_index, m_stable_to_unstable.size());
+        if (result.second)
+            m_stable_to_unstable.push_back(unstable_index);
+
+        return result.first->second;
     }
 
     /**
@@ -415,18 +462,19 @@ public:
         {
             assert(m_db);
 
-            if (begin)
+            if (begin && stable_index > 0)
             {
                 m_stack = s_stack_pool.get_or_allocate();
                 m_stack->clear();
 
-                const auto& root = db.m_roots[stable_index];
+                Index unstable_index = db.m_stable_to_unstable[stable_index];
 
-                if (root.i2 > 0)  ///< Push to stack iff there are elements.
-                {
-                    m_stack->emplace_back(root.i1, root.i2);
-                    advance();
-                }
+                const auto& root = db.m_slots[unstable_index];
+
+                assert(root.i2 > 0);  // Ensure nonempty
+
+                m_stack->emplace_back(root.i1, root.i2);
+                advance();
             }
         }
         value_type operator*() const { return m_value; }
@@ -448,7 +496,8 @@ public:
     const_iterator begin(Index stable_index) const { return const_iterator(*this, stable_index, true); }
     const_iterator end() const { return const_iterator(); }
 
-    size_t num_roots() const { return m_roots.size(); }
+    Index empty_stable_index() const { return 0; }
+    size_t num_roots() const { return m_stable_to_unstable.size(); }
     size_t size() const { return m_size; }
     size_t capacity() const { return m_capacity; }
     double load_factor() const { return static_cast<double>(m_size) / m_capacity; };
@@ -457,7 +506,6 @@ public:
     friend std::ostream& operator<<(std::ostream& os, const TreeDatabase& db)
     {
         os << "Bucket data: " << db.m_slots << "\n"
-           << "Root indexed hash set: " << db.m_roots << "\n"
            << "Load factor: " << db.load_factor();
 
         return os;

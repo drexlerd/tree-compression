@@ -16,6 +16,7 @@ if (NOT abseil_FOUND)
             -DCMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}
             -DCMAKE_PREFIX_PATH=${CMAKE_INSTALL_PREFIX}
             -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+            # -DCMAKE_CXX_FLAGS="-fsanitize=address"
     )
 
     message(STATUS "Preparing external project \"abseil\" with args:")
