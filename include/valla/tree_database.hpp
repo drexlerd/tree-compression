@@ -133,9 +133,9 @@ private:
         explicit RehashData(size_t capacity) : capacity(capacity), slots(capacity), controls()
         {
             // Sentinel-padded rolling buffer
-            controls.reserve(capacity + 16);
+            controls.reserve(capacity + 15);
             controls.resize(capacity, ctrl_t::kEmpty);
-            controls.resize(capacity + 16, ctrl_t::kSentinel);
+            controls.resize(capacity + 15, ctrl_t::kSentinel);
         }
     };
 
@@ -151,6 +151,9 @@ private:
 
         while (true)
         {
+            assert(i < tmp.capacity);
+            assert(i + 15 < tmp.controls.size());
+
             // Load 16 control bytes
             __m128i ctrl_block = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&tmp.controls[i]));
             __m128i broadcast_ctrl = _mm_set1_epi8(static_cast<signed char>(ctrl));
@@ -276,6 +279,9 @@ private:
 
         while (true)
         {
+            assert(i < m_capacity);
+            assert(i + 15 < m_controls.size());
+
             // Load 16 control bytes
             __m128i ctrl_block = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&m_controls[i]));
             __m128i broadcast_ctrl = _mm_set1_epi8(static_cast<signed char>(ctrl));
@@ -289,8 +295,6 @@ private:
             {
                 int offset = __builtin_ctz(mask_ctrl);
                 size_t idx = (i + offset) & mask;
-
-                assert(m_controls[idx] == ctrl);
 
                 if (m_equal_to(m_slots[idx], slot))
                 {
@@ -360,9 +364,9 @@ public:
         m_slots.resize(m_capacity);
 
         // Sentinel-padded rolling buffer
-        m_controls.reserve(m_capacity + 16);
+        m_controls.reserve(m_capacity + 15);
         m_controls.resize(m_capacity, ctrl_t::kEmpty);
-        m_controls.resize(m_capacity + 16, ctrl_t::kSentinel);
+        m_controls.resize(m_capacity + 15, ctrl_t::kSentinel);
 
         m_stable_to_unstable.push_back(0);  // dummy
     }

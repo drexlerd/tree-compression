@@ -23,7 +23,7 @@ namespace valla::tests
 
 TEST(VallaTests, TreeDatabaseTest)
 {
-    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>, 16> db;
+    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>, 32> db;
 
     std::cout << db << std::endl << std::endl;
 
@@ -76,12 +76,19 @@ TEST(VallaTests, TreeDatabaseSpecialCasesTest)
 
 TEST(VallaTests, TreeDatabaseExhaustiveTest)
 {
-    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>, 32> db;
+    tdb::TreeDatabase<SlotHash, std::equal_to<Slot>> db;
 
-    const size_t state_num = 200;  // number of states
-    const size_t state_size = 50;  // size of each state
+    std::random_device rd;   // Seed
+    std::mt19937 gen(rd());  // Mersenne Twister engine
+
+    std::uniform_int_distribution<Index> state_num_dist(1'000, 10'000);
+    std::uniform_int_distribution<Index> state_size_dist(33, 66);
+
+    const size_t state_num = state_num_dist(gen);    // number of states
+    const size_t state_size = state_size_dist(gen);  // size of each state
 
     std::mt19937 rng(42);  // fixed seed for reproducibility
+
     std::uniform_int_distribution<Index> dist(0, 10'000);
 
     std::vector<IndexList> all_states;
@@ -98,6 +105,7 @@ TEST(VallaTests, TreeDatabaseExhaustiveTest)
         s.erase(std::unique(s.begin(), s.end()), s.end());
         all_states.push_back(std::move(s));
     }
+    all_states.push_back(IndexList {});
 
     IndexList all_roots;
 
