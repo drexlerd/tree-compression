@@ -234,23 +234,23 @@ private:
 
             bool rehash_success = true;
 
-            // Relocate empty root
-            tmp.roots.insert(Slot(0, 0));
-
             // Relocate remaining roots
-            for (Index stable_index = 1; stable_index < m_roots.size(); ++stable_index)
+            for (Index stable_index = 0; stable_index < m_roots.size(); ++stable_index)
             {
                 const Slot& root = m_roots[stable_index];
 
-                Index unstable_index = rehash_recursively(root.i1, root.i2, tmp);
-
-                if (unstable_index == INDEX_SENTINEL)
+                if (root.i2 > 0)
                 {
-                    rehash_success = false;
-                    break;
-                }
+                    Index unstable_index = rehash_recursively(root.i1, root.i2, tmp);
 
-                tmp.roots.insert(Slot(unstable_index, root.i2));
+                    if (unstable_index == INDEX_SENTINEL)
+                    {
+                        rehash_success = false;
+                        break;
+                    }
+
+                    tmp.roots.insert(Slot(unstable_index, root.i2));
+                }
             }
 
             if (!rehash_success)
@@ -354,8 +354,6 @@ public:
     {
         m_slots.resize(m_capacity);
         m_controls.resize(m_capacity, ctrl_t::kEmpty);
-
-        m_roots.insert(Slot(0, 0));
     }
 
     template<std::ranges::input_range Range>
@@ -367,8 +365,8 @@ public:
         // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
         const auto size = static_cast<Index>(std::distance(range.begin(), range.end()));
 
-        if (size == 0)  ///< Special case for empty range.
-            return 0;   ///< 0 marks the empty range.
+        if (size == 0)                                        ///< Special case for empty range.
+            return m_roots.insert(Slot(0, 0)).first->second;  ///< 0 marks the empty range.
 
         double factor = 1.0;
 
