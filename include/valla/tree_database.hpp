@@ -116,7 +116,6 @@ private:
     struct Statistics
     {
         size_t m_num_rehashes = 0;
-        size_t m_max_num_subsequent_rehashes = 1;
         std::chrono::milliseconds m_total_rehash_time = std::chrono::milliseconds::zero();
         size_t m_num_probes = 0;
         size_t m_sum_probe_lengths = 0;
@@ -195,9 +194,7 @@ private:
 
         /* Base case 3: rellocate slot */
         if (size == 2)
-        {
             return insert(slot, tmp);
-        }
 
         /* Divide */
         assert(size >= 2);
@@ -205,11 +202,7 @@ private:
 
         /* Conquer */
         Index i1 = rehash_recursively(slot.i1, mid, tmp);
-        if (i1 == INDEX_SENTINEL)
-            return i1;
         Index i2 = rehash_recursively(slot.i2, size - mid, tmp);
-        if (i2 == INDEX_SENTINEL)
-            return i2;
 
         return insert(Slot(i1, i2), tmp);
     }
@@ -218,21 +211,16 @@ private:
     {
         using clock = std::chrono::high_resolution_clock;
 
-        size_t num_subsequent_rehashes = 0;
-
         auto start = clock::now();  // Start timing
 
         while (true)
         {
-            ++num_subsequent_rehashes;
             ++m_statistics.m_num_rehashes;
 
             // std::cout << "Start rehash with load factor: " << load_factor() << std::endl;
             size_t new_capacity = factor * m_capacity;
 
             auto tmp = RehashData(new_capacity);
-
-            bool rehash_success = true;
 
             // Relocate remaining roots
             for (Index stable_index = 0; stable_index < m_roots.size(); ++stable_index)
@@ -243,22 +231,9 @@ private:
                 {
                     Index unstable_index = rehash_recursively(root.i1, root.i2, tmp);
 
-                    if (unstable_index == INDEX_SENTINEL)
-                    {
-                        rehash_success = false;
-                        break;
-                    }
-
                     tmp.roots.insert(Slot(unstable_index, root.i2));
                 }
             }
-
-            if (!rehash_success)
-            {
-                factor *= 2;
-                continue;
-            }
-            m_statistics.m_max_num_subsequent_rehashes = std::max(m_statistics.m_max_num_subsequent_rehashes, num_subsequent_rehashes);
 
             m_capacity = new_capacity;
             std::swap(m_roots, tmp.roots);
@@ -273,9 +248,6 @@ private:
 
     Index insert(Slot slot)
     {
-        if (load_factor() >= MAX_LOAD_FACTOR)
-            return INDEX_SENTINEL;
-
         size_t h = m_hash(slot);
         size_t mask = (m_capacity - 1);
         size_t i = h & mask;
@@ -340,11 +312,7 @@ private:
         /* Conquer */
         const auto mid_it = it + mid;
         Index i1 = insert_recursively(it, mid_it, mid);
-        if (i1 == INDEX_SENTINEL)
-            return i1;
         Index i2 = insert_recursively(mid_it, end, size - mid);
-        if (i2 == INDEX_SENTINEL)
-            return i2;
 
         return insert(Slot(i1, i2));
     }
@@ -368,21 +336,12 @@ public:
         if (size == 0)                                        ///< Special case for empty range.
             return m_roots.insert(Slot(0, 0)).first->second;  ///< 0 marks the empty range.
 
-        double factor = 1.0;
+        if ((static_cast<double>(m_size + 2 * size) / m_capacity) >= MAX_LOAD_FACTOR)
+            rehash(2.0);
 
-        while (true)
-        {
-            Index unstable_index = insert_recursively(range.begin(), range.end(), size);
+        Index unstable_index = insert_recursively(range.begin(), range.end(), size);
 
-            if (unstable_index == INDEX_SENTINEL)
-            {
-                factor *= 2;
-                rehash(factor);
-                continue;
-            }
-
-            return m_roots.insert(Slot(unstable_index, size)).first->second;
-        }
+        return m_roots.insert(Slot(unstable_index, size)).first->second;
     }
 
     /**
