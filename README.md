@@ -1,6 +1,6 @@
 # Tree-Compression
 
-This repository aims to be a playground around tree compression methods.
+This repository contains implementations of two variants of tree compression: plain and delta. The plain tree compression inserts values of an input sequence as given, while the delta tree compression inserts the differences between adjacent values. Both implementations assume sorted input sequences, which often results in better sharing capabilities, and therefore, lower memory footprint.
 
 ## Getting Started
 
@@ -33,22 +33,6 @@ cmake --build build -j$(nproc)
 cmake --install build --prefix=<path/to/installation-directory>
 ```
 
-## Available State Compression Methods
-
-1. Chain of Perfectly Balanced Binary Trees (CPBBT)
-
-The following table shows the properties of our implementations.
-
-| Configuration     |     Variable-length | Multi-core      |
-| :---------------- | ------------------: | --------------: | 
-| CPBBT             |                 YES |              NO |
-
 ### Benchmarking
 
-The benchmark framework depends on GoogleBenchmark and requires the additional compile flag `-DBUILD_PROFILING=ON` to be set in the cmake configure step. The results from the GitHub action can be viewed (here)[https://drexlerd.github.io/tree-compression/dev/bench/].
-
-
-## TODOs
-
-- add automated performance benchmarking with some artificial benchmarks to compare and visualize upon commit.
-- add implementation of clearly table: https://ieeexplore.ieee.org/document/1676499
+The benchmark framework depends on GoogleBenchmark and requires the additional compile flag `-DBUILD_PROFILING=ON` to be set in the cmake configure step. The results from the GitHub action can be viewed [here](https://drexlerd.github.io/tree-compression/dev/bench/).

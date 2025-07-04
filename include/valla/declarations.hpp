@@ -56,9 +56,10 @@ inline bool is_within_bounds(const Container& container, size_t index)
 // https://link.springer.com/article/10.1007/s00453-022-00996-y
 
 using Index = uint32_t;  ///< Enough space for 4,294,967,295 indices
+using IndexList = std::vector<Index>;
 
 /**
- * Integer slot
+ * Slot
  */
 
 struct Slot
@@ -80,9 +81,7 @@ struct Slot
 
 static_assert(alignof(Slot) == 4);
 
-static constexpr const Slot EMPTY_ROOT_SLOT = Slot(Index(0), Index(0));  ///< represents the empty state.
-
-using IndexList = std::vector<Index>;
+static constexpr const Slot EMPTY_ROOT_SLOT = Slot();  ///< represents the empty state.
 
 /**
  * Printing
@@ -143,20 +142,20 @@ struct SlotHash
 // we reference to stable_to_unstable to access this piece of information.
 struct IndexReferencedSlotHash
 {
-    std::reference_wrapper<const std::vector<Slot>> stable_to_unstable;
+    const std::vector<Slot>& stable_to_unstable;
 
     IndexReferencedSlotHash(const std::vector<Slot>& stable_to_unstable) : stable_to_unstable(stable_to_unstable) {}
 
     size_t operator()(Index el) const
     {
-        assert(el < stable_to_unstable.get().size());
-        return SlotHash {}(stable_to_unstable.get()[el]);
+        assert(el < stable_to_unstable.size());
+        return SlotHash {}(stable_to_unstable[el]);
     }
 };
 
 struct IndexReferencedSlotEqualTo
 {
-    std::reference_wrapper<const std::vector<Slot>> stable_to_unstable;
+    const std::vector<Slot>& stable_to_unstable;
 
     IndexReferencedSlotEqualTo(const std::vector<Slot>& stable_to_unstable) : stable_to_unstable(stable_to_unstable) {}
 
@@ -164,7 +163,7 @@ struct IndexReferencedSlotEqualTo
     {
         assert(lhs < stable_to_unstable.get().size());
         assert(rhs < stable_to_unstable.get().size());
-        return stable_to_unstable.get()[lhs] == stable_to_unstable.get()[rhs];
+        return stable_to_unstable[lhs] == stable_to_unstable[rhs];
     }
 };
 
