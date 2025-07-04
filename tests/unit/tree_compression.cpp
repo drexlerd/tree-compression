@@ -30,8 +30,8 @@ TEST(VallaTests, TreeCompressionTest)
     {
         const auto s0 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
         const auto [s0_result, success] = root_table.insert(plain::insert(s0, tree_table));
-        const auto& s0_root = s0_result->first;
-        const auto& s0_idx = s0_result->second;
+        const auto& s0_idx = *s0_result;
+        const auto& s0_root = root_table[s0_idx];
 
         EXPECT_EQ(tree_table.size(), 8);
         EXPECT_EQ(root_table.size(), 1);
@@ -46,8 +46,8 @@ TEST(VallaTests, TreeCompressionTest)
     {
         const auto s1 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
         const auto [s1_result, success] = root_table.insert(plain::insert(s1, tree_table));
-        const auto& s1_root = s1_result->first;
-        const auto& s1_idx = s1_result->second;
+        const auto& s1_idx = *s1_result;
+        const auto& s1_root = root_table[s1_idx];
 
         EXPECT_EQ(tree_table.size(), 9);
         EXPECT_EQ(root_table.size(), 2);
@@ -62,8 +62,8 @@ TEST(VallaTests, TreeCompressionTest)
     {
         const auto s2 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
         const auto [s2_result, success] = root_table.insert(plain::insert(s2, tree_table));
-        const auto& s2_root = s2_result->first;
-        const auto& s2_idx = s2_result->second;
+        const auto& s2_idx = *s2_result;
+        const auto& s2_root = root_table[s2_idx];
 
         EXPECT_EQ(tree_table.size(), 11);
         EXPECT_EQ(root_table.size(), 3);
@@ -78,8 +78,8 @@ TEST(VallaTests, TreeCompressionTest)
     {
         const auto s3 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
         const auto [s3_result, success] = root_table.insert(plain::insert(s3, tree_table));
-        const auto& s3_root = s3_result->first;
-        const auto& s3_idx = s3_result->second;
+        const auto& s3_idx = *s3_result;
+        const auto& s3_root = root_table[s3_idx];
 
         EXPECT_EQ(tree_table.size(), 11);
         EXPECT_EQ(root_table.size(), 3);
@@ -101,8 +101,8 @@ TEST(VallaTests, TreeCompressionEdgeCasesTest)
     {
         const auto s0 = IndexList {};
         const auto [s0_result, success] = root_table.insert(plain::insert(s0, tree_table));
-        const auto& s0_root = s0_result->first;
-        const auto& s0_idx = s0_result->second;
+        const auto& s0_idx = *s0_result;
+        const auto& s0_root = root_table[s0_idx];
 
         EXPECT_EQ(tree_table.size(), 0);
         EXPECT_EQ(root_table.size(), 1);
@@ -117,8 +117,8 @@ TEST(VallaTests, TreeCompressionEdgeCasesTest)
     {
         const auto s1 = IndexList { 0 };
         const auto [s1_result, success] = root_table.insert(plain::insert(s1, tree_table));
-        const auto& s1_root = s1_result->first;
-        const auto& s1_idx = s1_result->second;
+        const auto& s1_idx = *s1_result;
+        const auto& s1_root = root_table[s1_idx];
 
         EXPECT_EQ(tree_table.size(), 0);
         EXPECT_EQ(root_table.size(), 2);
@@ -140,8 +140,8 @@ TEST(VallaTests, TreeCompressionIteratorTest)
     {
         const auto s0 = IndexList { 1, 2, 4, 5, 6 };
         const auto [s0_result, success] = root_table.insert(plain::insert(s0, tree_table));
-        const auto& s0_root = s0_result->first;
-        [[maybe_unused]] const auto& s0_idx = s0_result->second;
+        const auto& s0_idx = *s0_result;
+        const auto& s0_root = root_table[s0_idx];
 
         EXPECT_EQ(s0, IndexList(plain::begin(s0_root, tree_table), plain::end()));
     }
