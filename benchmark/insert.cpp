@@ -17,11 +17,11 @@
 
 #include <benchmark/benchmark.h>
 #include <valla/indexed_hash_set.hpp>
-#include <valla/tree_compression.hpp>
+#include <valla/uint/tree_compression.hpp>
 
 namespace valla::benchmarks
 {
-namespace v = valla::plain;
+namespace v = valla::u::plain;
 
 /// @brief In this benchmark, we evaluate the performance of accessing data in sequence
 static void BM_TreeCompressionInsert(benchmark::State& state)
@@ -49,8 +49,8 @@ static void BM_TreeCompressionInsert(benchmark::State& state)
 
     for (auto _ : state)
     {
-        IndexedHashSet tree_table;
-        IndexedHashSet root_table;
+        IndexedHashSet<Index> tree_table;
+        IndexedHashSet<Index> root_table;
 
         for (size_t rep = 0; rep < repetitions; ++rep)
         {

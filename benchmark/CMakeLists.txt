@@ -2,10 +2,6 @@ find_package(benchmark "1.8.3" REQUIRED benchmark Main PATHS ${CMAKE_PREFIX_PATH
 # Set result variables
 find_package(benchmark)
 
-add_executable(hashid_insert "hashid_insert.cpp")
-target_link_libraries(hashid_insert valla::core)
-target_link_libraries(hashid_insert benchmark::benchmark)
-
 add_executable(insert "insert.cpp")
 target_link_libraries(insert valla::core)
 target_link_libraries(insert benchmark::benchmark)

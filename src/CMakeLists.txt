@@ -1,11 +1,11 @@
 
 add_library(core STATIC
-    "../include/valla/details/shared_object_pool.hpp"
-    "../include/valla/details/unique_object_pool.hpp"
+    "../include/valla/unique_object_pool.hpp"
     "../include/valla/declarations.hpp"
     "../include/valla/indexed_hash_set.hpp"
-    "../include/valla/tree_compression.hpp"
-    "../include/valla/delta_tree_compression.hpp"
+    "../include/valla/double/tree_compression.hpp"
+    "../include/valla/uint/tree_compression.hpp"
+    "../include/valla/uint/delta_tree_compression.hpp"
 )
 set_target_properties(core PROPERTIES OUTPUT_NAME valla_core)
 

@@ -44,31 +44,23 @@ inline bool is_within_bounds(const Container& container, size_t index)
     return index < container.size();
 }
 
-// Code
-// https://github.com/kampersanda/bonsais
-// https://github.com/simongog/sdsl-lite/tree/master
-// https://github.com/tudocomp/tudocomp
-// https://github.com/Poyias/mBonsai
-
-// Papers:
-// https://arxiv.org/pdf/1906.06015
-// https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=b7620871f53d759a15cf9e820584b89f984f74c1
-// https://link.springer.com/article/10.1007/s00453-022-00996-y
-
 using Index = uint32_t;  ///< Enough space for 4,294,967,295 indices
 using IndexList = std::vector<Index>;
+
+using DoubleList = std::vector<double>;
 
 /**
  * Slot
  */
 
+template<typename T>
 struct Slot
 {
-    Index i1;
-    Index i2;
+    T i1;
+    T i2;
 
     constexpr Slot() : i1(0), i2(0) {}
-    constexpr Slot(Index i1, Index i2) : i1(i1), i2(i2) {}
+    constexpr Slot(T i1, T i2) : i1(i1), i2(i2) {}
 
     constexpr friend bool operator==(const Slot& lhs, const Slot& rhs) { return lhs.i1 == rhs.i1 && lhs.i2 == rhs.i2; }
 
@@ -79,9 +71,34 @@ struct Slot
     }
 };
 
-static_assert(alignof(Slot) == 4);
+using IndexSlot = Slot<Index>;
+using DoubleSlot = Slot<double>;
 
-static constexpr const Slot EMPTY_ROOT_SLOT = Slot();  ///< represents the empty state.
+static constexpr const Slot EMPTY_ROOT_SLOT = IndexSlot();  ///< represents the empty state.
+
+/**
+ * Iterator
+ */
+
+struct Entry
+{
+    Index m_index;
+    Index m_size;
+
+    Entry(Index index, Index size) : m_index(index), m_size(size) {}
+};
+
+inline void copy_object(const std::vector<Entry>& src, std::vector<Entry>& dst)
+{
+    dst.clear();
+    dst.insert(dst.end(), src.begin(), src.end());
+}
+
+inline void copy_object(const std::vector<double>& src, std::vector<double>& dst)
+{
+    dst.clear();
+    dst.insert(dst.end(), src.begin(), src.end());
+}
 
 /**
  * Printing
@@ -133,36 +150,39 @@ inline std::ostream& operator<<(std::ostream& out, __m128i v)
  * Hashing
  */
 
+template<typename T>
 struct SlotHash
 {
-    size_t operator()(Slot el) const { return absl::HashOf(el.i1, el.i2); }
+    size_t operator()(Slot<T> el) const { return absl::HashOf(el.i1, el.i2); }
 };
 
 // Instead of additionally storing the size in the unstable_to_stable mapping,
 // we reference to stable_to_unstable to access this piece of information.
+template<typename T>
 struct IndexReferencedSlotHash
 {
-    const std::vector<Slot>& stable_to_unstable;
+    const std::vector<Slot<T>>& stable_to_unstable;
 
-    IndexReferencedSlotHash(const std::vector<Slot>& stable_to_unstable) : stable_to_unstable(stable_to_unstable) {}
+    IndexReferencedSlotHash(const std::vector<Slot<T>>& stable_to_unstable) : stable_to_unstable(stable_to_unstable) {}
 
     size_t operator()(Index el) const
     {
         assert(el < stable_to_unstable.size());
-        return SlotHash {}(stable_to_unstable[el]);
+        return SlotHash<T> {}(stable_to_unstable[el]);
     }
 };
 
+template<typename T>
 struct IndexReferencedSlotEqualTo
 {
-    const std::vector<Slot>& stable_to_unstable;
+    const std::vector<Slot<T>>& stable_to_unstable;
 
-    IndexReferencedSlotEqualTo(const std::vector<Slot>& stable_to_unstable) : stable_to_unstable(stable_to_unstable) {}
+    IndexReferencedSlotEqualTo(const std::vector<Slot<T>>& stable_to_unstable) : stable_to_unstable(stable_to_unstable) {}
 
     size_t operator()(Index lhs, Index rhs) const
     {
-        assert(lhs < stable_to_unstable.get().size());
-        assert(rhs < stable_to_unstable.get().size());
+        assert(lhs < stable_to_unstable.size());
+        assert(rhs < stable_to_unstable.size());
         return stable_to_unstable[lhs] == stable_to_unstable[rhs];
     }
 };
