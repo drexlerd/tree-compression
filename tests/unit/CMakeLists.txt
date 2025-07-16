@@ -14,6 +14,8 @@ endfunction()
 # Add each test source file as a separate test executable
 add_gtest(uint_tree_compression                         "uint/tree_compression.cpp")
 
+add_gtest(uint_tree_database                            "uint/tree_database.cpp")
+
 add_gtest(uint_delta_tree_compression                   "uint/delta_tree_compression.cpp")
 
-add_gtest(double_tree_compression                        "double/tree_compression.cpp")
+add_gtest(double_tree_compression                       "double/tree_compression.cpp")
