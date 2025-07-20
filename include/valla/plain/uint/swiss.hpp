@@ -34,14 +34,6 @@ namespace valla::plain::uint::swiss
 {
 
 /**
- * Utility
- */
-
-using RootSlotType = Slot<Index>;
-
-constexpr inline Slot<Index> get_empty_root_slot() { return EMPTY_ROOT_SLOT; }
-
-/**
  * Insert recursively
  */
 
@@ -60,7 +52,7 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, IndexedH
         return *it;  ///< Skip node creation
 
     if (size == 2)
-        return *table.insert(Slot<Index>(*it, *(it + 1))).first;
+        return table.insert(Slot<Index>(*it, *(it + 1)));
 
     /* Divide */
     const auto mid = std::bit_floor(size - 1);
@@ -70,7 +62,7 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, IndexedH
     const auto i1 = insert_recursively(it, mid_it, mid, table);
     const auto i2 = insert_recursively(mid_it, end, size - mid, table);
 
-    return *table.insert(Slot<Index>(i1, i2)).first;
+    return table.insert(Slot<Index>(i1, i2));
 }
 
 /// @brief Inserts the elements from the given `state` into the `tree_table`.
@@ -87,8 +79,8 @@ auto insert(const Range& state, IndexedHashSet<Index>& tree_table)
     // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
     const auto size = static_cast<Index>(std::distance(state.begin(), state.end()));
 
-    if (size == 0)                     ///< Special case for empty state.
-        return get_empty_root_slot();  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
+    if (size == 0)               ///< Special case for empty state.
+        return EMPTY_ROOT_SLOT;  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
 
     return Slot<Index>(insert_recursively(state.begin(), state.end(), size, tree_table), size);
 }

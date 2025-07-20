@@ -22,107 +22,131 @@ namespace valla::tests
 {
 namespace v = valla::plain::uint::hash_id_map;
 
-TEST(VallaTests, TreeDatabaseTest)
+TEST(VallaTests, PlainUintHashIDMapTest)
 {
-    v::TreeDatabase<SlotHash<Index>, std::equal_to<Slot<Index>>, 32> db;
+    auto root_table = IndexedHashSet<Index>();
+    auto rehash_policy = TreeRehashPolicy(root_table);
+    auto tree_table = v::HashIDMapType(rehash_policy);
+    auto tmp_state = IndexList();
 
-    std::cout << db << std::endl << std::endl;
-
-    auto s1 = IndexList { 0, 1, 2, 3 };
-    auto s1_root = db.insert(s1);
-
-    EXPECT_EQ(IndexList(db.begin(s1_root), db.end()), s1);
-
-    std::cout << db << std::endl << std::endl;
-
-    auto s2 = IndexList { 1, 2, 3, 4, 5, 6, 7, 8 };
-    auto s2_root = db.insert(s2);
-
-    EXPECT_EQ(IndexList(db.begin(s2_root), db.end()), s2);
-
-    std::cout << db << std::endl << std::endl;
-}
-
-TEST(VallaTests, TreeDatabase2Test)
-{
-    v::TreeDatabase<SlotHash<Index>, std::equal_to<Slot<Index>>> db;
-
-    std::cout << db << std::endl << std::endl;
-
-    auto s1 = IndexList { 1, 2, 3, 4, 5, 6, 7, 8 };
-    auto s1_root = db.insert(s1);
-
-    EXPECT_EQ(IndexList(db.begin(s1_root), db.end()), s1);
-
-    std::cout << db << std::endl << std::endl;
-
-    auto s2 = IndexList { 1, 2, 3, 4, 5, 6, 7, 8 };
-    auto s2_root = db.insert(s2);
-
-    EXPECT_EQ(IndexList(db.begin(s2_root), db.end()), s2);
-
-    std::cout << db << std::endl << std::endl;
-}
-
-TEST(VallaTests, TreeDatabaseSpecialCasesTest)
-{
-    v::TreeDatabase<SlotHash<Index>, std::equal_to<Slot<Index>>> db;
-
-    std::cout << db << std::endl << std::endl;
-
-    auto s_empty = IndexList {};
-    auto s0 = db.insert(s_empty);
-    EXPECT_EQ(IndexList(db.begin(s0), db.end()), s_empty);
-}
-
-TEST(VallaTests, TreeDatabaseExhaustiveTest)
-{
-    v::TreeDatabase<SlotHash<Index>, std::equal_to<Slot<Index>>> db;
-
-    std::random_device rd;   // Seed
-    std::mt19937 gen(rd());  // Mersenne Twister engine
-
-    std::uniform_int_distribution<Index> state_num_dist(1'000, 10'000);
-    std::uniform_int_distribution<Index> state_size_dist(33, 66);
-
-    const size_t state_num = state_num_dist(gen);    // number of states
-    const size_t state_size = state_size_dist(gen);  // size of each state
-
-    std::mt19937 rng(42);  // fixed seed for reproducibility
-
-    std::uniform_int_distribution<Index> dist(0, 10'000);
-
-    std::vector<IndexList> all_states;
-    all_states.reserve(state_num);
-
-    // Generate sorted random states
-    for (size_t i = 0; i < state_num; ++i)
     {
-        IndexList s(state_size);
-        for (auto& v : s)
-            v = dist(rng);
+        const auto s0 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+        const auto s0_idx = root_table.insert(v::insert(s0, tree_table));
+        const auto& s0_root = root_table[s0_idx];
 
-        std::sort(s.begin(), s.end());
-        s.erase(std::unique(s.begin(), s.end()), s.end());
-        all_states.push_back(std::move(s));
-    }
-    all_states.push_back(IndexList {});
+        EXPECT_EQ(tree_table.size(), 15);
+        EXPECT_EQ(root_table.size(), 1);
 
-    IndexList all_roots;
+        // Created new state!
+        EXPECT_EQ(s0_idx, 0);
 
-    for (const auto& s : all_states)
-    {
-        all_roots.push_back(db.insert(s));
+        v::read_state(s0_root, tree_table, tmp_state);
+        EXPECT_EQ(tmp_state, s0);
     }
 
-    auto state = IndexList();
-
-    for (size_t i = 0; i < state_num; ++i)
     {
-        state.clear();
-        state.insert(state.end(), db.begin(all_roots[i]), db.end());
+        const auto s1 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+        const auto s1_idx = root_table.insert(v::insert(s1, tree_table));
+        const auto& s1_root = root_table[s1_idx];
 
-        EXPECT_EQ(state, all_states[i]);
+        EXPECT_EQ(tree_table.size(), 16);
+        EXPECT_EQ(root_table.size(), 2);
+
+        // Created new state!
+        EXPECT_EQ(s1_idx, 1);
+
+        v::read_state(s1_root, tree_table, tmp_state);
+        EXPECT_EQ(tmp_state, s1);
+    }
+
+    {
+        const auto s2 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
+        const auto s2_idx = root_table.insert(v::insert(s2, tree_table));
+        const auto& s2_root = root_table[s2_idx];
+
+        EXPECT_EQ(tree_table.size(), 18);
+        EXPECT_EQ(root_table.size(), 3);
+
+        // Created new state!
+        EXPECT_EQ(s2_idx, 2);
+
+        v::read_state(s2_root, tree_table, tmp_state);
+        EXPECT_EQ(tmp_state, s2);
+    }
+
+    {
+        const auto s3 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
+        const auto s3_idx = root_table.insert(v::insert(s3, tree_table));
+        const auto& s3_root = root_table[s3_idx];
+
+        EXPECT_EQ(tree_table.size(), 18);
+        EXPECT_EQ(root_table.size(), 3);
+
+        // IndexList already exists!
+        EXPECT_EQ(s3_idx, 2);
+
+        v::read_state(s3_root, tree_table, tmp_state);
+        EXPECT_EQ(tmp_state, s3);
     }
 }
+
+TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
+{
+    auto root_table = IndexedHashSet<Index>();
+    auto rehash_policy = TreeRehashPolicy(root_table);
+    auto tree_table = v::HashIDMapType(rehash_policy);
+    auto tmp_state = IndexList();
+
+    {
+        const auto s0 = IndexList {};
+        const auto s0_idx = root_table.insert(v::insert(s0, tree_table));
+        const auto& s0_root = root_table[s0_idx];
+
+        EXPECT_EQ(tree_table.size(), 0);
+        EXPECT_EQ(root_table.size(), 1);
+
+        // Created new state!
+        EXPECT_EQ(s0_idx, 0);
+
+        v::read_state(s0_root, tree_table, tmp_state);
+        EXPECT_EQ(tmp_state, s0);
+    }
+
+    {
+        const auto s1 = IndexList { 0 };
+        const auto s1_idx = root_table.insert(v::insert(s1, tree_table));
+        const auto& s1_root = root_table[s1_idx];
+
+        EXPECT_EQ(tree_table.size(), 0);
+        EXPECT_EQ(root_table.size(), 2);
+
+        // Created new state!
+        EXPECT_EQ(s1_idx, 1);
+
+        v::read_state(s1_root, tree_table, tmp_state);
+        EXPECT_EQ(tmp_state, s1);
+    }
+}
+
+TEST(VallaTests, PlainUintHashIDMapIteratorTest)
+{
+    auto root_table = IndexedHashSet<Index>();
+    auto rehash_policy = TreeRehashPolicy(root_table);
+    auto tree_table = v::HashIDMapType(rehash_policy);
+    auto tmp_state = IndexList();
+
+    {
+        const auto s0 = IndexList { 1, 2, 4, 5, 6 };
+        const auto s0_idx = root_table.insert(v::insert(s0, tree_table));
+        const auto& s0_root = root_table[s0_idx];
+
+        EXPECT_EQ(s0, IndexList(v::begin(s0_root, tree_table), v::end()));
+    }
+
+    {
+        const auto s0 = IndexList {};
+        EXPECT_EQ(s0, IndexList(v::begin(EMPTY_ROOT_SLOT, tree_table), v::end()));
+    }
+}
+
 }

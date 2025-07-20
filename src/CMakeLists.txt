@@ -1,7 +1,8 @@
 
 add_library(core STATIC
-    "../include/valla/unique_object_pool.hpp"
     "../include/valla/declarations.hpp"
+    "../include/valla/hash_id_map.hpp"
+    "../include/valla/unique_object_pool.hpp"
     "../include/valla/indexed_hash_set.hpp"
     "../include/valla/delta/uint/swiss.hpp"
     "../include/valla/plain/double/swiss.hpp"

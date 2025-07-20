@@ -32,8 +32,7 @@ TEST(VallaTests, DoubleTreeCompressionTest)
 
     {
         const auto s0 = DoubleList { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15. };
-        const auto [s0_result, success] = root_table.insert(v::insert(s0, inner_table, leaf_table));
-        const auto& s0_idx = *s0_result;
+        const auto s0_idx = root_table.insert(v::insert(s0, inner_table, leaf_table));
         const auto& s0_root = root_table[s0_idx];
 
         EXPECT_EQ(root_table.size(), 1);
@@ -49,8 +48,7 @@ TEST(VallaTests, DoubleTreeCompressionTest)
 
     {
         const auto s1 = DoubleList { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16. };
-        const auto [s1_result, success] = root_table.insert(v::insert(s1, inner_table, leaf_table));
-        const auto& s1_idx = *s1_result;
+        const auto s1_idx = root_table.insert(v::insert(s1, inner_table, leaf_table));
         const auto& s1_root = root_table[s1_idx];
 
         EXPECT_EQ(root_table.size(), 2);
@@ -66,8 +64,7 @@ TEST(VallaTests, DoubleTreeCompressionTest)
 
     {
         const auto s2 = DoubleList { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
-        const auto [s2_result, success] = root_table.insert(v::insert(s2, inner_table, leaf_table));
-        const auto& s2_idx = *s2_result;
+        const auto s2_idx = root_table.insert(v::insert(s2, inner_table, leaf_table));
         const auto& s2_root = root_table[s2_idx];
 
         EXPECT_EQ(root_table.size(), 3);
@@ -83,8 +80,7 @@ TEST(VallaTests, DoubleTreeCompressionTest)
 
     {
         const auto s3 = DoubleList { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
-        const auto [s3_result, success] = root_table.insert(v::insert(s3, inner_table, leaf_table));
-        const auto& s3_idx = *s3_result;
+        const auto s3_idx = root_table.insert(v::insert(s3, inner_table, leaf_table));
         const auto& s3_root = root_table[s3_idx];
 
         EXPECT_EQ(root_table.size(), 3);
@@ -109,8 +105,7 @@ TEST(VallaTests, DoubleTreeCompressionEdgeCasesTest)
 
     {
         const auto s0 = DoubleList {};
-        const auto [s0_result, success] = root_table.insert(v::insert(s0, inner_table, leaf_table));
-        const auto& s0_idx = *s0_result;
+        const auto s0_idx = root_table.insert(v::insert(s0, inner_table, leaf_table));
         const auto& s0_root = root_table[s0_idx];
 
         EXPECT_EQ(inner_table.size(), 0);
@@ -125,8 +120,7 @@ TEST(VallaTests, DoubleTreeCompressionEdgeCasesTest)
 
     {
         const auto s1 = DoubleList { 0 };
-        const auto [s1_result, success] = root_table.insert(v::insert(s1, inner_table, leaf_table));
-        const auto& s1_idx = *s1_result;
+        const auto s1_idx = root_table.insert(v::insert(s1, inner_table, leaf_table));
         const auto& s1_root = root_table[s1_idx];
 
         EXPECT_EQ(inner_table.size(), 0);
@@ -150,8 +144,7 @@ TEST(VallaTests, DoubleTreeCompressionIteratorTest)
 
     {
         const auto s0 = DoubleList { 1, 2, 4, 5, 6 };
-        const auto [s0_result, success] = root_table.insert(v::insert(s0, inner_table, leaf_table));
-        const auto& s0_idx = *s0_result;
+        const auto s0_idx = root_table.insert(v::insert(s0, inner_table, leaf_table));
         const auto& s0_root = root_table[s0_idx];
 
         EXPECT_EQ(s0, DoubleList(v::begin(s0_root, inner_table, leaf_table), v::end()));
@@ -159,7 +152,7 @@ TEST(VallaTests, DoubleTreeCompressionIteratorTest)
 
     {
         // const auto s0 = DoubleList {};
-        // EXPECT_EQ(s0, DoubleList(v::begin(v::get_empty_root_slot(), inner_table, leaf_table), v::end()));
+        // EXPECT_EQ(s0, DoubleList(v::begin(v::EMPTY_ROOT_SLOT, inner_table, leaf_table), v::end()));
     }
 }
 

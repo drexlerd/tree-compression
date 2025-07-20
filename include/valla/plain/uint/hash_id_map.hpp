@@ -19,471 +19,241 @@
 #define VALLA_INCLUDE_PLAIN_UINT_HASH_ID_MAP_HPP_
 
 #include "valla/declarations.hpp"
+#include "valla/hash_id_map.hpp"
 #include "valla/indexed_hash_set.hpp"
 #include "valla/unique_object_pool.hpp"
 
-#include <chrono>
-#include <cstddef>
-#include <cstdint>
-#include <immintrin.h>  // for SSE2, AVX2, etc.
-#include <vector>
+#include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <concepts>
+#include <iostream>
+#include <ranges>
+#include <stack>
 
 namespace valla::plain::uint::hash_id_map
 {
 
-static thread_local UniqueObjectPool<std::vector<Entry>> s_stack_pool = UniqueObjectPool<std::vector<Entry>> {};
+using HashIDMapType = HashIDMap<Slot<Index>, TreeRehashPolicy, SlotHash<Index>>;
 
 /**
- * `TreeDatabase` implements a tree database as a hash id map with open addressing, i.e.,
- * a mapping from slots to implicit integer ids where implicit means that the ids are assigned internally by the data structure itself.
- * `TreeDatabase` saves 50% memory for internal nodes compared to the implementation of tree compression based on IndexedHashSet because of the implicit index.
+ * Insert recursively
  */
-template<typename Hash = std::hash<Slot<Index>>, typename EqualTo = std::equal_to<Slot<Index>>, size_t InitialCapacity = 1024>
-class TreeDatabase
+
+/// @brief Recursively insert the elements from `it` until `end` into the `table`.
+/// @param it points to the first element.
+/// @param end points after the last element.
+/// @param size is the number of elements in the range from it to end.
+/// @param table is the table to uniquely insert the slots.
+/// @return the index of the slot at the root.
+template<std::input_iterator Iterator>
+    requires std::same_as<std::iter_value_t<Iterator>, Index>
+inline Index insert_recursively(Iterator it, Iterator end, size_t size, HashIDMapType& table)
+{
+    /* Base cases */
+    if (size == 1)
+        return *it;  ///< Skip node creation
+
+    if (size == 2)
+        return table.insert(Slot<Index>(*it, *(it + 1)));
+
+    /* Divide */
+    const auto mid = std::bit_floor(size - 1);
+
+    /* Conquer */
+    const auto mid_it = it + mid;
+    const auto i1 = insert_recursively(it, mid_it, mid, table);
+    const auto i2 = insert_recursively(mid_it, end, size - mid, table);
+
+    return table.insert(Slot<Index>(i1, i2));
+}
+
+/// @brief Inserts the elements from the given `state` into the `tree_table`.
+/// @param state is the given state.
+/// @param tree_table is the tree table whose nodes encode the tree structure without size information.
+/// @param root_table is the root_table whose nodes encode the root tree index + the size of the state that defines the tree structure.
+/// @return A pair (it, bool) where it points to the entry in the root table and bool is true if and only if the state was newly inserted.
+template<std::ranges::input_range Range>
+    requires std::same_as<std::ranges::range_value_t<Range>, Index>
+auto insert(const Range& state, HashIDMapType& tree_table)
+{
+    assert(std::is_sorted(state.begin(), state.end()));
+
+    // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
+    const auto size = static_cast<Index>(std::distance(state.begin(), state.end()));
+
+    if (size == 0)               ///< Special case for empty state.
+        return EMPTY_ROOT_SLOT;  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
+
+    return Slot<Index>(insert_recursively(state.begin(), state.end(), size, tree_table), size);
+}
+
+/**
+ * Read recursively
+ */
+
+/// @brief Recursively reads the state from the tree induced by the given `index` and the `len`.
+/// @param index is the index of the slot in the tree table.
+/// @param size is the length of the state that defines the shape of the tree at the index.
+/// @param tree_table is the tree table.
+/// @param out_state is the output state.
+inline void read_state_recursively(Index index, size_t size, const HashIDMapType& tree_table, IndexList& ref_state)
+{
+    /* Base case */
+    if (size == 1)
+    {
+        ref_state.push_back(index);
+        return;
+    }
+
+    const auto slot = tree_table[index];
+
+    /* Base case */
+    if (size == 2)
+    {
+        ref_state.push_back(slot.i1);
+        ref_state.push_back(slot.i2);
+        return;
+    }
+
+    /* Divide */
+    const auto mid = std::bit_floor(size - 1);
+
+    /* Conquer */
+    read_state_recursively(slot.i1, mid, tree_table, ref_state);
+    read_state_recursively(slot.i2, size - mid, tree_table, ref_state);
+}
+
+/// @brief Read the `out_state` from the given `tree_index` from the `tree_table`.
+/// @param index
+/// @param size
+/// @param tree_table
+/// @param out_state
+inline void read_state(Index tree_index, size_t size, const HashIDMapType& tree_table, IndexList& out_state)
+{
+    out_state.clear();
+
+    if (size == 0)  ///< Special case for empty state.
+        return;
+
+    read_state_recursively(tree_index, size, tree_table, out_state);
+}
+
+/// @brief Read the `out_state` from the given `root_index` from the `root_table`.
+/// @param root_index is the index of the slot in the root table.
+/// @param tree_table is the tree table.
+/// @param root_table is the root table.
+/// @param out_state is the output state.
+inline void read_state(Slot<Index> root_slot, const HashIDMapType& tree_table, IndexList& out_state)
+{
+    /* Observe: a root slot wraps the root tree_index together with the length that defines the tree structure! */
+    read_state(root_slot.i1, root_slot.i2, tree_table, out_state);
+}
+
+/**
+ * ConstIterator
+ */
+
+static thread_local UniqueObjectPool<std::vector<Entry>> s_stack_pool = UniqueObjectPool<std::vector<Entry>> {};
+
+class const_iterator
 {
 private:
-    static_assert(InitialCapacity % 16 == 0, "InitialCapacity must be a multiple of 16.");
+    const HashIDMapType* m_tree_table;
+    UniqueObjectPoolPtr<std::vector<Entry>> m_stack;
+    Index m_value;
 
-    static constexpr Index INDEX_SENTINEL = std::numeric_limits<Index>::max();  ///< used to indicate insertion failure to trigger a rehash.
+    static constexpr const Index END_POS = Index(-1);
 
-    static constexpr double MAX_LOAD_FACTOR = static_cast<double>(7) / 8;
-
-    enum class ctrl_t : int8_t
+    const HashIDMapType& tree_table() const
     {
-        kEmpty = -128,   // 0b10000000
-        kDeleted = -2,   // 0b11111110
-        kSentinel = -1,  // 0b11111111
-    };
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /// Root Table: 12+1 bytes per slot
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    std::vector<Slot<Index>> m_stable_to_unstable;                                                                       ///< lookup
-    absl::flat_hash_set<Index, IndexReferencedSlotHash<Index>, IndexReferencedSlotEqualTo<Index>> m_unstable_to_stable;  ///< insert
-
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    /// Tree Table: 8+1 bytes per slot
-    ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    std::vector<Slot<Index>> m_slots;
-    std::vector<ctrl_t> m_controls;
-    size_t m_size;
-    size_t m_capacity;
-
-    Hash m_hash;
-    EqualTo m_equal_to;
-
-    struct Statistics
-    {
-        size_t m_num_rehashes = 0;
-        std::chrono::milliseconds m_total_rehash_time = std::chrono::milliseconds::zero();
-        size_t m_num_probes = 0;
-        size_t m_sum_probe_lengths = 0;
-    };
-
-    Statistics m_statistics;
-
-    struct RehashData
-    {
-        size_t capacity;
-        std::vector<Slot<Index>> slots;
-        std::vector<ctrl_t> controls;
-
-        explicit RehashData(size_t capacity) : capacity(capacity), slots(capacity), controls()
-        {
-            // Sentinel-padded rolling buffer
-            controls.reserve(capacity + 15);
-            controls.resize(capacity, ctrl_t::kEmpty);
-            controls.resize(capacity + 15, ctrl_t::kSentinel);
-        }
-    };
-
-    alignas(16) inline static const __m128i kEmptyPattern = _mm_set1_epi8(static_cast<signed char>(ctrl_t::kEmpty));
-
-    Index insert(Slot<Index> slot, RehashData& tmp)
-    {
-        size_t h = m_hash(slot);
-        size_t mask = (tmp.capacity - 1);
-        size_t i = h & mask;
-        ctrl_t ctrl = static_cast<ctrl_t>(h >> 57);
-        assert(static_cast<int8_t>(ctrl) >= 0);
-
-        while (true)
-        {
-            assert(i < tmp.capacity);
-            assert(i + 15 < tmp.controls.size());
-
-            // Load 16 control bytes
-            __m128i ctrl_block = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&tmp.controls[i]));
-            __m128i broadcast_ctrl = _mm_set1_epi8(static_cast<signed char>(ctrl));
-
-            // Compare against ctrl byte
-            __m128i cmp_ctrl = _mm_cmpeq_epi8(ctrl_block, broadcast_ctrl);
-            int mask_ctrl = _mm_movemask_epi8(cmp_ctrl);
-
-            // Check if slot exists
-            while (mask_ctrl != 0)
-            {
-                int offset = __builtin_ctz(mask_ctrl);
-                size_t idx = (i + offset) & mask;
-
-                if (m_equal_to(tmp.slots[idx], slot))
-                {
-                    m_statistics.m_sum_probe_lengths += offset;
-                    return idx;
-                }
-
-                mask_ctrl &= mask_ctrl - 1;  // Clear the lowest set bit
-            }
-
-            // Compare against kEmpty
-            __m128i cmp_empty = _mm_cmpeq_epi8(ctrl_block, kEmptyPattern);
-            int mask_empty = _mm_movemask_epi8(cmp_empty);
-
-            // Second: insert into first empty slot if found
-            if (mask_empty != 0)
-            {
-                int offset = __builtin_ctz(mask_empty);
-                m_statistics.m_sum_probe_lengths += offset;
-                size_t idx = (i + offset) & mask;
-
-                if (tmp.controls[idx] == ctrl_t::kEmpty)
-                {
-                    assert(tmp.controls[idx] == ctrl_t::kEmpty && "Unexpected overwrite!");
-
-                    tmp.slots[idx] = slot;
-                    tmp.controls[idx] = ctrl;
-                    ++m_statistics.m_num_probes;
-                    return idx;
-                }
-            }
-
-            // Else probe further
-            i = (i + 16) & mask;
-            m_statistics.m_sum_probe_lengths += 16;
-        }
+        assert(m_tree_table);
+        return *m_tree_table;
     }
 
-    Index rehash_recursively(Index unstable_index, size_t size, RehashData& tmp)
+    void advance()
     {
-        /* Base case 1: skipped node creation */
-        if (size == 1)
-            return unstable_index;
-
-        /* Note: caching relocation is expensive to cache because the tree structure depends on size. */
-
-        const auto& slot = m_slots[unstable_index];
-
-        /* Base case 3: rellocate slot */
-        if (size == 2)
-            return insert(slot, tmp);
-
-        /* Divide */
-        assert(size >= 2);
-        const auto mid = std::bit_floor(size - 1);
-
-        /* Conquer */
-        Index i1 = rehash_recursively(slot.i1, mid, tmp);
-        Index i2 = rehash_recursively(slot.i2, size - mid, tmp);
-
-        return insert(Slot<Index>(i1, i2), tmp);
-    }
-
-    void rehash(double factor = 2.)
-    {
-        using clock = std::chrono::high_resolution_clock;
-
-        auto start = clock::now();  // Start timing
-
-        ++m_statistics.m_num_rehashes;
-
-        size_t new_capacity = factor * m_capacity;
-
-        auto tmp = RehashData(new_capacity);
-
-        // Relocate trees underlying the stable indices
-        m_unstable_to_stable.clear();
-
-        // Skip the empty root.
-        for (Index stable_index = 1; stable_index < m_stable_to_unstable.size(); ++stable_index)
+        while (!m_stack->empty())
         {
-            Slot<Index> root = m_stable_to_unstable[stable_index];
+            auto entry = m_stack->back();
+            m_stack->pop_back();
 
-            assert(root.i2 > 0);  // Ensure nonempty.
-
-            Index unstable_index = rehash_recursively(root.i1, root.i2, tmp);
-
-            m_stable_to_unstable[stable_index] = Slot<Index>(unstable_index, root.i2);
-            m_unstable_to_stable.emplace(stable_index);
-        }
-
-        m_capacity = new_capacity;
-        std::swap(m_slots, tmp.slots);
-        std::swap(m_controls, tmp.controls);
-
-        auto end = clock::now();
-        m_statistics.m_total_rehash_time += std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    }
-
-    Index insert(Slot<Index> slot)
-    {
-        size_t h = m_hash(slot);
-        size_t mask = (m_capacity - 1);
-        size_t i = h & mask;
-        ctrl_t ctrl = static_cast<ctrl_t>(h >> 57);
-        assert(static_cast<int8_t>(ctrl) >= 0);
-
-        while (true)
-        {
-            assert(i < m_capacity);
-            assert(i + 15 < m_controls.size());
-
-            // Load 16 control bytes
-            __m128i ctrl_block = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&m_controls[i]));
-            __m128i broadcast_ctrl = _mm_set1_epi8(static_cast<signed char>(ctrl));
-
-            // Compare against ctrl byte
-            __m128i cmp_ctrl = _mm_cmpeq_epi8(ctrl_block, broadcast_ctrl);
-            int mask_ctrl = _mm_movemask_epi8(cmp_ctrl);
-
-            // Check if slot exists
-            while (mask_ctrl != 0)
+            if (entry.m_size == 1)
             {
-                int offset = __builtin_ctz(mask_ctrl);
-                size_t idx = (i + offset) & mask;
-
-                if (m_equal_to(m_slots[idx], slot))
-                {
-                    m_statistics.m_sum_probe_lengths += offset;
-                    return idx;
-                }
-
-                mask_ctrl &= mask_ctrl - 1;  // Clear the lowest set bit
+                m_value = entry.m_index;
+                return;
             }
 
-            // Compare against kEmpty
-            __m128i cmp_empty = _mm_cmpeq_epi8(ctrl_block, kEmptyPattern);
-            int mask_empty = _mm_movemask_epi8(cmp_empty);
+            const auto slot = tree_table()[entry.m_index];
 
-            // Second: insert into first empty slot if found
-            if (mask_empty != 0)
-            {
-                int offset = __builtin_ctz(mask_empty);
-                m_statistics.m_sum_probe_lengths += offset;
-                size_t idx = (i + offset) & mask;
+            Index mid = std::bit_floor(entry.m_size - 1);
 
-                if (m_controls[idx] == ctrl_t::kEmpty)
-                {
-                    assert(m_controls[idx] == ctrl_t::kEmpty && "Unexpected overwrite!");
-
-                    m_slots[idx] = slot;
-                    m_controls[idx] = ctrl;
-                    ++m_size;
-                    ++m_statistics.m_num_probes;
-
-                    return idx;
-                }
-            }
-
-            // Else probe further
-            i = (i + 16) & mask;
-            m_statistics.m_sum_probe_lengths += 16;
+            // Emplace i2 first to ensure i1 is visited first in dfs.
+            m_stack->emplace_back(slot.i2, entry.m_size - mid);
+            m_stack->emplace_back(slot.i1, mid);
         }
-    }
 
-    template<std::input_iterator Iterator>
-        requires std::same_as<std::iter_value_t<Iterator>, Index>
-    inline Index insert_recursively(Iterator it, Iterator end, size_t size)
-    {
-        /* Base cases */
-        if (size == 1)
-            return *it;  ///< Skip node creation
-
-        if (size == 2)
-            return insert(Slot<Index>(*it, *(it + 1)));
-
-        /* Divide */
-        assert(size >= 2);
-        const auto mid = std::bit_floor(size - 1);
-
-        /* Conquer */
-        const auto mid_it = it + mid;
-        Index i1 = insert_recursively(it, mid_it, mid);
-        Index i2 = insert_recursively(mid_it, end, size - mid);
-
-        return insert(Slot<Index>(i1, i2));
+        m_value = END_POS;
     }
 
 public:
-    TreeDatabase() :
-        m_stable_to_unstable(),
-        m_unstable_to_stable(0, IndexReferencedSlotHash<Index>(m_stable_to_unstable), IndexReferencedSlotEqualTo<Index>(m_stable_to_unstable)),
-        m_slots(),
-        m_controls(),
-        m_size(0),
-        m_capacity(InitialCapacity),
-        m_hash(),
-        m_equal_to()
+    using difference_type = std::ptrdiff_t;
+    using value_type = Index;
+    using pointer = value_type*;
+    using reference = value_type;
+    using iterator_category = std::input_iterator_tag;
+    using iterator_concept = std::input_iterator_tag;
+
+    const_iterator() : m_tree_table(nullptr), m_stack(), m_value(END_POS) {}
+    const_iterator(const const_iterator& other) : m_tree_table(other.m_tree_table), m_stack(other.m_stack.clone()), m_value(other.m_value) {}
+    const_iterator& operator=(const const_iterator& other)
     {
-        m_slots.resize(m_capacity);
-
-        // Sentinel-padded rolling buffer
-        m_controls.reserve(m_capacity + 15);
-        m_controls.resize(m_capacity, ctrl_t::kEmpty);
-        m_controls.resize(m_capacity + 15, ctrl_t::kSentinel);
-
-        m_stable_to_unstable.push_back(Slot<Index>(0, 0));  // dummy
+        if (*this != other)
+        {
+            m_tree_table = other.m_tree_table;
+            m_stack = other.m_stack.clone();
+            m_value = other.m_value;
+        }
+        return *this;
     }
-
-    template<std::ranges::input_range Range>
-        requires std::same_as<std::ranges::range_value_t<Range>, Index>
-    Index insert(const Range& range)
+    const_iterator(const_iterator&& other) = default;
+    const_iterator& operator=(const_iterator&& other) = default;
+    const_iterator(const HashIDMapType& tree_table, Slot<Index> root, bool begin) : m_tree_table(&tree_table), m_stack(), m_value(END_POS)
     {
-        assert(std::is_sorted(range.begin(), range.end()));
+        assert(m_tree_table);
 
-        // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
-        const auto size = static_cast<Index>(std::distance(range.begin(), range.end()));
-
-        if (size == 0)  ///< Special case for empty range.
-            return 0;
-
-        if ((static_cast<double>(m_size + 2 * size) / m_capacity) >= MAX_LOAD_FACTOR)
-            rehash(2.0);
-
-        Index unstable_index = insert_recursively(range.begin(), range.end(), size);
-
-        Index stable_index = m_stable_to_unstable.size();
-
-        m_stable_to_unstable.push_back(Slot<Index>(unstable_index, size));
-
-        auto result = m_unstable_to_stable.emplace(stable_index);
-
-        if (!result.second)
-            m_stable_to_unstable.pop_back();
-
-        return *result.first;
-    }
-
-    /**
-     * ConstIterator
-     */
-
-    class const_iterator
-    {
-    private:
-        const TreeDatabase* m_db;
-        UniqueObjectPoolPtr<std::vector<Entry>> m_stack;
-        Index m_value;
-
-        static constexpr const Index END_POS = Index(-1);
-
-        const TreeDatabase& db() const
+        if (begin)
         {
-            assert(m_db);
-            return *m_db;
-        }
+            m_stack = s_stack_pool.get_or_allocate();
+            m_stack->clear();
 
-        void advance()
-        {
-            while (!m_stack->empty())
+            if (root.i2 > 0)  ///< Push to stack only if there leafs
             {
-                auto entry = m_stack->back();
-                m_stack->pop_back();
-
-                if (entry.m_size == 1)
-                {
-                    m_value = entry.m_index;
-                    return;
-                }
-
-                const auto slot = db().m_slots[entry.m_index];
-
-                assert(entry.m_size >= 0);
-                Index mid = std::bit_floor(entry.m_size - 1);
-
-                // Emplace i2 first to ensure i1 is visited first in dfs.
-                m_stack->emplace_back(slot.i2, entry.m_size - mid);
-                m_stack->emplace_back(slot.i1, mid);
-            }
-
-            m_value = END_POS;
-        }
-
-    public:
-        using difference_type = std::ptrdiff_t;
-        using value_type = Index;
-        using pointer = value_type*;
-        using reference = value_type;
-        using iterator_category = std::input_iterator_tag;
-        using iterator_concept = std::input_iterator_tag;
-
-        const_iterator() : m_db(nullptr), m_stack(), m_value(END_POS) {}
-        const_iterator(const const_iterator& other) : m_db(other.m_db), m_stack(other.m_stack.clone()), m_value(other.m_value) {}
-        const_iterator& operator=(const const_iterator& other)
-        {
-            if (*this != other)
-            {
-                m_db = other.m_db;
-                m_stack = other.m_stack.clone();
-                m_value = other.m_value;
-            }
-            return *this;
-        }
-        const_iterator(const_iterator&& other) = default;
-        const_iterator& operator=(const_iterator&& other) = default;
-        const_iterator(const TreeDatabase& db, Index stable_index, bool begin) : m_db(&db), m_stack(), m_value(END_POS)
-        {
-            assert(m_db);
-
-            if (begin && stable_index > 0)
-            {
-                m_stack = s_stack_pool.get_or_allocate();
-                m_stack->clear();
-
-                Slot<Index> root = db.m_stable_to_unstable[stable_index];
-
-                assert(root.i2 > 0);  // Ensure nonempty
-
                 m_stack->emplace_back(root.i1, root.i2);
                 advance();
             }
         }
-        value_type operator*() const { return m_value; }
-        const_iterator& operator++()
-        {
-            advance();
-            return *this;
-        }
-        const_iterator operator++(int)
-        {
-            auto it = *this;
-            ++it;
-            return it;
-        }
-        bool operator==(const const_iterator& other) const { return m_value == other.m_value; }
-        bool operator!=(const const_iterator& other) const { return !(*this == other); }
-    };
-
-    const_iterator begin(Index stable_index) const { return const_iterator(*this, stable_index, true); }
-    const_iterator end() const { return const_iterator(); }
-
-    Index empty_stable_index() const { return 0; }
-    size_t num_roots() const { return m_stable_to_unstable.size(); }
-    const Slot<Index>& get_root(Index stable_index) const { return m_stable_to_unstable[stable_index]; }
-    size_t size() const { return m_size; }
-    size_t capacity() const { return m_capacity; }
-    double load_factor() const { return static_cast<double>(m_size) / m_capacity; };
-    const Statistics& statistics() const { return m_statistics; }
-
-    friend std::ostream& operator<<(std::ostream& os, const TreeDatabase& db)
-    {
-        os << "Bucket data: " << db.m_slots << "\n"
-           << "Load factor: " << db.load_factor();
-
-        return os;
     }
+    value_type operator*() const { return m_value; }
+    const_iterator& operator++()
+    {
+        advance();
+        return *this;
+    }
+    const_iterator operator++(int)
+    {
+        auto it = *this;
+        ++it;
+        return it;
+    }
+    bool operator==(const const_iterator& other) const { return m_value == other.m_value; }
+    bool operator!=(const const_iterator& other) const { return !(*this == other); }
 };
+
+inline const_iterator begin(Slot<Index> root, const HashIDMapType& tree_table) { return const_iterator(tree_table, root, true); }
+
+inline const_iterator end() { return const_iterator(); }
+
 }
 
 #endif
