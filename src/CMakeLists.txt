@@ -3,9 +3,10 @@ add_library(core STATIC
     "../include/valla/unique_object_pool.hpp"
     "../include/valla/declarations.hpp"
     "../include/valla/indexed_hash_set.hpp"
-    "../include/valla/double/tree_compression.hpp"
-    "../include/valla/uint/tree_compression.hpp"
-    "../include/valla/uint/delta_tree_compression.hpp"
+    "../include/valla/delta/uint/swiss.hpp"
+    "../include/valla/plain/double/swiss.hpp"
+    "../include/valla/plain/uint/hash_id_map.hpp"
+    "../include/valla/plain/uint/swiss.hpp"
 )
 set_target_properties(core PROPERTIES OUTPUT_NAME valla_core)
 

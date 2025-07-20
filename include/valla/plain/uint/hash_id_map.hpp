@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef VALLA_INCLUDE_UINT_TREE_DATABASE_HPP_
-#define VALLA_INCLUDE_UINT_TREE_DATABASE_HPP_
+#ifndef VALLA_INCLUDE_PLAIN_UINT_HASH_ID_MAP_HPP_
+#define VALLA_INCLUDE_PLAIN_UINT_HASH_ID_MAP_HPP_
 
 #include "valla/declarations.hpp"
 #include "valla/indexed_hash_set.hpp"
@@ -28,7 +28,7 @@
 #include <immintrin.h>  // for SSE2, AVX2, etc.
 #include <vector>
 
-namespace valla::u::tdb
+namespace valla::plain::uint::hash_id_map
 {
 
 static thread_local UniqueObjectPool<std::vector<Entry>> s_stack_pool = UniqueObjectPool<std::vector<Entry>> {};

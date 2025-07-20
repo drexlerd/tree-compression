@@ -16,11 +16,11 @@
  */
 
 #include <gtest/gtest.h>
-#include <valla/uint/tree_compression.hpp>
+#include <valla/delta/uint/swiss.hpp>
 
 namespace valla::tests
 {
-namespace v = valla::u::plain;
+namespace v = valla::delta::uint::swiss;
 
 TEST(VallaTests, UintTreeCompressionTest)
 {
@@ -34,7 +34,7 @@ TEST(VallaTests, UintTreeCompressionTest)
         const auto& s0_idx = *s0_result;
         const auto& s0_root = root_table[s0_idx];
 
-        EXPECT_EQ(tree_table.size(), 8);
+        EXPECT_EQ(tree_table.size(), 2);
         EXPECT_EQ(root_table.size(), 1);
 
         // Created new state!
@@ -50,7 +50,7 @@ TEST(VallaTests, UintTreeCompressionTest)
         const auto& s1_idx = *s1_result;
         const auto& s1_root = root_table[s1_idx];
 
-        EXPECT_EQ(tree_table.size(), 9);
+        EXPECT_EQ(tree_table.size(), 2);
         EXPECT_EQ(root_table.size(), 2);
 
         // Created new state!
@@ -66,7 +66,7 @@ TEST(VallaTests, UintTreeCompressionTest)
         const auto& s2_idx = *s2_result;
         const auto& s2_root = root_table[s2_idx];
 
-        EXPECT_EQ(tree_table.size(), 11);
+        EXPECT_EQ(tree_table.size(), 2);
         EXPECT_EQ(root_table.size(), 3);
 
         // Created new state!
@@ -82,7 +82,7 @@ TEST(VallaTests, UintTreeCompressionTest)
         const auto& s3_idx = *s3_result;
         const auto& s3_root = root_table[s3_idx];
 
-        EXPECT_EQ(tree_table.size(), 11);
+        EXPECT_EQ(tree_table.size(), 2);
         EXPECT_EQ(root_table.size(), 3);
 
         // IndexList already exists!

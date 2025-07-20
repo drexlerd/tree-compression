@@ -16,15 +16,14 @@
  */
 
 #include <benchmark/benchmark.h>
-#include <valla/indexed_hash_set.hpp>
-#include <valla/uint/tree_compression.hpp>
+#include <valla/plain/uint/swiss.hpp>
 
 namespace valla::benchmarks
 {
-namespace v = valla::u::plain;
+namespace v = valla::plain::uint::swiss;
 
 /// @brief In this benchmark, we evaluate the performance of accessing data in sequence
-static void BM_TreeCompressionInsert(benchmark::State& state)
+static void BM_PlainUintSwissIterator(benchmark::State& state)
 {
     const size_t state_num = static_cast<size_t>(state.range(0));    // number of states
     const size_t state_size = static_cast<size_t>(state.range(1));   // size of each state
@@ -47,15 +46,30 @@ static void BM_TreeCompressionInsert(benchmark::State& state)
         all_states.push_back(std::move(s));
     }
 
+    IndexedHashSet<Index> tree_table;
+    IndexedHashSet<Index> root_table;
+
+    auto all_roots = std::vector<Slot<Index>> {};
+
+    for (size_t rep = 0; rep < repetitions; ++rep)
+    {
+        for (const auto& s : all_states)
+            all_roots.push_back(root_table[*root_table.insert(v::insert(s, tree_table)).first]);
+    }
+
     for (auto _ : state)
     {
-        IndexedHashSet<Index> tree_table;
-        IndexedHashSet<Index> root_table;
+        auto state = IndexList();
 
         for (size_t rep = 0; rep < repetitions; ++rep)
         {
-            for (const auto& s : all_states)
-                benchmark::DoNotOptimize(root_table.insert(v::insert(s, tree_table)));
+            for (const auto& r : all_roots)
+            {
+                for (auto it = v::begin(r, tree_table); it != v::end(); ++it)
+                {
+                    benchmark::DoNotOptimize(state);
+                }
+            }
         }
 
         benchmark::ClobberMemory();
@@ -66,11 +80,11 @@ static void BM_TreeCompressionInsert(benchmark::State& state)
 
 }
 
-BENCHMARK(valla::benchmarks::BM_TreeCompressionInsert)->Args({ 100, 50, 1 });     // 100 unique states, 50 entries each, no repetition
-BENCHMARK(valla::benchmarks::BM_TreeCompressionInsert)->Args({ 100, 50, 5 });     // same but with 5 insertions each
-BENCHMARK(valla::benchmarks::BM_TreeCompressionInsert)->Args({ 1000, 100, 1 });   // larger states
-BENCHMARK(valla::benchmarks::BM_TreeCompressionInsert)->Args({ 1000, 100, 5 });   // reinsertions (stress hashing)
-BENCHMARK(valla::benchmarks::BM_TreeCompressionInsert)->Args({ 10000, 200, 1 });  // large-scale
-BENCHMARK(valla::benchmarks::BM_TreeCompressionInsert)->Args({ 10000, 200, 5 });  // heavy deduplication pressure
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissIterator)->Args({ 100, 50, 1 });     // 100 unique states, 50 entries each, no repetition
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissIterator)->Args({ 100, 50, 5 });     // same but with 5 insertions each
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissIterator)->Args({ 1000, 100, 1 });   // larger states
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissIterator)->Args({ 1000, 100, 5 });   // reinsertions (stress hashing)
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissIterator)->Args({ 10000, 200, 1 });  // large-scale
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissIterator)->Args({ 10000, 200, 5 });  // heavy deduplication pressure
 
 BENCHMARK_MAIN();

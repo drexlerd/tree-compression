@@ -16,11 +16,11 @@
  */
 
 #include <gtest/gtest.h>
-#include <valla/double/tree_compression.hpp>
+#include <valla/plain/double/swiss.hpp>
 
 namespace valla::tests
 {
-namespace v = valla::d::plain;
+namespace v = valla::plain::dbl::swiss;
 
 TEST(VallaTests, DoubleTreeCompressionTest)
 {

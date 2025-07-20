@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef VALLA_INCLUDE_UINT_DELTA_TREE_COMPRESSION_HPP_
-#define VALLA_INCLUDE_UINT_DELTA_TREE_COMPRESSION_HPP_
+#ifndef VALLA_INCLUDE_DELTA_UINT_SWISS_HPP_
+#define VALLA_INCLUDE_DELTA_UINT_SWISS_HPP_
 
 #include "valla/declarations.hpp"
 #include "valla/indexed_hash_set.hpp"
@@ -30,7 +30,7 @@
 #include <ranges>
 #include <stack>
 
-namespace valla::u::delta
+namespace valla::delta::uint::swiss
 {
 
 /**

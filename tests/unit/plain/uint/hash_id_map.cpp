@@ -16,11 +16,11 @@
  */
 
 #include <gtest/gtest.h>
-#include <valla/uint/tree_database.hpp>
+#include <valla/plain/uint/hash_id_map.hpp>
 
 namespace valla::tests
 {
-namespace v = valla::u::tdb;
+namespace v = valla::plain::uint::hash_id_map;
 
 TEST(VallaTests, TreeDatabaseTest)
 {

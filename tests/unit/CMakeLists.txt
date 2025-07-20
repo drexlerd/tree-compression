@@ -12,10 +12,8 @@ function(add_gtest test_name source_file)
 endfunction()
 
 # Add each test source file as a separate test executable
-add_gtest(uint_tree_compression                         "uint/tree_compression.cpp")
+add_gtest(delta_uint_swiss                   "delta/uint/swiss.cpp")
 
-add_gtest(uint_tree_database                            "uint/tree_database.cpp")
-
-add_gtest(uint_delta_tree_compression                   "uint/delta_tree_compression.cpp")
-
-add_gtest(double_tree_compression                       "double/tree_compression.cpp")
+add_gtest(plain_uint_hash_id_map             "plain/uint/hash_id_map.cpp")
+add_gtest(plain_uint_swiss                   "plain/uint/swiss.cpp")
+add_gtest(plain_double_swiss                 "plain/double/swiss.cpp")
