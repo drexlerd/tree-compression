@@ -22,7 +22,7 @@ namespace valla::tests
 {
 namespace v = valla::plain::dbl::swiss;
 
-TEST(VallaTests, DoubleTreeCompressionTest)
+TEST(VallaTests, PlainDoubleSwissTest)
 {
     auto root_table = IndexedHashSet<Index>();
     auto inner_table = IndexedHashSet<Index>();
@@ -95,7 +95,7 @@ TEST(VallaTests, DoubleTreeCompressionTest)
     }
 }
 
-TEST(VallaTests, DoubleTreeCompressionEdgeCasesTest)
+TEST(VallaTests, PlainDoubleSwissEdgeCasesTest)
 {
     auto root_table = IndexedHashSet<Index>();
     auto inner_table = IndexedHashSet<Index>();
@@ -134,7 +134,7 @@ TEST(VallaTests, DoubleTreeCompressionEdgeCasesTest)
     }
 }
 
-TEST(VallaTests, DoubleTreeCompressionIteratorTest)
+TEST(VallaTests, PlainDoubleSwissIteratorTest)
 {
     auto root_table = IndexedHashSet<Index>();
     auto inner_table = IndexedHashSet<Index>();

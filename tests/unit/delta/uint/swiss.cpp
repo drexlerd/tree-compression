@@ -22,7 +22,7 @@ namespace valla::tests
 {
 namespace v = valla::delta::uint::swiss;
 
-TEST(VallaTests, UintTreeCompressionTest)
+TEST(VallaTests, DeltaUintSwissTest)
 {
     auto tree_table = IndexedHashSet<Index>();
     auto root_table = IndexedHashSet<Index>();
@@ -89,7 +89,7 @@ TEST(VallaTests, UintTreeCompressionTest)
     }
 }
 
-TEST(VallaTests, UintTreeCompressionEdgeCasesTest)
+TEST(VallaTests, DeltaUintSwissEdgeCasesTest)
 {
     auto tree_table = IndexedHashSet<Index>();
     auto root_table = IndexedHashSet<Index>();
@@ -126,7 +126,7 @@ TEST(VallaTests, UintTreeCompressionEdgeCasesTest)
     }
 }
 
-TEST(VallaTests, UintTreeCompressionIteratorTest)
+TEST(VallaTests, DeltaUintSwissIteratorTest)
 {
     auto tree_table = IndexedHashSet<Index>();
     auto root_table = IndexedHashSet<Index>();
