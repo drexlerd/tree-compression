@@ -34,8 +34,6 @@
 namespace valla::plain::uint::hash_id_map
 {
 
-using HashIDMapType = HashIDMap<Slot<Index>, TreeRehashPolicy, SlotHash<Index>>;
-
 /**
  * Insert recursively
  */
@@ -48,7 +46,7 @@ using HashIDMapType = HashIDMap<Slot<Index>, TreeRehashPolicy, SlotHash<Index>>;
 /// @return the index of the slot at the root.
 template<std::input_iterator Iterator>
     requires std::same_as<std::iter_value_t<Iterator>, Index>
-inline Index insert_recursively(Iterator it, Iterator end, size_t size, HashIDMapType& table)
+inline Index insert_recursively(Iterator it, Iterator end, size_t size, TreeHashIDMap<>& table)
 {
     /* Base cases */
     if (size == 1)
@@ -75,7 +73,7 @@ inline Index insert_recursively(Iterator it, Iterator end, size_t size, HashIDMa
 /// @return A pair (it, bool) where it points to the entry in the root table and bool is true if and only if the state was newly inserted.
 template<std::ranges::input_range Range>
     requires std::same_as<std::ranges::range_value_t<Range>, Index>
-auto insert(const Range& state, HashIDMapType& tree_table)
+auto insert(const Range& state, TreeHashIDMap<>& tree_table)
 {
     assert(std::is_sorted(state.begin(), state.end()));
 
@@ -97,7 +95,7 @@ auto insert(const Range& state, HashIDMapType& tree_table)
 /// @param size is the length of the state that defines the shape of the tree at the index.
 /// @param tree_table is the tree table.
 /// @param out_state is the output state.
-inline void read_state_recursively(Index index, size_t size, const HashIDMapType& tree_table, IndexList& ref_state)
+inline void read_state_recursively(Index index, size_t size, const TreeHashIDMap<>& tree_table, IndexList& ref_state)
 {
     /* Base case */
     if (size == 1)
@@ -129,7 +127,7 @@ inline void read_state_recursively(Index index, size_t size, const HashIDMapType
 /// @param size
 /// @param tree_table
 /// @param out_state
-inline void read_state(Index tree_index, size_t size, const HashIDMapType& tree_table, IndexList& out_state)
+inline void read_state(Index tree_index, size_t size, const TreeHashIDMap<>& tree_table, IndexList& out_state)
 {
     out_state.clear();
 
@@ -144,7 +142,7 @@ inline void read_state(Index tree_index, size_t size, const HashIDMapType& tree_
 /// @param tree_table is the tree table.
 /// @param root_table is the root table.
 /// @param out_state is the output state.
-inline void read_state(Slot<Index> root_slot, const HashIDMapType& tree_table, IndexList& out_state)
+inline void read_state(Slot<Index> root_slot, const TreeHashIDMap<>& tree_table, IndexList& out_state)
 {
     /* Observe: a root slot wraps the root tree_index together with the length that defines the tree structure! */
     read_state(root_slot.i1, root_slot.i2, tree_table, out_state);
@@ -159,13 +157,13 @@ static thread_local UniqueObjectPool<std::vector<Entry>> s_stack_pool = UniqueOb
 class const_iterator
 {
 private:
-    const HashIDMapType* m_tree_table;
+    const TreeHashIDMap<>* m_tree_table;
     UniqueObjectPoolPtr<std::vector<Entry>> m_stack;
     Index m_value;
 
     static constexpr const Index END_POS = Index(-1);
 
-    const HashIDMapType& tree_table() const
+    const TreeHashIDMap<>& tree_table() const
     {
         assert(m_tree_table);
         return *m_tree_table;
@@ -218,7 +216,7 @@ public:
     }
     const_iterator(const_iterator&& other) = default;
     const_iterator& operator=(const_iterator&& other) = default;
-    const_iterator(const HashIDMapType& tree_table, Slot<Index> root, bool begin) : m_tree_table(&tree_table), m_stack(), m_value(END_POS)
+    const_iterator(const TreeHashIDMap<>& tree_table, Slot<Index> root, bool begin) : m_tree_table(&tree_table), m_stack(), m_value(END_POS)
     {
         assert(m_tree_table);
 
@@ -250,7 +248,7 @@ public:
     bool operator!=(const const_iterator& other) const { return !(*this == other); }
 };
 
-inline const_iterator begin(Slot<Index> root, const HashIDMapType& tree_table) { return const_iterator(tree_table, root, true); }
+inline const_iterator begin(Slot<Index> root, const TreeHashIDMap<>& tree_table) { return const_iterator(tree_table, root, true); }
 
 inline const_iterator end() { return const_iterator(); }
 

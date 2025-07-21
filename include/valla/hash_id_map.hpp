@@ -40,13 +40,13 @@ enum class ctrl_t : int8_t
 
 alignas(16) inline static const __m128i kEmptyPattern = _mm_set1_epi8(static_cast<signed char>(ctrl_t::kEmpty));
 
-/// @brief `HashIDMap` implements a hash ID map with open addressing in a Swiss table format where the position of a key implicitly becomes the index.
+/// @brief `HashIDMap implements a hash ID map with open addressing in a Swiss table format where the position of a key implicitly becomes the index.
+/// @tparam Derived is the derived class that must implement the rehash logic in rehash_impl.
 /// @tparam Key is the key.
 /// @tparam Hash is the hash functor for a key.
 /// @tparam EqualTo is the equality comparison functor for a key.
-/// @tparam RehashPolicy is the rehash policy that gets executed upon rehash.
 /// @tparam InitialCapacity is the initial capacity, which must be a multiplicative of 16.
-template<typename Key, typename RehashPolicy, typename Hash = std::hash<Key>, typename EqualTo = std::equal_to<Key>, size_t InitialCapacity = 1024>
+template<typename Derived, typename Key, typename Hash = Hash<Key>, typename EqualTo = std::equal_to<Key>, size_t InitialCapacity = 1024>
 class HashIDMap
 {
 private:
@@ -56,8 +56,6 @@ private:
 
     static constexpr double MAX_LOAD_FACTOR = static_cast<double>(7) / 8;
 
-    RehashPolicy m_rehash_policy;
-
     std::vector<Key> m_slots;
     std::vector<ctrl_t> m_controls;
     size_t m_size;
@@ -66,7 +64,9 @@ private:
     Hash m_hash;
     EqualTo m_equal_to;
 
-    friend RehashPolicy;
+    /// @brief Helper to cast to Derived.
+    constexpr const auto& self() const { return static_cast<const Derived&>(*this); }
+    constexpr auto& self() { return static_cast<Derived&>(*this); }
 
     struct Statistics
     {
@@ -88,21 +88,14 @@ private:
 
         size_t new_capacity = factor * m_capacity;
 
-        m_rehash_policy(*this, new_capacity);
+        self().rehash_impl(new_capacity);
 
         auto end = clock::now();
         m_statistics.m_total_rehash_time += std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     }
 
 public:
-    HashIDMap(RehashPolicy& rehash_policy) :
-        m_rehash_policy(rehash_policy),
-        m_slots(),
-        m_controls(),
-        m_size(0),
-        m_capacity(InitialCapacity),
-        m_hash(),
-        m_equal_to()
+    HashIDMap() : m_slots(), m_controls(), m_size(0), m_capacity(InitialCapacity), m_hash(), m_equal_to()
     {
         m_slots.resize(m_capacity);
 
@@ -185,8 +178,9 @@ public:
     const Statistics& statistics() const { return m_statistics; }
 };
 
-/// @brief `TreeRehashPolicy` implements a DFS style rehash policy for chains of perfectly balanced binary trees.
-class TreeRehashPolicy
+/// @brief `TreeDFSRehashPolicy` implements a DFS style rehash policy for chains of perfectly balanced binary trees.
+template<typename Hash = Hash<Slot<Index>>, typename EqualTo = std::equal_to<Slot<Index>>, size_t InitialCapacity = 1024>
+class TreeHashIDMap : public HashIDMap<TreeHashIDMap<Hash, EqualTo, InitialCapacity>, Slot<Index>, Hash, EqualTo, InitialCapacity>
 {
 private:
     IndexedHashSet<Index>& m_roots;
@@ -206,10 +200,9 @@ private:
         }
     };
 
-    template<typename HashIDMapType>
-    Index insert(Slot<Index> slot, const HashIDMapType& map, RehashData& tmp)
+    Index insert(Slot<Index> slot, RehashData& tmp)
     {
-        size_t h = map.m_hash(slot);
+        size_t h = this->m_hash(slot);
         size_t mask = (tmp.capacity - 1);
         size_t i = h & mask;
         ctrl_t ctrl = static_cast<ctrl_t>(h >> 57);
@@ -234,9 +227,9 @@ private:
                 int offset = __builtin_ctz(mask_ctrl);
                 size_t idx = (i + offset) & mask;
 
-                if (map.m_equal_to(tmp.slots[idx], slot))
+                if (this->m_equal_to(tmp.slots[idx], slot))
                 {
-                    map.m_statistics.m_sum_probe_lengths += offset;
+                    this->m_statistics.m_sum_probe_lengths += offset;
                     return idx;
                 }
 
@@ -251,7 +244,7 @@ private:
             if (mask_empty != 0)
             {
                 int offset = __builtin_ctz(mask_empty);
-                map.m_statistics.m_sum_probe_lengths += offset;
+                this->m_statistics.m_sum_probe_lengths += offset;
                 size_t idx = (i + offset) & mask;
 
                 if (tmp.controls[idx] == ctrl_t::kEmpty)
@@ -260,19 +253,18 @@ private:
 
                     tmp.slots[idx] = slot;
                     tmp.controls[idx] = ctrl;
-                    ++map.m_statistics.m_num_probes;
+                    ++this->m_statistics.m_num_probes;
                     return idx;
                 }
             }
 
             // Else probe further
             i = (i + 16) & mask;
-            map.m_statistics.m_sum_probe_lengths += 16;
+            this->m_statistics.m_sum_probe_lengths += 16;
         }
     }
 
-    template<typename HashIDMapType>
-    Index rehash_recursively(Index unstable_index, size_t size, const HashIDMapType& map, RehashData& tmp)
+    Index rehash_recursively(Index unstable_index, size_t size, RehashData& tmp)
     {
         /* Base case 1: skipped node creation */
         if (size == 1)
@@ -280,11 +272,11 @@ private:
 
         /* Note: caching relocation is expensive to cache because the tree structure depends on size. */
 
-        const auto& slot = map.m_slots[unstable_index];
+        const auto& slot = this->m_slots[unstable_index];
 
         /* Base case 3: rellocate slot */
         if (size == 2)
-            return insert(slot, map, tmp);
+            return insert(slot, tmp);
 
         /* Divide */
         assert(size >= 2);
@@ -294,14 +286,12 @@ private:
         Index i1 = rehash_recursively(slot.i1, mid, tmp);
         Index i2 = rehash_recursively(slot.i2, size - mid, tmp);
 
-        return insert(Slot<Index>(i1, i2), map, tmp);
+        return insert(Slot<Index>(i1, i2), tmp);
     }
 
-public:
-    explicit TreeRehashPolicy(IndexedHashSet<Index>& roots) : m_roots(roots) {}
-
-    template<typename HashIDMapType>
-    void operator()(HashIDMapType& map, size_t new_capacity) const
+    /// @brief Depth-first rehash policy for a HashIDMap that stores a collection of perfectly balanced binary trees.
+    /// @param new_capacity is the capacity after rehash.
+    void rehash_impl(size_t new_capacity) const
     {
         auto tmp = RehashData(new_capacity);
 
@@ -315,16 +305,26 @@ public:
 
             assert(root.i2 > 0);  // Ensure nonempty.
 
-            Index unstable_index = rehash_recursively(root.i1, root.i2, map, tmp);
+            Index unstable_index = rehash_recursively(root.i1, root.i2, tmp);
 
             m_roots.m_index_to_slot[stable_index] = Slot<Index>(unstable_index, root.i2);
             m_roots.m_uniqueness.emplace(stable_index);
         }
 
-        map.m_capacity = new_capacity;
-        std::swap(map.m_slots, tmp.slots);
-        std::swap(map.m_controls, tmp.controls);
+        this->m_capacity = new_capacity;
+        std::swap(this->m_slots, tmp.slots);
+        std::swap(this->m_controls, tmp.controls);
     }
+
+    using Base = HashIDMap<TreeHashIDMap<Hash, EqualTo, InitialCapacity>, Slot<Index>, Hash, EqualTo, InitialCapacity>;
+
+    friend Base;
+
+public:
+    explicit TreeHashIDMap(IndexedHashSet<Index>& roots) : Base(), m_roots(roots) {}
+
+    using Base::operator[];
+    using Base::insert;
 };
 }
 

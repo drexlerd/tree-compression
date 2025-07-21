@@ -25,8 +25,7 @@ namespace v = valla::plain::uint::hash_id_map;
 TEST(VallaTests, PlainUintHashIDMapTest)
 {
     auto root_table = IndexedHashSet<Index>();
-    auto rehash_policy = TreeRehashPolicy(root_table);
-    auto tree_table = v::HashIDMapType(rehash_policy);
+    auto tree_table = TreeHashIDMap<>(root_table);
     auto tmp_state = IndexList();
 
     {
@@ -93,8 +92,7 @@ TEST(VallaTests, PlainUintHashIDMapTest)
 TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
 {
     auto root_table = IndexedHashSet<Index>();
-    auto rehash_policy = TreeRehashPolicy(root_table);
-    auto tree_table = v::HashIDMapType(rehash_policy);
+    auto tree_table = TreeHashIDMap<>(root_table);
     auto tmp_state = IndexList();
 
     {
@@ -131,8 +129,7 @@ TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
 TEST(VallaTests, PlainUintHashIDMapIteratorTest)
 {
     auto root_table = IndexedHashSet<Index>();
-    auto rehash_policy = TreeRehashPolicy(root_table);
-    auto tree_table = v::HashIDMapType(rehash_policy);
+    auto tree_table = TreeHashIDMap<>(root_table);
     auto tmp_state = IndexList();
 
     {

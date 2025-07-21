@@ -151,9 +151,15 @@ inline std::ostream& operator<<(std::ostream& out, __m128i v)
  */
 
 template<typename T>
-struct SlotHash
+struct Hash
 {
-    size_t operator()(Slot<T> el) const { return absl::HashOf(el.i1, el.i2); }
+    size_t operator()(const T& el) const { return std::hash<T> {}(el); }
+};
+
+template<typename T>
+struct Hash<Slot<T>>
+{
+    size_t operator()(const Slot<T>& el) const { return absl::HashOf(el.i1, el.i2); }
 };
 
 // Instead of additionally storing the size in the unstable_to_stable mapping,
@@ -168,7 +174,7 @@ struct IndexReferencedSlotHash
     size_t operator()(Index el) const
     {
         assert(el < stable_to_unstable.size());
-        return SlotHash<T> {}(stable_to_unstable[el]);
+        return Hash<Slot<T>> {}(stable_to_unstable[el]);
     }
 };
 
