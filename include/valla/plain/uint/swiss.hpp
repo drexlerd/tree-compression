@@ -27,7 +27,6 @@
 #include <cmath>
 #include <concepts>
 #include <iostream>
-#include <ranges>
 #include <stack>
 
 namespace valla::plain::uint::swiss
@@ -247,9 +246,11 @@ public:
     bool operator!=(const const_iterator& other) const { return !(*this == other); }
 };
 
-inline const_iterator begin(Slot<Index> root, const IndexedHashSet<Index>& tree_table) { return const_iterator(tree_table, root, true); }
+inline const_iterator begin(Slot<Index> root, const IndexedHashSet<Index>& table) { return const_iterator(table, root, true); }
 
 inline const_iterator end() { return const_iterator(); }
+
+inline auto range(Slot<Index> root, const IndexedHashSet<Index>& table) { return std::ranges::subrange(begin(root, table), end()); }
 
 }
 

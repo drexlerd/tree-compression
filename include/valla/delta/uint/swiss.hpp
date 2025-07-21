@@ -263,6 +263,8 @@ inline const_iterator begin(Slot<Index> root, const IndexedHashSet<Index>& tree_
 
 inline const_iterator end() { return const_iterator(); }
 
+inline auto range(Slot<Index> root, const IndexedHashSet<Index>& table) { return std::ranges::subrange(begin(root, table), end()); }
+
 }
 
 #endif

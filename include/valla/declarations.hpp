@@ -34,6 +34,7 @@
 #include <memory>
 #include <mutex>
 #include <ostream>
+#include <ranges>
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>

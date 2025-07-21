@@ -65,9 +65,9 @@ static void BM_PlainUintSwissIterator(benchmark::State& state)
         {
             for (const auto& r : all_roots)
             {
-                for (auto it = v::begin(r, tree_table); it != v::end(); ++it)
+                for (auto x : v::range(r, tree_table))
                 {
-                    benchmark::DoNotOptimize(state);
+                    benchmark::DoNotOptimize(x);
                 }
             }
         }

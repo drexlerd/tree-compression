@@ -263,15 +263,21 @@ public:
 };
 
 template<typename Hash, typename EqualTo, size_t InitialCapacity>
-inline const_iterator<Hash, EqualTo, InitialCapacity> begin(Index root, const TreeHashIDMap<Hash, EqualTo, InitialCapacity>& tree_table)
+inline const_iterator<Hash, EqualTo, InitialCapacity> begin(Index root, const TreeHashIDMap<Hash, EqualTo, InitialCapacity>& table)
 {
-    return const_iterator(tree_table, root, true);
+    return const_iterator(table, root, true);
 }
 
 template<typename Hash, typename EqualTo, size_t InitialCapacity>
 inline const_iterator<Hash, EqualTo, InitialCapacity> end(const TreeHashIDMap<Hash, EqualTo, InitialCapacity>&)
 {
     return const_iterator<Hash, EqualTo, InitialCapacity>();
+}
+
+template<typename Hash, typename EqualTo, size_t InitialCapacity>
+inline auto range(Index root, const TreeHashIDMap<Hash, EqualTo, InitialCapacity>& table)
+{
+    return std::ranges::subrange(begin(root, table), end(table));
 }
 
 }

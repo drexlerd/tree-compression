@@ -313,6 +313,11 @@ inline const_iterator begin(Slot<Index> root, const IndexedHashSet<Index>& inner
 
 inline const_iterator end() { return const_iterator(); }
 
+inline auto range(Slot<Index> root, const IndexedHashSet<Index>& inner_table, const IndexedHashSet<double>& leaf_table)
+{
+    return std::ranges::subrange(begin(root, inner_table, leaf_table), end());
+}
+
 }
 
 #endif
