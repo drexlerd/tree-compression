@@ -13,3 +13,15 @@ target_link_libraries(plain_uint_swiss_read benchmark::benchmark)
 add_executable(plain_uint_swiss_iterator "plain/uint/swiss/iterator.cpp")
 target_link_libraries(plain_uint_swiss_iterator valla::core)
 target_link_libraries(plain_uint_swiss_iterator benchmark::benchmark)
+
+add_executable(plain_uint_hash_id_map_insert "plain/uint/hash_id_map/insert.cpp")
+target_link_libraries(plain_uint_hash_id_map_insert valla::core)
+target_link_libraries(plain_uint_hash_id_map_insert benchmark::benchmark)
+
+add_executable(plain_uint_hash_id_map_read "plain/uint/hash_id_map/read.cpp")
+target_link_libraries(plain_uint_hash_id_map_read valla::core)
+target_link_libraries(plain_uint_hash_id_map_read benchmark::benchmark)
+
+add_executable(plain_uint_hash_id_map_iterator "plain/uint/hash_id_map/iterator.cpp")
+target_link_libraries(plain_uint_hash_id_map_iterator valla::core)
+target_link_libraries(plain_uint_hash_id_map_iterator benchmark::benchmark)

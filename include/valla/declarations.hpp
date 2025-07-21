@@ -18,6 +18,12 @@
 #ifndef VALLA_INCLUDE_DECLARATIONS_HPP_
 #define VALLA_INCLUDE_DECLARATIONS_HPP_
 
+#if defined(__SSE4_1__) && (defined(__x86_64__) || defined(_M_X64))
+#include <smmintrin.h>
+#else
+#error "SSE4.1 not supported on this platform or not enabled with -msse4.1"
+#endif
+//
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/flat_hash_set.h>
 #include <absl/container/node_hash_map.h>
@@ -28,7 +34,6 @@
 #include <memory>
 #include <mutex>
 #include <ostream>
-#include <smmintrin.h>
 #include <tuple>
 #include <unordered_map>
 #include <unordered_set>
@@ -151,13 +156,13 @@ inline std::ostream& operator<<(std::ostream& out, __m128i v)
  */
 
 template<typename T>
-struct Hash
+struct Hasher
 {
     size_t operator()(const T& el) const { return std::hash<T> {}(el); }
 };
 
 template<typename T>
-struct Hash<Slot<T>>
+struct Hasher<Slot<T>>
 {
     size_t operator()(const Slot<T>& el) const { return absl::HashOf(el.i1, el.i2); }
 };
@@ -174,7 +179,7 @@ struct IndexReferencedSlotHash
     size_t operator()(Index el) const
     {
         assert(el < stable_to_unstable.size());
-        return Hash<Slot<T>> {}(stable_to_unstable[el]);
+        return Hasher<Slot<T>> {}(stable_to_unstable[el]);
     }
 };
 

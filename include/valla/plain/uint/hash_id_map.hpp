@@ -44,46 +44,49 @@ namespace valla::plain::uint::hash_id_map
 /// @param size is the number of elements in the range from it to end.
 /// @param table is the table to uniquely insert the slots.
 /// @return the index of the slot at the root.
-template<std::input_iterator Iterator>
+template<std::input_iterator Iterator, typename Hash, typename EqualTo, size_t InitialCapacity>
     requires std::same_as<std::iter_value_t<Iterator>, Index>
-inline Index insert_recursively(Iterator it, Iterator end, size_t size, TreeHashIDMap<>& table)
+inline Index insert_recursively(Iterator it, Iterator end, size_t size, TreeHashIDMap<Hash, EqualTo, InitialCapacity>& table)
 {
     /* Base cases */
     if (size == 1)
         return *it;  ///< Skip node creation
 
     if (size == 2)
-        return table.insert(Slot<Index>(*it, *(it + 1)));
+        return table.insert_internal(Slot<Index>(*it, *(it + 1)));
 
     /* Divide */
     const auto mid = std::bit_floor(size - 1);
 
     /* Conquer */
+
     const auto mid_it = it + mid;
     const auto i1 = insert_recursively(it, mid_it, mid, table);
     const auto i2 = insert_recursively(mid_it, end, size - mid, table);
 
-    return table.insert(Slot<Index>(i1, i2));
+    return table.insert_internal(Slot<Index>(i1, i2));
 }
 
-/// @brief Inserts the elements from the given `state` into the `tree_table`.
+/// @brief Inserts the elements from the given `state` into the `table`.
 /// @param state is the given state.
-/// @param tree_table is the tree table whose nodes encode the tree structure without size information.
-/// @param root_table is the root_table whose nodes encode the root tree index + the size of the state that defines the tree structure.
+/// @param table is the tree table whose nodes encode the tree structure without size information.
 /// @return A pair (it, bool) where it points to the entry in the root table and bool is true if and only if the state was newly inserted.
-template<std::ranges::input_range Range>
+template<std::ranges::input_range Range, typename Hash, typename EqualTo, size_t InitialCapacity>
     requires std::same_as<std::ranges::range_value_t<Range>, Index>
-auto insert(const Range& state, TreeHashIDMap<>& tree_table)
+Index insert(const Range& state, TreeHashIDMap<Hash, EqualTo, InitialCapacity>& table)
 {
     assert(std::is_sorted(state.begin(), state.end()));
 
     // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
     const auto size = static_cast<Index>(std::distance(state.begin(), state.end()));
 
-    if (size == 0)               ///< Special case for empty state.
-        return EMPTY_ROOT_SLOT;  ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
+    if (size == 0)  ///< Special case for empty state.
+        return 0;   ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
 
-    return Slot<Index>(insert_recursively(state.begin(), state.end(), size, tree_table), size);
+    if ((static_cast<double>(table.size() + 2 * size) / table.capacity()) > table.max_load_factor())
+        table.rehash();
+
+    return table.insert_root(Slot<Index>(insert_recursively(state.begin(), state.end(), size, table), size));
 }
 
 /**
@@ -95,7 +98,8 @@ auto insert(const Range& state, TreeHashIDMap<>& tree_table)
 /// @param size is the length of the state that defines the shape of the tree at the index.
 /// @param tree_table is the tree table.
 /// @param out_state is the output state.
-inline void read_state_recursively(Index index, size_t size, const TreeHashIDMap<>& tree_table, IndexList& ref_state)
+template<typename Hash, typename EqualTo, size_t InitialCapacity>
+inline void read_state_recursively(Index index, size_t size, const TreeHashIDMap<Hash, EqualTo, InitialCapacity>& tree_table, IndexList& ref_state)
 {
     /* Base case */
     if (size == 1)
@@ -104,7 +108,7 @@ inline void read_state_recursively(Index index, size_t size, const TreeHashIDMap
         return;
     }
 
-    const auto slot = tree_table[index];
+    const auto slot = tree_table.lookup_internal(index);
 
     /* Base case */
     if (size == 2)
@@ -127,7 +131,8 @@ inline void read_state_recursively(Index index, size_t size, const TreeHashIDMap
 /// @param size
 /// @param tree_table
 /// @param out_state
-inline void read_state(Index tree_index, size_t size, const TreeHashIDMap<>& tree_table, IndexList& out_state)
+template<typename Hash, typename EqualTo, size_t InitialCapacity>
+inline void read_state(Index tree_index, size_t size, const TreeHashIDMap<Hash, EqualTo, InitialCapacity>& tree_table, IndexList& out_state)
 {
     out_state.clear();
 
@@ -142,10 +147,13 @@ inline void read_state(Index tree_index, size_t size, const TreeHashIDMap<>& tre
 /// @param tree_table is the tree table.
 /// @param root_table is the root table.
 /// @param out_state is the output state.
-inline void read_state(Slot<Index> root_slot, const TreeHashIDMap<>& tree_table, IndexList& out_state)
+template<typename Hash, typename EqualTo, size_t InitialCapacity>
+inline void read_state(Index root_index, const TreeHashIDMap<Hash, EqualTo, InitialCapacity>& tree_table, IndexList& out_state)
 {
     /* Observe: a root slot wraps the root tree_index together with the length that defines the tree structure! */
-    read_state(root_slot.i1, root_slot.i2, tree_table, out_state);
+    const auto& slot = tree_table.lookup_root(root_index);
+
+    read_state(slot.i1, slot.i2, tree_table, out_state);
 }
 
 /**
@@ -154,16 +162,17 @@ inline void read_state(Slot<Index> root_slot, const TreeHashIDMap<>& tree_table,
 
 static thread_local UniqueObjectPool<std::vector<Entry>> s_stack_pool = UniqueObjectPool<std::vector<Entry>> {};
 
+template<typename Hash, typename EqualTo, size_t InitialCapacity>
 class const_iterator
 {
 private:
-    const TreeHashIDMap<>* m_tree_table;
+    const TreeHashIDMap<Hash, EqualTo, InitialCapacity>* m_tree_table;
     UniqueObjectPoolPtr<std::vector<Entry>> m_stack;
     Index m_value;
 
     static constexpr const Index END_POS = Index(-1);
 
-    const TreeHashIDMap<>& tree_table() const
+    const TreeHashIDMap<Hash, EqualTo, InitialCapacity>& tree_table() const
     {
         assert(m_tree_table);
         return *m_tree_table;
@@ -182,7 +191,7 @@ private:
                 return;
             }
 
-            const auto slot = tree_table()[entry.m_index];
+            const auto slot = tree_table().lookup_internal(entry.m_index);
 
             Index mid = std::bit_floor(entry.m_size - 1);
 
@@ -216,7 +225,10 @@ public:
     }
     const_iterator(const_iterator&& other) = default;
     const_iterator& operator=(const_iterator&& other) = default;
-    const_iterator(const TreeHashIDMap<>& tree_table, Slot<Index> root, bool begin) : m_tree_table(&tree_table), m_stack(), m_value(END_POS)
+    const_iterator(const TreeHashIDMap<Hash, EqualTo, InitialCapacity>& tree_table, Index root, bool begin) :
+        m_tree_table(&tree_table),
+        m_stack(),
+        m_value(END_POS)
     {
         assert(m_tree_table);
 
@@ -225,9 +237,11 @@ public:
             m_stack = s_stack_pool.get_or_allocate();
             m_stack->clear();
 
-            if (root.i2 > 0)  ///< Push to stack only if there leafs
+            const auto& root_slot = tree_table.lookup_root(root);
+
+            if (root_slot.i2 > 0)  ///< Push to stack only if there leafs
             {
-                m_stack->emplace_back(root.i1, root.i2);
+                m_stack->emplace_back(root_slot.i1, root_slot.i2);
                 advance();
             }
         }
@@ -248,9 +262,17 @@ public:
     bool operator!=(const const_iterator& other) const { return !(*this == other); }
 };
 
-inline const_iterator begin(Slot<Index> root, const TreeHashIDMap<>& tree_table) { return const_iterator(tree_table, root, true); }
+template<typename Hash, typename EqualTo, size_t InitialCapacity>
+inline const_iterator<Hash, EqualTo, InitialCapacity> begin(Index root, const TreeHashIDMap<Hash, EqualTo, InitialCapacity>& tree_table)
+{
+    return const_iterator(tree_table, root, true);
+}
 
-inline const_iterator end() { return const_iterator(); }
+template<typename Hash, typename EqualTo, size_t InitialCapacity>
+inline const_iterator<Hash, EqualTo, InitialCapacity> end(const TreeHashIDMap<Hash, EqualTo, InitialCapacity>&)
+{
+    return const_iterator<Hash, EqualTo, InitialCapacity>();
+}
 
 }
 

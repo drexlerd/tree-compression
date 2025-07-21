@@ -24,125 +24,145 @@ namespace v = valla::plain::uint::hash_id_map;
 
 TEST(VallaTests, PlainUintHashIDMapTest)
 {
-    auto root_table = IndexedHashSet<Index>();
-    auto tree_table = TreeHashIDMap<>(root_table);
+    auto table = TreeHashIDMap<>();
     auto tmp_state = IndexList();
 
     {
         const auto s0 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
-        const auto s0_idx = root_table.insert(v::insert(s0, tree_table));
-        const auto& s0_root = root_table[s0_idx];
+        const auto s0_idx = v::insert(s0, table);
 
-        EXPECT_EQ(tree_table.size(), 15);
-        EXPECT_EQ(root_table.size(), 1);
+        EXPECT_EQ(table.size(), 15);
+        EXPECT_EQ(table.num_roots(), 2);
 
         // Created new state!
-        EXPECT_EQ(s0_idx, 0);
+        EXPECT_EQ(s0_idx, 1);
 
-        v::read_state(s0_root, tree_table, tmp_state);
+        v::read_state(s0_idx, table, tmp_state);
         EXPECT_EQ(tmp_state, s0);
     }
 
     {
         const auto s1 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-        const auto s1_idx = root_table.insert(v::insert(s1, tree_table));
-        const auto& s1_root = root_table[s1_idx];
+        const auto s1_idx = v::insert(s1, table);
 
-        EXPECT_EQ(tree_table.size(), 16);
-        EXPECT_EQ(root_table.size(), 2);
+        EXPECT_EQ(table.size(), 16);
+        EXPECT_EQ(table.num_roots(), 3);
 
         // Created new state!
-        EXPECT_EQ(s1_idx, 1);
+        EXPECT_EQ(s1_idx, 2);
 
-        v::read_state(s1_root, tree_table, tmp_state);
+        v::read_state(s1_idx, table, tmp_state);
         EXPECT_EQ(tmp_state, s1);
     }
 
     {
         const auto s2 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
-        const auto s2_idx = root_table.insert(v::insert(s2, tree_table));
-        const auto& s2_root = root_table[s2_idx];
+        const auto s2_idx = v::insert(s2, table);
 
-        EXPECT_EQ(tree_table.size(), 18);
-        EXPECT_EQ(root_table.size(), 3);
+        EXPECT_EQ(table.size(), 18);
+        EXPECT_EQ(table.num_roots(), 4);
 
         // Created new state!
-        EXPECT_EQ(s2_idx, 2);
+        EXPECT_EQ(s2_idx, 3);
 
-        v::read_state(s2_root, tree_table, tmp_state);
+        v::read_state(s2_idx, table, tmp_state);
         EXPECT_EQ(tmp_state, s2);
     }
 
     {
         const auto s3 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
-        const auto s3_idx = root_table.insert(v::insert(s3, tree_table));
-        const auto& s3_root = root_table[s3_idx];
+        const auto s3_idx = v::insert(s3, table);
 
-        EXPECT_EQ(tree_table.size(), 18);
-        EXPECT_EQ(root_table.size(), 3);
+        EXPECT_EQ(table.size(), 18);
+        EXPECT_EQ(table.num_roots(), 4);
 
         // IndexList already exists!
-        EXPECT_EQ(s3_idx, 2);
+        EXPECT_EQ(s3_idx, 3);
 
-        v::read_state(s3_root, tree_table, tmp_state);
+        v::read_state(s3_idx, table, tmp_state);
         EXPECT_EQ(tmp_state, s3);
     }
 }
 
 TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
 {
-    auto root_table = IndexedHashSet<Index>();
-    auto tree_table = TreeHashIDMap<>(root_table);
+    auto table = TreeHashIDMap<>();
     auto tmp_state = IndexList();
 
     {
         const auto s0 = IndexList {};
-        const auto s0_idx = root_table.insert(v::insert(s0, tree_table));
-        const auto& s0_root = root_table[s0_idx];
+        const auto s0_idx = v::insert(s0, table);
 
-        EXPECT_EQ(tree_table.size(), 0);
-        EXPECT_EQ(root_table.size(), 1);
+        EXPECT_EQ(table.size(), 0);
+        EXPECT_EQ(table.num_roots(), 1);
 
         // Created new state!
         EXPECT_EQ(s0_idx, 0);
 
-        v::read_state(s0_root, tree_table, tmp_state);
+        v::read_state(s0_idx, table, tmp_state);
         EXPECT_EQ(tmp_state, s0);
     }
 
     {
         const auto s1 = IndexList { 0 };
-        const auto s1_idx = root_table.insert(v::insert(s1, tree_table));
-        const auto& s1_root = root_table[s1_idx];
+        const auto s1_idx = v::insert(s1, table);
 
-        EXPECT_EQ(tree_table.size(), 0);
-        EXPECT_EQ(root_table.size(), 2);
+        EXPECT_EQ(table.size(), 0);
+        EXPECT_EQ(table.num_roots(), 2);
 
         // Created new state!
         EXPECT_EQ(s1_idx, 1);
 
-        v::read_state(s1_root, tree_table, tmp_state);
+        v::read_state(s1_idx, table, tmp_state);
         EXPECT_EQ(tmp_state, s1);
     }
 }
 
 TEST(VallaTests, PlainUintHashIDMapIteratorTest)
 {
-    auto root_table = IndexedHashSet<Index>();
-    auto tree_table = TreeHashIDMap<>(root_table);
+    auto table = TreeHashIDMap<>();
     auto tmp_state = IndexList();
 
     {
         const auto s0 = IndexList { 1, 2, 4, 5, 6 };
-        const auto s0_idx = root_table.insert(v::insert(s0, tree_table));
-        const auto& s0_root = root_table[s0_idx];
+        const auto s0_idx = v::insert(s0, table);
 
-        EXPECT_EQ(s0, IndexList(v::begin(s0_root, tree_table), v::end()));
+        EXPECT_EQ(s0, IndexList(v::begin(s0_idx, table), v::end(table)));
     }
 
     {
         const auto s0 = IndexList {};
-        EXPECT_EQ(s0, IndexList(v::begin(EMPTY_ROOT_SLOT, tree_table), v::end()));
+        EXPECT_EQ(s0, IndexList(v::begin(0, table), v::end(table)));
+    }
+}
+
+TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
+{
+    const size_t state_num = static_cast<size_t>(50);  // number of states
+    const size_t state_size = static_cast<size_t>(6);  // size of each state
+
+    std::mt19937 rng(42);  // fixed seed for reproducibility
+    std::uniform_int_distribution<Index> dist(0, 10000);
+
+    std::vector<IndexList> all_states;
+    all_states.reserve(state_num);
+
+    // Generate sorted random states
+    for (size_t i = 0; i < state_num; ++i)
+    {
+        IndexList s(state_size);
+        for (auto& v : s)
+            v = dist(rng);
+
+        std::sort(s.begin(), s.end());
+        all_states.push_back(std::move(s));
+    }
+
+    TreeHashIDMap<Hasher<Slot<Index>>, std::equal_to<Slot<Index>>, size_t(64)> table;
+
+    for (const auto& s : all_states)
+    {
+        v::insert(s, table);
     }
 }
 

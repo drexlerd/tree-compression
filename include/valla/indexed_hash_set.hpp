@@ -70,7 +70,8 @@ private:
     std::vector<Slot<T>> m_index_to_slot;
     absl::flat_hash_set<Index, IndexReferencedSlotHash<T>, IndexReferencedSlotEqualTo<T>> m_uniqueness;
 
-    friend class TreeRehashPolicy;
+    template<typename Hash, typename EqualTo, size_t InitialCapacity>
+    friend class TreeHashIDMap;
 };
 
 }
