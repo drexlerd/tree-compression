@@ -24,7 +24,6 @@
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
-#include <immintrin.h>  // for SSE2, AVX2, etc.
 #include <vector>
 
 namespace valla

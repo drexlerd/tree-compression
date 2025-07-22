@@ -18,11 +18,7 @@
 #ifndef VALLA_INCLUDE_DECLARATIONS_HPP_
 #define VALLA_INCLUDE_DECLARATIONS_HPP_
 
-#if defined(__SSE4_1__) && (defined(__x86_64__) || defined(_M_X64))
-#include <smmintrin.h>
-#else
-#error "SSE4.1 not supported on this platform or not enabled with -msse4.1"
-#endif
+#include "valla/config.hpp"
 //
 #include <absl/container/flat_hash_map.h>
 #include <absl/container/flat_hash_set.h>

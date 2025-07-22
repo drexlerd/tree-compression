@@ -53,7 +53,9 @@ static void BM_PlainUintSwissRead(benchmark::State& state)
     for (size_t rep = 0; rep < repetitions; ++rep)
     {
         for (const auto& s : all_states)
+        {
             all_roots.push_back(v::insert(s, table));
+        }
     }
 
     for (auto _ : state)
