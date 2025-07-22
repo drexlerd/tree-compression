@@ -16,4 +16,6 @@ add_gtest(delta_uint_swiss                   "delta/uint/swiss.cpp")
 
 add_gtest(plain_uint_hash_id_map             "plain/uint/hash_id_map.cpp")
 add_gtest(plain_uint_swiss                   "plain/uint/swiss.cpp")
+
+add_gtest(plain_double_hash_id_map           "plain/double/hash_id_map.cpp")
 add_gtest(plain_double_swiss                 "plain/double/swiss.cpp")
