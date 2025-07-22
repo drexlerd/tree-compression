@@ -337,7 +337,7 @@ inline auto begin(Index root, const TreeHashIDMap<Hash, EqualTo, InitialCapacity
 }
 
 template<typename Hash, typename EqualTo, size_t InitialCapacity>
-inline auto end(TreeHashIDMap<Hash, EqualTo, InitialCapacity>&)
+inline auto end(const TreeHashIDMap<Hash, EqualTo, InitialCapacity>&)
 {
     return const_iterator<Hash, EqualTo, InitialCapacity>();
 }
