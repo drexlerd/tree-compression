@@ -339,6 +339,9 @@ public:
 
     const Slot<Index>& lookup_internal(Index pos) const { return this->m_slots[pos]; }
 
+    size_t size() const { return num_internals() + num_roots(); }
+
+    size_t num_internals() const { return Base::size(); }
     size_t num_roots() const { return m_roots.size(); }
 
     size_t mem_usage() const
