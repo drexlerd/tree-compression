@@ -22,7 +22,7 @@ namespace valla::tests
 {
 namespace v = valla::plain::dbl::hash_id_map;
 
-TEST(VallaTests, PlainDoubleSwissTest)
+TEST(VallaTests, PlainDoubleHashIDMapTest)
 {
     auto inner_table = TreeHashIDMap<>();
     auto leaf_table = IndexedHashSet<double>();
@@ -86,7 +86,7 @@ TEST(VallaTests, PlainDoubleSwissTest)
     }
 }
 
-TEST(VallaTests, PlainDoubleSwissEdgeCasesTest)
+TEST(VallaTests, PlainDoubleHashIDMapEdgeCasesTest)
 {
     auto inner_table = TreeHashIDMap<>();
     auto leaf_table = IndexedHashSet<double>();
@@ -122,7 +122,7 @@ TEST(VallaTests, PlainDoubleSwissEdgeCasesTest)
     }
 }
 
-TEST(VallaTests, PlainDoubleSwissIteratorTest)
+TEST(VallaTests, PlainDoubleHashIDMapIteratorTest)
 {
     auto inner_table = TreeHashIDMap<>();
     auto leaf_table = IndexedHashSet<double>();
@@ -139,6 +139,38 @@ TEST(VallaTests, PlainDoubleSwissIteratorTest)
     {
         // const auto s0 = DoubleList {};
         // EXPECT_EQ(s0, DoubleList(v::begin(v::EMPTY_ROOT_SLOT, inner_table, leaf_table), v::end()));
+    }
+}
+
+TEST(VallaTests, PlainDoubleHashIDMapExhaustiveTest)
+{
+    const size_t state_num = static_cast<size_t>(1000);  // number of states
+    const size_t state_size = static_cast<size_t>(50);   // size of each state
+
+    std::mt19937 rng(42);  // fixed seed for reproducibility
+    std::uniform_int_distribution<Index> dist(0, 10000);
+
+    std::vector<DoubleList> all_states;
+    all_states.reserve(state_num);
+
+    // Generate sorted random states
+    for (size_t i = 0; i < state_num; ++i)
+    {
+        DoubleList s(state_size);
+        for (auto& v : s)
+            v = dist(rng);
+
+        std::sort(s.begin(), s.end());
+        all_states.push_back(std::move(s));
+    }
+
+    auto inner_table = TreeHashIDMap<>();
+    auto leaf_table = IndexedHashSet<double>();
+
+    for (const auto& s : all_states)
+    {
+        std::cout << s << std::endl;
+        v::insert(s, inner_table, leaf_table);
     }
 }
 

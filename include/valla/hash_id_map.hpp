@@ -37,6 +37,18 @@ enum class ctrl_t : int8_t
     kSentinel = -1,  // 0b11111111
 };
 
+inline std::ostream& operator<<(std::ostream& out, const std::vector<ctrl_t>& vec)
+{
+    out << "[";
+    for (const auto x : vec)
+    {
+        out << static_cast<int32_t>(x) << ", ";
+    }
+    out << "]";
+
+    return out;
+}
+
 alignas(16) inline static const __m128i kEmptyPattern = _mm_set1_epi8(static_cast<signed char>(ctrl_t::kEmpty));
 
 /// @brief `HashIDMap implements a hash ID map with open addressing in a Swiss table format where the position of a key implicitly becomes the index.
@@ -166,6 +178,10 @@ public:
                     return idx;
                 }
             }
+
+            std::cout << i << " " << load_factor() << " " << size() << " " << capacity() << " " << (mask_empty == 0) << std::endl;
+
+            std::cout << m_controls << std::endl;
 
             // Else probe further
             i = (i + 16) & mask;
@@ -321,6 +337,59 @@ private:
         std::swap(this->m_controls, tmp.controls);
     }
 
+    Index rehash_recursively_with_stable_leafs(Index unstable_index, size_t size, RehashData& tmp)
+    {
+        std::cout << "rehash_recursively_with_stable_leafs" << std::endl;
+        /* Base case 1: stable leaf */
+        if (size == 1)
+            return unstable_index;
+
+        /* Note: caching relocation is expensive to cache because the tree structure depends on size. */
+
+        /* Base case 2: stable leaf */
+        if (size == 2)
+            return unstable_index;
+
+        assert(is_within_bounds(this->m_slots, unstable_index));
+        const auto& slot = this->m_slots[unstable_index];
+
+        /* Divide */
+        assert(size > 2);
+        const auto mid = std::bit_floor(size - 1);
+
+        /* Conquer */
+        Index i1 = rehash_recursively(slot.i1, mid, tmp);
+        Index i2 = rehash_recursively(slot.i2, size - mid, tmp);
+
+        return insert(Slot<Index>(i1, i2), tmp);
+    }
+
+    template<typename T>
+    void rehash_impl(const IndexedHashSet<T>&, size_t new_capacity)
+    {
+        auto tmp = RehashData(new_capacity);
+
+        // Relocate trees underlying the stable indices
+        m_roots.m_uniqueness.clear();
+
+        // Relocate remaining roots.
+        for (Index stable_index = 1; stable_index < this->m_roots.size(); ++stable_index)
+        {
+            Slot<Index> root = this->m_roots.m_slots[stable_index];
+
+            assert(root.i2 > 0);  // Ensure nonempty.
+
+            Index unstable_index = rehash_recursively_with_stable_leafs(root.i1, root.i2, tmp);
+
+            this->m_roots.m_slots[stable_index] = Slot<Index>(unstable_index, root.i2);
+            this->m_roots.m_uniqueness.emplace(stable_index);
+        }
+
+        this->m_capacity = new_capacity;
+        std::swap(this->m_slots, tmp.slots);
+        std::swap(this->m_controls, tmp.controls);
+    }
+
     using Base = HashIDMap<TreeHashIDMap<Hash, EqualTo, InitialCapacity>, Slot<Index>, Hash, EqualTo, InitialCapacity>;
 
     friend Base;
@@ -329,6 +398,33 @@ public:
     explicit TreeHashIDMap() : Base(), m_roots()
     {
         this->m_roots.insert(Slot<Index>(0, 0));  // root representing empty sequence
+    }
+
+    using Base::rehash;
+
+    /// @brief Rehash with external leaf nodes
+    /// @tparam T
+    /// @param leaf_table
+    /// @param factor
+    template<typename T>
+    void rehash(const IndexedHashSet<T>& leaf_table, double factor = 2.)
+    {
+        std::cout << "Rehash start" << std::endl;
+
+        using clock = std::chrono::high_resolution_clock;
+
+        auto start = clock::now();  // Start timing
+
+        ++this->m_statistics.m_num_rehashes;
+
+        size_t new_capacity = factor * this->m_capacity;
+
+        rehash_impl(leaf_table, new_capacity);
+
+        auto end = clock::now();
+        this->m_statistics.m_total_rehash_time += std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+        std::cout << "Rehash end" << std::endl;
     }
 
     Index insert_root(const Slot<Index>& slot) { return m_roots.insert(slot); }
