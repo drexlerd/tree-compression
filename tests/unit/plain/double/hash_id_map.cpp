@@ -145,7 +145,7 @@ TEST(VallaTests, PlainDoubleHashIDMapIteratorTest)
 TEST(VallaTests, PlainDoubleHashIDMapExhaustiveTest)
 {
     const size_t state_num = static_cast<size_t>(1000);  // number of states
-    const size_t state_size = static_cast<size_t>(50);   // size of each state
+    const size_t state_size = static_cast<size_t>(100);  // size of each state
 
     std::mt19937 rng(42);  // fixed seed for reproducibility
     std::uniform_int_distribution<Index> dist(0, 10000);
@@ -169,7 +169,6 @@ TEST(VallaTests, PlainDoubleHashIDMapExhaustiveTest)
 
     for (const auto& s : all_states)
     {
-        std::cout << s << std::endl;
         v::insert(s, inner_table, leaf_table);
     }
 }

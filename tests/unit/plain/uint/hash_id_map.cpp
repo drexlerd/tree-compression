@@ -138,8 +138,8 @@ TEST(VallaTests, PlainUintHashIDMapIteratorTest)
 
 TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
 {
-    const size_t state_num = static_cast<size_t>(50);  // number of states
-    const size_t state_size = static_cast<size_t>(6);  // size of each state
+    const size_t state_num = static_cast<size_t>(1000);  // number of states
+    const size_t state_size = static_cast<size_t>(100);  // size of each state
 
     std::mt19937 rng(42);  // fixed seed for reproducibility
     std::uniform_int_distribution<Index> dist(0, 10000);
@@ -158,7 +158,7 @@ TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
         all_states.push_back(std::move(s));
     }
 
-    TreeHashIDMap<Hasher<Slot<Index>>, std::equal_to<Slot<Index>>, size_t(64)> table;
+    TreeHashIDMap<> table;
 
     for (const auto& s : all_states)
     {
