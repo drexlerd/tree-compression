@@ -46,7 +46,8 @@ static void BM_PlainUintSwissRead(benchmark::State& state)
         all_states.push_back(std::move(s));
     }
 
-    TreeHashIDMap<> table;
+    TreeHashIDMap<> inner_table;
+    IndexedHashSet<Index> leaf_table;
 
     auto all_roots = std::vector<Index> {};
 
@@ -54,7 +55,7 @@ static void BM_PlainUintSwissRead(benchmark::State& state)
     {
         for (const auto& s : all_states)
         {
-            all_roots.push_back(v::insert(s, table));
+            all_roots.push_back(v::insert(s, inner_table, leaf_table));
         }
     }
 
@@ -66,7 +67,7 @@ static void BM_PlainUintSwissRead(benchmark::State& state)
         {
             for (const auto& r : all_roots)
             {
-                v::read_state(r, table, state);
+                v::read_state(r, inner_table, leaf_table, state);
                 benchmark::DoNotOptimize(state);
             }
         }

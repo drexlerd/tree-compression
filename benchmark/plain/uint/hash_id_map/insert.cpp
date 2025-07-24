@@ -48,13 +48,14 @@ static void BM_PlainUintHashIDMapInsert(benchmark::State& state)
 
     for (auto _ : state)
     {
-        TreeHashIDMap<> table;
+        TreeHashIDMap<> inner_table;
+        IndexedHashSet<Index> leaf_table;
 
         for (size_t rep = 0; rep < repetitions; ++rep)
         {
             for (const auto& s : all_states)
             {
-                benchmark::DoNotOptimize(v::insert(s, table));
+                benchmark::DoNotOptimize(v::insert(s, inner_table, leaf_table));
             }
         }
 

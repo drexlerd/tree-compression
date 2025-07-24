@@ -46,14 +46,15 @@ static void BM_PlainUintSwissIterator(benchmark::State& state)
         all_states.push_back(std::move(s));
     }
 
-    TreeHashIDMap<> table;
+    TreeHashIDMap<> inner_table;
+    IndexedHashSet<Index> leaf_table;
 
     auto all_roots = std::vector<Index> {};
 
     for (size_t rep = 0; rep < repetitions; ++rep)
     {
         for (const auto& s : all_states)
-            all_roots.push_back(v::insert(s, table));
+            all_roots.push_back(v::insert(s, inner_table, leaf_table));
     }
 
     for (auto _ : state)
@@ -64,7 +65,7 @@ static void BM_PlainUintSwissIterator(benchmark::State& state)
         {
             for (const auto& r : all_roots)
             {
-                for (auto x : v::range(r, table))
+                for (auto x : v::range(r, inner_table, leaf_table))
                 {
                     benchmark::DoNotOptimize(x);
                 }

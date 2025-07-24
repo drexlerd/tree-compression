@@ -282,7 +282,6 @@ private:
         }
     }
 
-    template<bool StableLeaves>
     Index rehash_recursively(Index unstable_index, size_t size, RehashData& tmp)
     {
         /* Base case 1: skipped node creation */
@@ -291,29 +290,19 @@ private:
 
         /* Note: caching relocation is expensive to cache because the tree structure depends on size. */
 
-        if constexpr (StableLeaves)
-        {
-            if (size == 2)
-                return unstable_index;
-        }
+        if (size == 2)
+            return unstable_index;
 
         assert(is_within_bounds(this->m_slots, unstable_index));
         const auto& slot = this->m_slots[unstable_index];
-
-        /* Base case 3: rellocate slot */
-        if constexpr (!StableLeaves)
-        {
-            if (size == 2)
-                return insert(slot, tmp);
-        }
 
         /* Divide */
         assert(size >= 2);
         const auto mid = std::bit_floor(size - 1);
 
         /* Conquer */
-        Index i1 = rehash_recursively<StableLeaves>(slot.i1, mid, tmp);
-        Index i2 = rehash_recursively<StableLeaves>(slot.i2, size - mid, tmp);
+        Index i1 = rehash_recursively(slot.i1, mid, tmp);
+        Index i2 = rehash_recursively(slot.i2, size - mid, tmp);
 
         return insert(Slot<Index>(i1, i2), tmp);
     }
@@ -334,8 +323,7 @@ private:
 
             assert(root.i2 > 0);  // Ensure nonempty.
 
-            Index unstable_index =
-                (m_stable_leaves[stable_index]) ? rehash_recursively<true>(root.i1, root.i2, tmp) : rehash_recursively<false>(root.i1, root.i2, tmp);
+            Index unstable_index = rehash_recursively(root.i1, root.i2, tmp);
 
             this->m_roots.m_slots[stable_index] = Slot<Index>(unstable_index, root.i2);
             this->m_roots.m_uniqueness.emplace(stable_index);
@@ -377,11 +365,7 @@ public:
         this->m_statistics.m_total_rehash_time += std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     }
 
-    Index insert_root(const Slot<Index>& slot, bool stable_leaves)
-    {
-        m_stable_leaves.push_back(stable_leaves);
-        return m_roots.insert(slot);
-    }
+    Index insert_root(const Slot<Index>& slot) { return m_roots.insert(slot); }
 
     Index insert_internal(const Slot<Index>& slot) { return Base::insert(slot); }
 
