@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1753287501059,
+  "lastUpdate": 1753363006615,
   "repoUrl": "https://github.com/drexlerd/tree-compression",
   "entries": {
     "Benchmark": [
@@ -9912,6 +9912,246 @@ window.BENCHMARK_DATA = {
             "value": 903565667.0000094,
             "unit": "ns/iter",
             "extra": "iterations: 1\ncpu: 903437523 ns\nthreads: 1"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "drexlerd93@gmail.com",
+            "name": "Dominik Drexler",
+            "username": "drexlerd"
+          },
+          "committer": {
+            "email": "drexlerd93@gmail.com",
+            "name": "Dominik Drexler",
+            "username": "drexlerd"
+          },
+          "distinct": true,
+          "id": "db8034bf95aa1387e84e543336d3cba8fb68d7c4",
+          "message": "added stable_leaf flag for each inserted root to distinguish their rehashing logic",
+          "timestamp": "2025-07-24T15:10:02+02:00",
+          "tree_id": "58e50a8e7af202fd9ad2c358120dfd22cc67f3f2",
+          "url": "https://github.com/drexlerd/tree-compression/commit/db8034bf95aa1387e84e543336d3cba8fb68d7c4"
+        },
+        "date": 1753363005761,
+        "tool": "googlecpp",
+        "benches": [
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissInsert/100/50/1",
+            "value": 180195.08704609773,
+            "unit": "ns/iter",
+            "extra": "iterations: 3883\ncpu: 179945.1795003863 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissInsert/100/50/5",
+            "value": 404749.3816568266,
+            "unit": "ns/iter",
+            "extra": "iterations: 1690\ncpu: 404535.85029585793 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissInsert/1000/100/1",
+            "value": 4945326.394366094,
+            "unit": "ns/iter",
+            "extra": "iterations: 142\ncpu: 4943938.577464789 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissInsert/1000/100/5",
+            "value": 13732481.666666524,
+            "unit": "ns/iter",
+            "extra": "iterations: 51\ncpu: 13728809.098039204 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissInsert/10000/200/1",
+            "value": 111733187.57142527,
+            "unit": "ns/iter",
+            "extra": "iterations: 7\ncpu: 111713877.14285709 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissInsert/10000/200/5",
+            "value": 372783990.50001097,
+            "unit": "ns/iter",
+            "extra": "iterations: 2\ncpu: 372746113.5000003 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissRead/100/50/1",
+            "value": 12548.450299279591,
+            "unit": "ns/iter",
+            "extra": "iterations: 58641\ncpu: 12544.66201122082 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissRead/100/50/5",
+            "value": 294223.41917923954,
+            "unit": "ns/iter",
+            "extra": "iterations: 2388\ncpu: 294200.63232830813 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissRead/1000/100/1",
+            "value": 242065.2930617891,
+            "unit": "ns/iter",
+            "extra": "iterations: 2897\ncpu: 242038.65274421824 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissRead/1000/100/5",
+            "value": 6065720.465517286,
+            "unit": "ns/iter",
+            "extra": "iterations: 116\ncpu: 6065160.482758621 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissRead/10000/200/1",
+            "value": 5425111.445312325,
+            "unit": "ns/iter",
+            "extra": "iterations: 128\ncpu: 5424581.710937501 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissRead/10000/200/5",
+            "value": 135647590.60000142,
+            "unit": "ns/iter",
+            "extra": "iterations: 5\ncpu: 135625246.5999999 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissIterator/100/50/1",
+            "value": 26866.447604293237,
+            "unit": "ns/iter",
+            "extra": "iterations: 27111\ncpu: 26860.46158385895 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissIterator/100/50/5",
+            "value": 648542.1461397281,
+            "unit": "ns/iter",
+            "extra": "iterations: 1088\ncpu: 648465.1654411765 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissIterator/1000/100/1",
+            "value": 555972.5263157844,
+            "unit": "ns/iter",
+            "extra": "iterations: 1216\ncpu: 555885.1159539472 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissIterator/1000/100/5",
+            "value": 14623290.823529785,
+            "unit": "ns/iter",
+            "extra": "iterations: 51\ncpu: 14614185.490196083 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissIterator/10000/200/1",
+            "value": 12320719.071428446,
+            "unit": "ns/iter",
+            "extra": "iterations: 56\ncpu: 12319152.482142866 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissIterator/10000/200/5",
+            "value": 308694367.4999816,
+            "unit": "ns/iter",
+            "extra": "iterations: 2\ncpu: 308661399 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintHashIDMapInsert/100/50/1",
+            "value": 111858.04573584255,
+            "unit": "ns/iter",
+            "extra": "iterations: 6625\ncpu: 111730.83366037736 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintHashIDMapInsert/100/50/5",
+            "value": 240891.98373983553,
+            "unit": "ns/iter",
+            "extra": "iterations: 2952\ncpu: 240810.38279132792 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintHashIDMapInsert/1000/100/1",
+            "value": 4128489.0177513184,
+            "unit": "ns/iter",
+            "extra": "iterations: 169\ncpu: 4127819.00591716 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintHashIDMapInsert/1000/100/5",
+            "value": 8608850.543209659,
+            "unit": "ns/iter",
+            "extra": "iterations: 81\ncpu: 8608191.098765433 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintHashIDMapInsert/10000/200/1",
+            "value": 256526229.00001156,
+            "unit": "ns/iter",
+            "extra": "iterations: 3\ncpu: 256487544.33333328 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintHashIDMapInsert/10000/200/5",
+            "value": 503780098.99998236,
+            "unit": "ns/iter",
+            "extra": "iterations: 1\ncpu: 503705418 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissRead/100/50/1",
+            "value": 12789.549432968779,
+            "unit": "ns/iter",
+            "extra": "iterations: 56258\ncpu: 12784.489512602651 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissRead/100/50/5",
+            "value": 333321.5132391677,
+            "unit": "ns/iter",
+            "extra": "iterations: 2266\ncpu: 333266.93292144744 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissRead/1000/100/1",
+            "value": 527530.7328818437,
+            "unit": "ns/iter",
+            "extra": "iterations: 1329\ncpu: 527465.114371708 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissRead/1000/100/5",
+            "value": 13142949.811320351,
+            "unit": "ns/iter",
+            "extra": "iterations: 53\ncpu: 13141061.66037736 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissRead/10000/200/1",
+            "value": 12739374.672726586,
+            "unit": "ns/iter",
+            "extra": "iterations: 55\ncpu: 12738534.218181822 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissRead/10000/200/5",
+            "value": 348442513.00000906,
+            "unit": "ns/iter",
+            "extra": "iterations: 2\ncpu: 348391116.9999998 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissIterator/100/50/1",
+            "value": 27793.53932540465,
+            "unit": "ns/iter",
+            "extra": "iterations: 25645\ncpu: 27778.500487424455 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissIterator/100/50/5",
+            "value": 674472.7500000065,
+            "unit": "ns/iter",
+            "extra": "iterations: 1036\ncpu: 673710.9401544401 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissIterator/1000/100/1",
+            "value": 969294.4792817256,
+            "unit": "ns/iter",
+            "extra": "iterations: 724\ncpu: 969122.7900552483 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissIterator/1000/100/5",
+            "value": 24319834.206896134,
+            "unit": "ns/iter",
+            "extra": "iterations: 29\ncpu: 24316892.34482759 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissIterator/10000/200/1",
+            "value": 25384227.32258031,
+            "unit": "ns/iter",
+            "extra": "iterations: 31\ncpu: 25313775.741935477 ns\nthreads: 1"
+          },
+          {
+            "name": "valla::benchmarks::BM_PlainUintSwissIterator/10000/200/5",
+            "value": 589280033.0000228,
+            "unit": "ns/iter",
+            "extra": "iterations: 1\ncpu: 589227452.9999994 ns\nthreads: 1"
           }
         ]
       }
