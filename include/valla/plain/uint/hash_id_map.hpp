@@ -83,10 +83,10 @@ Index insert(const Range& state, TreeHashIDMap<Hash, EqualTo, InitialCapacity>& 
     if (size == 0)  ///< Special case for empty state.
         return 0;   ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
 
-    while ((static_cast<double>(table.size() + 2 * size) / table.capacity()) > table.max_load_factor())
-        table.rehash(false);
+    if (!table.has_capacity_for(2 * size))
+        table.rehash();
 
-    return table.insert_root(Slot<Index>(insert_recursively(state.begin(), state.end(), size, table), size));
+    return table.insert_root(Slot<Index>(insert_recursively(state.begin(), state.end(), size, table), size), false);
 }
 
 /**

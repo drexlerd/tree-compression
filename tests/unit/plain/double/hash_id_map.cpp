@@ -145,31 +145,57 @@ TEST(VallaTests, PlainDoubleHashIDMapIteratorTest)
 TEST(VallaTests, PlainDoubleHashIDMapExhaustiveTest)
 {
     const size_t state_num = static_cast<size_t>(1000);  // number of states
-    const size_t state_size = static_cast<size_t>(100);  // size of each state
+    const size_t state_size = static_cast<size_t>(9);    // size of each state
 
     std::mt19937 rng(42);  // fixed seed for reproducibility
-    std::uniform_int_distribution<Index> dist(0, 10000);
+    std::uniform_int_distribution<Index> value_dist(0, 1000);
 
-    std::vector<DoubleList> all_states;
-    all_states.reserve(state_num);
+    std::vector<DoubleList> all_s;
+    all_s.reserve(state_num);
 
     // Generate sorted random states
     for (size_t i = 0; i < state_num; ++i)
     {
         DoubleList s(state_size);
         for (auto& v : s)
-            v = dist(rng);
+            v = value_dist(rng);
 
         std::sort(s.begin(), s.end());
-        all_states.push_back(std::move(s));
+        all_s.push_back(std::move(s));
     }
 
     auto inner_table = TreeHashIDMap<>();
     auto leaf_table = IndexedHashSet<double>();
 
-    for (const auto& s : all_states)
+    auto out_state = DoubleList {};
+
+    auto all_roots = IndexList {};
+
+    for (size_t i = 0; i < all_s.size(); ++i)
     {
-        v::insert(s, inner_table, leaf_table);
+        const auto& s1 = all_s[i];
+
+        auto root = v::insert(s1, inner_table, leaf_table);
+
+        all_roots.push_back(root);
+
+        for (size_t j = 0; j <= i; ++j)
+        {
+            const auto& s2 = all_s[j];
+            const auto& root = all_roots[j];
+
+            v::read_state(root, inner_table, leaf_table, out_state);
+            EXPECT_EQ(s2, out_state);
+
+            out_state.clear();
+            out_state.insert(out_state.end(), v::begin(root, inner_table, leaf_table), v::end(inner_table));
+            EXPECT_EQ(s2, out_state);
+
+            out_state.clear();
+            for (const auto x : v::range(root, inner_table, leaf_table))
+                out_state.push_back(x);
+            EXPECT_EQ(s2, out_state);
+        }
     }
 }
 
