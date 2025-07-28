@@ -181,18 +181,18 @@ public:
 };
 
 /// @brief `TreeHashIDMap` implements a HashIDMap for chains of perfectly balanced binary trees with DFS style rehash policy.
-template<typename Hash = Hasher<Slot<Index>>, typename EqualTo = std::equal_to<Slot<Index>>, size_t InitialCapacity = 1024>
-class TreeHashIDMap : public HashIDMap<TreeHashIDMap<Hash, EqualTo, InitialCapacity>, Slot<Index>, Hash, EqualTo, InitialCapacity>
+template<typename Hash = Hasher<Slot>, typename EqualTo = std::equal_to<Slot>, size_t InitialCapacity = 1024>
+class TreeHashIDMap : public HashIDMap<TreeHashIDMap<Hash, EqualTo, InitialCapacity>, Slot, Hash, EqualTo, InitialCapacity>
 {
 private:
-    IndexedHashSet<Index> m_roots;  ///< Dynamic hash ID maps require stable mapping for root nodes.
+    IndexedHashSet<Slot> m_roots;  ///< Dynamic hash ID maps require stable mapping for root nodes.
     std::vector<bool> m_stable_leaves;
 
     struct RehashData
     {
         size_t capacity;
         size_t size;
-        std::vector<Slot<Index>> slots;
+        std::vector<Slot> slots;
         std::vector<ctrl_t> controls;
 
         explicit RehashData(size_t capacity) : capacity(capacity), size(0), slots(capacity), controls()
@@ -206,7 +206,7 @@ private:
         bool has_capacity_for(size_t amount) const { return (static_cast<double>(size + amount) / capacity) <= MAX_LOAD_FACTOR; }
     };
 
-    Index insert(Slot<Index> slot, RehashData& tmp)
+    Index insert(Slot slot, RehashData& tmp)
     {
         assert(this->size() < tmp.capacity && "Insert failed. Rehashing to higher capacity is required.");
 
@@ -281,9 +281,6 @@ private:
 
         /* Note: caching relocation is expensive to cache because the tree structure depends on size. */
 
-        if (size == 2)
-            return unstable_index;
-
         assert(is_within_bounds(this->m_slots, unstable_index));
         const auto& slot = this->m_slots[unstable_index];
 
@@ -295,7 +292,7 @@ private:
         Index i1 = rehash_recursively(slot.i1, mid, tmp);
         Index i2 = rehash_recursively(slot.i2, size - mid, tmp);
 
-        return insert(Slot<Index>(i1, i2), tmp);
+        return insert(Slot(i1, i2), tmp);
     }
 
     /// @brief Depth-first rehash policy for a HashIDMap that stores a collection of perfectly balanced binary trees.
@@ -312,7 +309,7 @@ private:
         // Relocate remaining roots.
         for (Index stable_index = 1; stable_index < this->m_roots.size(); ++stable_index)
         {
-            Slot<Index> root = this->m_roots.m_slots[stable_index];
+            Slot root = this->m_roots.m_slots[stable_index];
             assert(root.i2 > 0);  // Ensure nonempty.
 
             backup_unstable_indices.push_back(root.i1);
@@ -334,7 +331,7 @@ private:
 
             Index unstable_index = rehash_recursively(root.i1, root.i2, tmp);
 
-            this->m_roots.m_slots[stable_index] = Slot<Index>(unstable_index, root.i2);
+            this->m_roots.m_slots[stable_index] = Slot(unstable_index, root.i2);
             this->m_roots.m_uniqueness.emplace(stable_index);
         }
 
@@ -349,14 +346,14 @@ private:
         return true;
     }
 
-    using Base = HashIDMap<TreeHashIDMap<Hash, EqualTo, InitialCapacity>, Slot<Index>, Hash, EqualTo, InitialCapacity>;
+    using Base = HashIDMap<TreeHashIDMap<Hash, EqualTo, InitialCapacity>, Slot, Hash, EqualTo, InitialCapacity>;
 
     friend Base;
 
 public:
     explicit TreeHashIDMap() : Base(), m_roots()
     {
-        this->m_roots.insert(Slot<Index>(0, 0));  // root representing empty sequence
+        this->m_roots.insert(Slot(0, 0));  // root representing empty sequence
         this->m_stable_leaves.push_back(false);
     }
 
@@ -382,13 +379,13 @@ public:
         this->m_statistics.m_total_rehash_time += std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     }
 
-    Index insert_root(const Slot<Index>& slot) { return m_roots.insert(slot); }
+    Index insert_root(const Slot& slot) { return m_roots.insert(slot); }
 
-    Index insert_internal(const Slot<Index>& slot) { return Base::insert(slot); }
+    Index insert_internal(const Slot& slot) { return Base::insert(slot); }
 
-    const Slot<Index>& lookup_root(Index pos) const { return m_roots[pos]; }
+    const Slot& lookup_root(Index pos) const { return m_roots[pos]; }
 
-    const Slot<Index>& lookup_internal(Index pos) const { return this->m_slots[pos]; }
+    const Slot& lookup_internal(Index pos) const { return this->m_slots[pos]; }
 
     size_t num_internals() const { return Base::size(); }
     size_t num_roots() const { return m_roots.size(); }
@@ -398,7 +395,7 @@ public:
     {
         size_t usage = 0;
         usage += m_roots.mem_usage();
-        usage += this->m_slots.capacity() * sizeof(Slot<Index>);
+        usage += this->m_slots.capacity() * sizeof(Slot);
         usage += this->m_controls.capacity() * sizeof(ctrl_t);
         return usage;
     }

@@ -16,7 +16,7 @@
  */
 
 #include <benchmark/benchmark.h>
-#include <valla/plain/uint/swiss.hpp>
+#include <valla/plain/swiss.hpp>
 
 namespace valla::benchmarks
 {
@@ -46,10 +46,10 @@ static void BM_PlainUintSwissRead(benchmark::State& state)
         all_states.push_back(std::move(s));
     }
 
-    IndexedHashSet<Index> tree_table;
-    IndexedHashSet<Index> root_table;
+    IndexedHashSet<Slot> tree_table;
+    IndexedHashSet<Slot> root_table;
 
-    auto all_roots = std::vector<Slot<Index>> {};
+    auto all_roots = std::vector<Slot> {};
 
     for (size_t rep = 0; rep < repetitions; ++rep)
     {

@@ -16,7 +16,7 @@
  */
 
 #include <benchmark/benchmark.h>
-#include <valla/plain/uint/hash_id_map.hpp>
+#include <valla/plain/hash_id_map.hpp>
 
 namespace valla::benchmarks
 {
@@ -48,14 +48,13 @@ static void BM_PlainUintHashIDMapInsert(benchmark::State& state)
 
     for (auto _ : state)
     {
-        TreeHashIDMap<> inner_table;
-        IndexedHashSet<Index> leaf_table;
+        TreeHashIDMap<> table;
 
         for (size_t rep = 0; rep < repetitions; ++rep)
         {
             for (const auto& s : all_states)
             {
-                benchmark::DoNotOptimize(v::insert(s, inner_table, leaf_table));
+                benchmark::DoNotOptimize(v::insert(s, table));
             }
         }
 

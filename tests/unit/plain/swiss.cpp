@@ -16,7 +16,7 @@
  */
 
 #include <gtest/gtest.h>
-#include <valla/plain/uint/swiss.hpp>
+#include <valla/plain/swiss.hpp>
 
 namespace valla::tests
 {
@@ -24,8 +24,8 @@ namespace v = valla::plain::uint::swiss;
 
 TEST(VallaTests, PlainUintSwissTest)
 {
-    auto tree_table = IndexedHashSet<Index>();
-    auto root_table = IndexedHashSet<Index>();
+    auto tree_table = IndexedHashSet<Slot>();
+    auto root_table = IndexedHashSet<Slot>();
     auto tmp_state = IndexList();
 
     {
@@ -91,8 +91,8 @@ TEST(VallaTests, PlainUintSwissTest)
 
 TEST(VallaTests, PlainUintSwissEdgeCasesTest)
 {
-    auto tree_table = IndexedHashSet<Index>();
-    auto root_table = IndexedHashSet<Index>();
+    auto tree_table = IndexedHashSet<Slot>();
+    auto root_table = IndexedHashSet<Slot>();
     auto tmp_state = IndexList();
 
     {
@@ -128,8 +128,8 @@ TEST(VallaTests, PlainUintSwissEdgeCasesTest)
 
 TEST(VallaTests, PlainUintSwissIteratorTest)
 {
-    auto tree_table = IndexedHashSet<Index>();
-    auto root_table = IndexedHashSet<Index>();
+    auto tree_table = IndexedHashSet<Slot>();
+    auto root_table = IndexedHashSet<Slot>();
     auto tmp_state = IndexList();
 
     {

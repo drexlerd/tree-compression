@@ -55,14 +55,13 @@ using DoubleList = std::vector<double>;
  * Slot
  */
 
-template<typename T>
 struct Slot
 {
-    T i1;
-    T i2;
+    Index i1;
+    Index i2;
 
     constexpr Slot() : i1(0), i2(0) {}
-    constexpr Slot(T i1, T i2) : i1(i1), i2(i2) {}
+    constexpr Slot(Index i1, Index i2) : i1(i1), i2(i2) {}
 
     constexpr friend bool operator==(const Slot& lhs, const Slot& rhs) { return lhs.i1 == rhs.i1 && lhs.i2 == rhs.i2; }
 
@@ -73,10 +72,7 @@ struct Slot
     }
 };
 
-using IndexSlot = Slot<Index>;
-using DoubleSlot = Slot<double>;
-
-static constexpr const Slot EMPTY_ROOT_SLOT = IndexSlot();  ///< represents the empty state.
+static constexpr const Slot EMPTY_ROOT_SLOT = Slot();  ///< represents the empty state.
 
 /**
  * Iterator
@@ -90,19 +86,8 @@ struct Entry
     Entry(Index index, Index size) : m_index(index), m_size(size) {}
 };
 
-inline void copy_object(const std::vector<Entry>& src, std::vector<Entry>& dst)
-{
-    dst.clear();
-    dst.insert(dst.end(), src.begin(), src.end());
-}
-
-inline void copy_object(const std::vector<Index>& src, std::vector<Index>& dst)
-{
-    dst.clear();
-    dst.insert(dst.end(), src.begin(), src.end());
-}
-
-inline void copy_object(const std::vector<double>& src, std::vector<double>& dst)
+template<typename T>
+inline void copy_object(const std::vector<T>& src, std::vector<T>& dst)
 {
     dst.clear();
     dst.insert(dst.end(), src.begin(), src.end());
@@ -137,23 +122,6 @@ inline std::ostream& operator<<(std::ostream& out, const std::vector<uint8_t>& v
     return out;
 }
 
-inline std::ostream& operator<<(std::ostream& out, __m128i v)
-{
-    alignas(16) int8_t bytes[16];
-    _mm_storeu_si128(reinterpret_cast<__m128i*>(bytes), v);
-
-    out << "[";
-    for (int i = 0; i < 16; ++i)
-    {
-        out << static_cast<int>(bytes[i]);
-        if (i < 15)
-            out << ", ";
-    }
-    out << "]" << std::endl;
-
-    return out;
-}
-
 /**
  * Hashing
  */
@@ -164,40 +132,38 @@ struct Hasher
     size_t operator()(const T& el) const { return std::hash<T> {}(el); }
 };
 
-template<typename T>
-struct Hasher<Slot<T>>
+template<>
+struct Hasher<Slot>
 {
-    size_t operator()(const Slot<T>& el) const { return absl::HashOf(el.i1, el.i2); }
+    size_t operator()(const Slot& el) const { return absl::HashOf(el.i1, el.i2); }
 };
 
-// Instead of additionally storing the size in the unstable_to_stable mapping,
-// we reference to stable_to_unstable to access this piece of information.
 template<typename T>
-struct IndexReferencedSlotHash
+struct IndexReferencedHash
 {
-    const std::vector<Slot<T>>& stable_to_unstable;
+    const std::vector<T>& vec;
 
-    IndexReferencedSlotHash(const std::vector<Slot<T>>& stable_to_unstable) : stable_to_unstable(stable_to_unstable) {}
+    IndexReferencedHash(const std::vector<T>& vec) : vec(vec) {}
 
     size_t operator()(Index el) const
     {
-        assert(el < stable_to_unstable.size());
-        return Hasher<Slot<T>> {}(stable_to_unstable[el]);
+        assert(el < vec.size());
+        return Hasher<T> {}(vec[el]);
     }
 };
 
 template<typename T>
-struct IndexReferencedSlotEqualTo
+struct IndexReferencedEqualTo
 {
-    const std::vector<Slot<T>>& stable_to_unstable;
+    const std::vector<T>& vec;
 
-    IndexReferencedSlotEqualTo(const std::vector<Slot<T>>& stable_to_unstable) : stable_to_unstable(stable_to_unstable) {}
+    IndexReferencedEqualTo(const std::vector<T>& vec) : vec(vec) {}
 
     size_t operator()(Index lhs, Index rhs) const
     {
-        assert(lhs < stable_to_unstable.size());
-        assert(rhs < stable_to_unstable.size());
-        return stable_to_unstable[lhs] == stable_to_unstable[rhs];
+        assert(lhs < vec.size());
+        assert(rhs < vec.size());
+        return vec[lhs] == vec[rhs];
     }
 };
 

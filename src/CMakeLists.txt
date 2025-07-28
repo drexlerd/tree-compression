@@ -5,10 +5,8 @@ add_library(core STATIC
     "../include/valla/unique_object_pool.hpp"
     "../include/valla/indexed_hash_set.hpp"
     "../include/valla/delta/uint/swiss.hpp"
-    "../include/valla/plain/double/hash_id_map.hpp"
-    "../include/valla/plain/double/swiss.hpp"
-    "../include/valla/plain/uint/hash_id_map.hpp"
-    "../include/valla/plain/uint/swiss.hpp"
+    "../include/valla/plain/hash_id_map.hpp"
+    "../include/valla/plain/swiss.hpp"
 )
 set_target_properties(core PROPERTIES OUTPUT_NAME valla_core)
 

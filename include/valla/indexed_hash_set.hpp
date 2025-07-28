@@ -34,14 +34,14 @@ template<typename T>
 class IndexedHashSet
 {
 public:
-    IndexedHashSet() : m_slots(), m_uniqueness(0, IndexReferencedSlotHash<T>(m_slots), IndexReferencedSlotEqualTo<T>(m_slots)) {}
+    IndexedHashSet() : m_slots(), m_uniqueness(0, IndexReferencedHash<T>(m_slots), IndexReferencedEqualTo<T>(m_slots)) {}
     // Uncopieable and unmoveable to avoid dangling references of m_slots in hash and equal_to.
     IndexedHashSet(const IndexedHashSet& other) = delete;
     IndexedHashSet& operator=(const IndexedHashSet& other) = delete;
     IndexedHashSet(IndexedHashSet&& other) = delete;
     IndexedHashSet& operator=(IndexedHashSet&& other) = delete;
 
-    Index insert(Slot<T> slot)
+    Index insert(T slot)
     {
         assert(m_uniqueness.size() != std::numeric_limits<Index>::max() && "IndexedHashSet: Index overflow! The maximum number of slots reached.");
 
@@ -57,7 +57,7 @@ public:
         return *result.first;
     }
 
-    const Slot<T>& operator[](Index index) const
+    const T& operator[](Index index) const
     {
         assert(index < m_slots.size() && "Index out of bounds");
 
@@ -69,14 +69,14 @@ public:
     size_t mem_usage() const
     {
         size_t usage = 0;
-        usage += m_slots.capacity() * sizeof(Slot<T>);
+        usage += m_slots.capacity() * sizeof(T);
         usage += m_uniqueness.capacity() * (sizeof(Index) + 1);
         return usage;
     }
 
 private:
-    std::vector<Slot<T>> m_slots;
-    absl::flat_hash_set<Index, IndexReferencedSlotHash<T>, IndexReferencedSlotEqualTo<T>> m_uniqueness;
+    std::vector<T> m_slots;
+    absl::flat_hash_set<Index, IndexReferencedHash<T>, IndexReferencedEqualTo<T>> m_uniqueness;
 
     template<typename Hash, typename EqualTo, size_t InitialCapacity>
     friend class TreeHashIDMap;

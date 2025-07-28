@@ -16,7 +16,7 @@
  */
 
 #include <benchmark/benchmark.h>
-#include <valla/plain/uint/hash_id_map.hpp>
+#include <valla/plain/hash_id_map.hpp>
 
 namespace valla::benchmarks
 {
@@ -46,15 +46,14 @@ static void BM_PlainUintSwissIterator(benchmark::State& state)
         all_states.push_back(std::move(s));
     }
 
-    TreeHashIDMap<> inner_table;
-    IndexedHashSet<Index> leaf_table;
+    TreeHashIDMap<> table;
 
     auto all_roots = std::vector<Index> {};
 
     for (size_t rep = 0; rep < repetitions; ++rep)
     {
         for (const auto& s : all_states)
-            all_roots.push_back(v::insert(s, inner_table, leaf_table));
+            all_roots.push_back(v::insert(s, table));
     }
 
     for (auto _ : state)
@@ -65,7 +64,7 @@ static void BM_PlainUintSwissIterator(benchmark::State& state)
         {
             for (const auto& r : all_roots)
             {
-                for (auto x : v::range(r, inner_table, leaf_table))
+                for (auto x : v::range(r, table))
                 {
                     benchmark::DoNotOptimize(x);
                 }

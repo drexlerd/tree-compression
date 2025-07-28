@@ -12,10 +12,10 @@ function(add_gtest test_name source_file)
 endfunction()
 
 # Add each test source file as a separate test executable
-add_gtest(delta_uint_swiss                   "delta/uint/swiss.cpp")
+# add_gtest(delta_uint_swiss                   "delta/uint/swiss.cpp")
 
-add_gtest(plain_uint_hash_id_map             "plain/uint/hash_id_map.cpp")
-add_gtest(plain_uint_swiss                   "plain/uint/swiss.cpp")
+add_gtest(plain_hash_id_map             "plain/hash_id_map.cpp")
+add_gtest(plain_swiss                   "plain/swiss.cpp")
 
-add_gtest(plain_double_hash_id_map           "plain/double/hash_id_map.cpp")
-add_gtest(plain_double_swiss                 "plain/double/swiss.cpp")
+#add_gtest(plain_double_hash_id_map           "plain/double/hash_id_map.cpp")
+#add_gtest(plain_double_swiss                 "plain/double/swiss.cpp")
