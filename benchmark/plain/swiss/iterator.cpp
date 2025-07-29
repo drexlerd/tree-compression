@@ -20,7 +20,7 @@
 
 namespace valla::benchmarks
 {
-namespace v = valla::plain::uint::swiss;
+namespace v = valla::plain::swiss;
 
 /// @brief In this benchmark, we evaluate the performance of accessing data in sequence
 static void BM_PlainUintSwissIterator(benchmark::State& state)

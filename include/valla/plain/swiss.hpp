@@ -29,7 +29,7 @@
 #include <iostream>
 #include <stack>
 
-namespace valla::plain::uint::swiss
+namespace valla::plain::swiss
 {
 
 ///////////////////////////////////////////

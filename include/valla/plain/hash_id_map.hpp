@@ -31,7 +31,7 @@
 #include <ranges>
 #include <stack>
 
-namespace valla::plain::uint::hash_id_map
+namespace valla::plain::hash_id_map
 {
 
 ///////////////////////////////////////////

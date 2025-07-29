@@ -20,7 +20,7 @@
 
 namespace valla::tests
 {
-namespace v = valla::plain::uint::swiss;
+namespace v = valla::plain::swiss;
 
 TEST(VallaTests, PlainUintHashIDMapTest)
 {

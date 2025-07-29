@@ -20,7 +20,7 @@
 
 namespace valla::benchmarks
 {
-namespace v = valla::plain::uint::hash_id_map;
+namespace v = valla::plain::hash_id_map;
 
 /// @brief In this benchmark, we evaluate the performance of accessing data in sequence
 static void BM_PlainUintHashIDMapInsert(benchmark::State& state)
