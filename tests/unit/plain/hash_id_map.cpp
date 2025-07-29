@@ -24,15 +24,15 @@ namespace v = valla::plain::uint::hash_id_map;
 
 TEST(VallaTests, PlainUintHashIDMapTest)
 {
-    auto table = TreeHashIDMap<>();
-    auto leaf_table = IndexedHashSet<double>();
+    auto table = TreeHashIDMap<uint32_t>();
+    auto leaf_table = IndexedHashSet<double, uint32_t>();
 
-    auto index_list = IndexList();
-    auto double_list = DoubleList();
+    auto index_list = std::vector<uint32_t>();
+    auto double_list = std::vector<double>();
 
     /* uint32_t */
     {
-        const auto s0 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+        const auto s0 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
         const auto s0_idx = v::insert(s0, table);
 
         EXPECT_EQ(table.size(), 15);
@@ -45,7 +45,7 @@ TEST(VallaTests, PlainUintHashIDMapTest)
     }
 
     {
-        const auto s1 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+        const auto s1 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
         const auto s1_idx = v::insert(s1, table);
 
         EXPECT_EQ(table.size(), 16);
@@ -58,7 +58,7 @@ TEST(VallaTests, PlainUintHashIDMapTest)
     }
 
     {
-        const auto s2 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
+        const auto s2 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
         const auto s2_idx = v::insert(s2, table);
 
         EXPECT_EQ(table.size(), 18);
@@ -71,12 +71,12 @@ TEST(VallaTests, PlainUintHashIDMapTest)
     }
 
     {
-        const auto s3 = IndexList { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
+        const auto s3 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
         const auto s3_idx = v::insert(s3, table);
 
         EXPECT_EQ(table.size(), 18);
 
-        // IndexList already exists!
+        // std::vector<uint32_t> already exists!
         EXPECT_EQ(s3_idx, 3);
 
         v::read_state(s3_idx, table, index_list);
@@ -86,7 +86,7 @@ TEST(VallaTests, PlainUintHashIDMapTest)
     /* double*/
 
     {
-        const auto s0 = DoubleList { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15. };
+        const auto s0 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15. };
         const auto s0_idx = v::insert(s0, table, leaf_table);
 
         EXPECT_EQ(table.size(), 18);
@@ -100,7 +100,7 @@ TEST(VallaTests, PlainUintHashIDMapTest)
     }
 
     {
-        const auto s1 = DoubleList { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16. };
+        const auto s1 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16. };
         const auto s1_idx = v::insert(s1, table, leaf_table);
 
         EXPECT_EQ(table.size(), 18);
@@ -114,7 +114,7 @@ TEST(VallaTests, PlainUintHashIDMapTest)
     }
 
     {
-        const auto s2 = DoubleList { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
+        const auto s2 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
         const auto s2_idx = v::insert(s2, table, leaf_table);
 
         EXPECT_EQ(table.size(), 18);
@@ -128,13 +128,13 @@ TEST(VallaTests, PlainUintHashIDMapTest)
     }
 
     {
-        const auto s3 = DoubleList { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
+        const auto s3 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
         const auto s3_idx = v::insert(s3, table, leaf_table);
 
         EXPECT_EQ(table.size(), 18);
         EXPECT_EQ(leaf_table.size(), 18);
 
-        // DoubleList already exists!
+        // std::vector<double> already exists!
         EXPECT_EQ(s3_idx, 3);
 
         v::read_state(s3_idx, table, leaf_table, double_list);
@@ -144,14 +144,14 @@ TEST(VallaTests, PlainUintHashIDMapTest)
 
 TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
 {
-    auto table = TreeHashIDMap<>();
-    auto leaf_table = IndexedHashSet<double>();
+    auto table = TreeHashIDMap<uint32_t>();
+    auto leaf_table = IndexedHashSet<double, uint32_t>();
 
-    auto index_list = IndexList();
-    auto double_list = DoubleList();
+    auto index_list = std::vector<uint32_t>();
+    auto double_list = std::vector<double>();
 
     {
-        const auto s0 = IndexList {};
+        const auto s0 = std::vector<uint32_t> {};
         const auto s0_idx = v::insert(s0, table);
 
         EXPECT_EQ(table.size(), 0);
@@ -164,7 +164,7 @@ TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
     }
 
     {
-        const auto s1 = IndexList { 0 };
+        const auto s1 = std::vector<uint32_t> { 0 };
         const auto s1_idx = v::insert(s1, table);
 
         EXPECT_EQ(table.size(), 0);
@@ -177,7 +177,7 @@ TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
     }
 
     {
-        const auto s0 = DoubleList {};
+        const auto s0 = std::vector<double> {};
         const auto s0_idx = v::insert(s0, table, leaf_table);
 
         EXPECT_EQ(table.size(), 0);
@@ -191,7 +191,7 @@ TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
     }
 
     {
-        const auto s1 = DoubleList { 0 };
+        const auto s1 = std::vector<double> { 0 };
         const auto s1_idx = v::insert(s1, table, leaf_table);
 
         EXPECT_EQ(table.size(), 0);
@@ -207,34 +207,34 @@ TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
 
 TEST(VallaTests, PlainUintHashIDMapIteratorTest)
 {
-    auto table = TreeHashIDMap<>();
-    auto leaf_table = IndexedHashSet<double>();
+    auto table = TreeHashIDMap<uint32_t>();
+    auto leaf_table = IndexedHashSet<double, uint32_t>();
 
-    auto index_list = IndexList();
-    auto double_list = DoubleList();
+    auto index_list = std::vector<uint32_t>();
+    auto double_list = std::vector<double>();
 
     {
-        const auto s0 = IndexList { 1, 2, 4, 5, 6 };
+        const auto s0 = std::vector<uint32_t> { 1, 2, 4, 5, 6 };
         const auto s0_idx = v::insert(s0, table);
 
-        EXPECT_EQ(s0, IndexList(v::begin(s0_idx, table), v::end(table)));
+        EXPECT_EQ(s0, std::vector<uint32_t>(v::begin(s0_idx, table), v::end(table)));
     }
 
     {
-        const auto s0 = IndexList {};
-        EXPECT_EQ(s0, IndexList(v::begin(0, table), v::end(table)));
+        const auto s0 = std::vector<uint32_t> {};
+        EXPECT_EQ(s0, std::vector<uint32_t>(v::begin(uint32_t(0), table), v::end(table)));
     }
 
     {
-        const auto s0 = DoubleList { 1, 2, 4, 5, 6 };
+        const auto s0 = std::vector<double> { 1, 2, 4, 5, 6 };
         const auto s0_idx = v::insert(s0, table, leaf_table);
 
-        EXPECT_EQ(s0, DoubleList(v::begin(s0_idx, table, leaf_table), v::end(table, leaf_table)));
+        EXPECT_EQ(s0, std::vector<double>(v::begin(s0_idx, table, leaf_table), v::end(table, leaf_table)));
     }
 
     {
-        const auto s0 = DoubleList {};
-        EXPECT_EQ(s0, DoubleList(v::begin(0, table, leaf_table), v::end(table, leaf_table)));
+        const auto s0 = std::vector<double> {};
+        EXPECT_EQ(s0, std::vector<double>(v::begin(uint32_t(0), table, leaf_table), v::end(table, leaf_table)));
     }
 }
 
@@ -246,22 +246,22 @@ TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
     /* Create random sequences */
 
     std::mt19937 rng(42);  // fixed seed for reproducibility
-    std::uniform_int_distribution<Index> index_dist(0, 1000);
+    std::uniform_int_distribution<uint32_t> index_dist(0, 1000);
     std::uniform_real_distribution<double> double_dist(0, 1000);
     std::uniform_int_distribution<size_t> changes_dist(1, 5);
     std::uniform_int_distribution<size_t> pos_dist(0, sequence_size - 1);
 
-    std::vector<IndexList> index_lists;
+    std::vector<std::vector<uint32_t>> index_lists;
     index_lists.reserve(num_sequences);
-    std::vector<DoubleList> double_lists;
+    std::vector<std::vector<double>> double_lists;
     double_lists.reserve(num_sequences);
 
-    IndexList start_index_list(sequence_size);
+    std::vector<uint32_t> start_index_list(sequence_size);
     for (auto& v : start_index_list)
         v = index_dist(rng);
     index_lists.push_back(start_index_list);
 
-    DoubleList start_double_list(sequence_size);
+    std::vector<double> start_double_list(sequence_size);
     for (auto& v : start_double_list)
         v = double_dist(rng);
     double_lists.push_back(start_double_list);
@@ -271,25 +271,25 @@ TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
     {
         size_t num_changes = changes_dist(rng);
 
-        IndexList index_list = index_lists[i - 1];
+        std::vector<uint32_t> index_list = index_lists[i - 1];
         for (size_t j = 0; j < num_changes; ++j)
             index_list[pos_dist(rng)] = index_dist(rng);
         index_lists.push_back(std::move(index_list));
 
-        DoubleList double_list = double_lists[i - 1];
+        std::vector<double> double_list = double_lists[i - 1];
         for (size_t j = 0; j < num_changes; ++j)
             double_list[pos_dist(rng)] = double_dist(rng);
         double_lists.push_back(std::move(double_list));
     }
 
-    auto table = TreeHashIDMap<>();
-    auto leaf_table = IndexedHashSet<double>();
+    auto table = TreeHashIDMap<uint32_t>();
+    auto leaf_table = IndexedHashSet<double, uint32_t>();
 
-    auto out_index_list = IndexList {};
-    auto out_double_list = IndexList {};
+    auto out_index_list = std::vector<uint32_t> {};
+    auto out_double_list = std::vector<uint32_t> {};
 
-    auto index_list_roots = IndexList {};
-    auto double_list_roots = IndexList {};
+    auto index_list_roots = std::vector<uint32_t> {};
+    auto double_list_roots = std::vector<uint32_t> {};
 
     for (size_t i = 0; i < index_lists.size(); ++i)
     {

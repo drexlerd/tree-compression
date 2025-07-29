@@ -59,7 +59,12 @@ static constexpr double MAX_LOAD_FACTOR = static_cast<double>(7) / 8;
 /// @tparam Hash is the hash functor for a key.
 /// @tparam EqualTo is the equality comparison functor for a key.
 /// @tparam InitialCapacity is the initial capacity, which must be a multiplicative of 16.
-template<typename Derived, typename Key, typename Hash = Hasher<Key>, typename EqualTo = std::equal_to<Key>, size_t InitialCapacity = 1024>
+template<typename Derived,
+         typename Key,
+         std::unsigned_integral I,
+         typename Hash = Hasher<Key>,
+         typename EqualTo = std::equal_to<Key>,
+         size_t InitialCapacity = 1024>
 class HashIDMap
 {
 private:
@@ -70,8 +75,6 @@ private:
     constexpr auto& self() { return static_cast<Derived&>(*this); }
 
 protected:
-    static constexpr Index INDEX_SENTINEL = std::numeric_limits<Index>::max();  ///< used to indicate insertion failure to trigger a rehash.
-
     std::vector<Key> m_slots;
     std::vector<ctrl_t> m_controls;
     size_t m_size;
@@ -103,7 +106,7 @@ public:
 
     bool has_capacity_for(size_t amount) const { return (static_cast<double>(size() + amount) / capacity()) <= MAX_LOAD_FACTOR; }
 
-    Index insert(const Key& slot)
+    I insert(const Key& slot)
     {
         assert(size() < capacity() && "Insert failed. Rehashing to higher capacity is required.");
 
@@ -171,7 +174,7 @@ public:
         }
     }
 
-    const Key& operator[](Index pos) const { return m_slots[pos]; }
+    const Key& operator[](I pos) const { return m_slots[pos]; }
 
     size_t size() const { return m_size; }
     size_t capacity() const { return m_capacity; }
@@ -181,18 +184,18 @@ public:
 };
 
 /// @brief `TreeHashIDMap` implements a HashIDMap for chains of perfectly balanced binary trees with DFS style rehash policy.
-template<typename Hash = Hasher<Slot>, typename EqualTo = std::equal_to<Slot>, size_t InitialCapacity = 1024>
-class TreeHashIDMap : public HashIDMap<TreeHashIDMap<Hash, EqualTo, InitialCapacity>, Slot, Hash, EqualTo, InitialCapacity>
+template<std::unsigned_integral I, typename Hash = Hasher<Slot<I>>, typename EqualTo = std::equal_to<Slot<I>>, size_t InitialCapacity = 1024>
+class TreeHashIDMap : public HashIDMap<TreeHashIDMap<I, Hash, EqualTo, InitialCapacity>, Slot<I>, I, Hash, EqualTo, InitialCapacity>
 {
 private:
-    IndexedHashSet<Slot> m_roots;  ///< Dynamic hash ID maps require stable mapping for root nodes.
+    IndexedHashSet<Slot<I>, I> m_roots;  ///< Dynamic hash ID maps require stable mapping for root nodes.
     std::vector<bool> m_stable_leaves;
 
     struct RehashData
     {
         size_t capacity;
         size_t size;
-        std::vector<Slot> slots;
+        std::vector<Slot<I>> slots;
         std::vector<ctrl_t> controls;
 
         explicit RehashData(size_t capacity) : capacity(capacity), size(0), slots(capacity), controls()
@@ -206,7 +209,7 @@ private:
         bool has_capacity_for(size_t amount) const { return (static_cast<double>(size + amount) / capacity) <= MAX_LOAD_FACTOR; }
     };
 
-    Index insert(Slot slot, RehashData& tmp)
+    I insert(Slot<I> slot, RehashData& tmp)
     {
         assert(this->size() < tmp.capacity && "Insert failed. Rehashing to higher capacity is required.");
 
@@ -273,7 +276,7 @@ private:
         }
     }
 
-    Index rehash_recursively(Index unstable_index, size_t size, RehashData& tmp)
+    I rehash_recursively(I unstable_index, I size, RehashData& tmp)
     {
         /* Base case 1: skipped node creation */
         if (size == 1)
@@ -289,10 +292,10 @@ private:
         const auto mid = std::bit_floor(size - 1);
 
         /* Conquer */
-        Index i1 = rehash_recursively(slot.i1, mid, tmp);
-        Index i2 = rehash_recursively(slot.i2, size - mid, tmp);
+        I i1 = rehash_recursively(slot.i1, mid, tmp);
+        I i2 = rehash_recursively(slot.i2, size - mid, tmp);
 
-        return insert(Slot(i1, i2), tmp);
+        return insert(Slot<I>(i1, i2), tmp);
     }
 
     /// @brief Depth-first rehash policy for a HashIDMap that stores a collection of perfectly balanced binary trees.
@@ -304,10 +307,10 @@ private:
         /* Relocate trees underlying the stable indices */
         m_roots.m_uniqueness.clear();
 
-        auto backup_unstable_indices = IndexList { 0 };
+        auto backup_unstable_indices = std::vector<I> { 0 };
 
         // Relocate remaining roots.
-        for (Index stable_index = 1; stable_index < this->m_roots.size(); ++stable_index)
+        for (I stable_index = 1; stable_index < this->m_roots.size(); ++stable_index)
         {
             Slot root = this->m_roots.m_slots[stable_index];
             assert(root.i2 > 0);  // Ensure nonempty.
@@ -317,19 +320,19 @@ private:
             if (!tmp.has_capacity_for(root.i2))
             {
                 /* Rollback rehash */
-                for (Index stable_index_2 = 1; stable_index_2 < backup_unstable_indices.size(); ++stable_index_2)
+                for (I stable_index_2 = 1; stable_index_2 < backup_unstable_indices.size(); ++stable_index_2)
                 {
                     this->m_roots.m_slots[stable_index].i1 = backup_unstable_indices[stable_index_2];
                 }
                 m_roots.m_uniqueness.clear();
-                for (Index stable_index_2 = 1; stable_index_2 < this->m_roots.size(); ++stable_index_2)
+                for (I stable_index_2 = 1; stable_index_2 < this->m_roots.size(); ++stable_index_2)
                 {
                     this->m_roots.m_uniqueness.emplace(stable_index);
                 }
                 return false;
             }
 
-            Index unstable_index = rehash_recursively(root.i1, root.i2, tmp);
+            I unstable_index = rehash_recursively(root.i1, root.i2, tmp);
 
             this->m_roots.m_slots[stable_index] = Slot(unstable_index, root.i2);
             this->m_roots.m_uniqueness.emplace(stable_index);
@@ -346,14 +349,14 @@ private:
         return true;
     }
 
-    using Base = HashIDMap<TreeHashIDMap<Hash, EqualTo, InitialCapacity>, Slot, Hash, EqualTo, InitialCapacity>;
+    using Base = HashIDMap<TreeHashIDMap<I, Hash, EqualTo, InitialCapacity>, Slot<I>, I, Hash, EqualTo, InitialCapacity>;
 
     friend Base;
 
 public:
     explicit TreeHashIDMap() : Base(), m_roots()
     {
-        this->m_roots.insert(Slot(0, 0));  // root representing empty sequence
+        this->m_roots.insert(get_empty_slot<I>());  // root representing empty sequence
         this->m_stable_leaves.push_back(false);
     }
 
@@ -379,13 +382,13 @@ public:
         this->m_statistics.m_total_rehash_time += std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
     }
 
-    Index insert_root(const Slot& slot) { return m_roots.insert(slot); }
+    I insert_root(const Slot<I>& slot) { return m_roots.insert(slot); }
 
-    Index insert_internal(const Slot& slot) { return Base::insert(slot); }
+    I insert_internal(const Slot<I>& slot) { return Base::insert(slot); }
 
-    const Slot& lookup_root(Index pos) const { return m_roots[pos]; }
+    const Slot<I>& lookup_root(I pos) const { return m_roots[pos]; }
 
-    const Slot& lookup_internal(Index pos) const { return this->m_slots[pos]; }
+    const Slot<I>& lookup_internal(I pos) const { return this->m_slots[pos]; }
 
     size_t num_internals() const { return Base::size(); }
     size_t num_roots() const { return m_roots.size(); }
@@ -395,7 +398,7 @@ public:
     {
         size_t usage = 0;
         usage += m_roots.mem_usage();
-        usage += this->m_slots.capacity() * sizeof(Slot);
+        usage += this->m_slots.capacity() * sizeof(Slot<I>);
         usage += this->m_controls.capacity() * sizeof(ctrl_t);
         return usage;
     }

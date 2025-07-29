@@ -30,15 +30,15 @@ static void BM_PlainUintSwissRead(benchmark::State& state)
     const size_t repetitions = static_cast<size_t>(state.range(2));  // reinsertions (for deduplication effect)
 
     std::mt19937 rng(42);  // fixed seed for reproducibility
-    std::uniform_int_distribution<Index> dist(0, 10'000);
+    std::uniform_int_distribution<uint32_t> dist(0, 10'000);
 
-    std::vector<IndexList> all_states;
+    std::vector<std::vector<uint32_t>> all_states;
     all_states.reserve(state_num);
 
     // Generate sorted random states
     for (size_t i = 0; i < state_num; ++i)
     {
-        IndexList s(state_size);
+        std::vector<uint32_t> s(state_size);
         for (auto& v : s)
             v = dist(rng);
 
@@ -46,10 +46,10 @@ static void BM_PlainUintSwissRead(benchmark::State& state)
         all_states.push_back(std::move(s));
     }
 
-    IndexedHashSet<Slot> tree_table;
-    IndexedHashSet<Slot> root_table;
+    IndexedHashSet<Slot<uint32_t>, uint32_t> tree_table;
+    IndexedHashSet<Slot<uint32_t>, uint32_t> root_table;
 
-    auto all_roots = std::vector<Slot> {};
+    auto all_roots = std::vector<Slot<uint32_t>> {};
 
     for (size_t rep = 0; rep < repetitions; ++rep)
     {
@@ -59,7 +59,7 @@ static void BM_PlainUintSwissRead(benchmark::State& state)
 
     for (auto _ : state)
     {
-        auto state = IndexList();
+        auto state = std::vector<uint32_t>();
 
         for (size_t rep = 0; rep < repetitions; ++rep)
         {

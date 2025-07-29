@@ -46,22 +46,18 @@ inline bool is_within_bounds(const Container& container, size_t index)
     return index < container.size();
 }
 
-using Index = uint32_t;  ///< Enough space for 4,294,967,295 indices
-using IndexList = std::vector<Index>;
-
-using DoubleList = std::vector<double>;
-
 /**
  * Slot
  */
 
+template<std::unsigned_integral I>
 struct Slot
 {
-    Index i1;
-    Index i2;
+    I i1;
+    I i2;
 
     constexpr Slot() : i1(0), i2(0) {}
-    constexpr Slot(Index i1, Index i2) : i1(i1), i2(i2) {}
+    constexpr Slot(I i1, I i2) : i1(i1), i2(i2) {}
 
     constexpr friend bool operator==(const Slot& lhs, const Slot& rhs) { return lhs.i1 == rhs.i1 && lhs.i2 == rhs.i2; }
 
@@ -72,18 +68,23 @@ struct Slot
     }
 };
 
-static constexpr const Slot EMPTY_ROOT_SLOT = Slot();  ///< represents the empty state.
+template<std::unsigned_integral I>
+constexpr inline Slot<I> get_empty_slot()
+{
+    return Slot<I>();
+}
 
 /**
  * Iterator
  */
 
+template<std::unsigned_integral I>
 struct Entry
 {
-    Index m_index;
-    Index m_size;
+    I m_index;
+    I m_size;
 
-    Entry(Index index, Index size) : m_index(index), m_size(size) {}
+    Entry(I index, I size) : m_index(index), m_size(size) {}
 };
 
 template<typename T>
@@ -132,34 +133,34 @@ struct Hasher
     size_t operator()(const T& el) const { return std::hash<T> {}(el); }
 };
 
-template<>
-struct Hasher<Slot>
+template<std::unsigned_integral I>
+struct Hasher<Slot<I>>
 {
-    size_t operator()(const Slot& el) const { return absl::HashOf(el.i1, el.i2); }
+    size_t operator()(const Slot<I>& el) const { return absl::HashOf(el.i1, el.i2); }
 };
 
-template<typename T>
+template<typename T, std::unsigned_integral I>
 struct IndexReferencedHash
 {
     const std::vector<T>& vec;
 
     IndexReferencedHash(const std::vector<T>& vec) : vec(vec) {}
 
-    size_t operator()(Index el) const
+    size_t operator()(I el) const
     {
         assert(el < vec.size());
         return Hasher<T> {}(vec[el]);
     }
 };
 
-template<typename T>
+template<typename T, std::unsigned_integral I>
 struct IndexReferencedEqualTo
 {
     const std::vector<T>& vec;
 
     IndexReferencedEqualTo(const std::vector<T>& vec) : vec(vec) {}
 
-    size_t operator()(Index lhs, Index rhs) const
+    size_t operator()(I lhs, I rhs) const
     {
         assert(lhs < vec.size());
         assert(rhs < vec.size());
