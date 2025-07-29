@@ -33,22 +33,22 @@ jobs:
 
       # Run benchmarks and store the output to a file
       - name: Run benchmark uint swiss insert
-        run: build/benchmark/plain_uint_swiss_insert --benchmark_format=json | tee benchmark_result_plain_uint_swiss_insert.json
+        run: build/benchmark/plain_swiss_insert --benchmark_format=json | tee benchmark_result_plain_swiss_insert.json
       - name: Run benchmark uint swiss read
-        run: build/benchmark/plain_uint_swiss_read --benchmark_format=json | tee benchmark_result_plain_uint_swiss_read.json
+        run: build/benchmark/plain_swiss_read --benchmark_format=json | tee benchmark_result_plain_swiss_read.json
       - name: Run benchmark uint swiss iterator
-        run: build/benchmark/plain_uint_swiss_iterator --benchmark_format=json | tee benchmark_result_plain_uint_swiss_iterator.json
+        run: build/benchmark/plain_swiss_iterator --benchmark_format=json | tee benchmark_result_plain_swiss_iterator.json
 
       - name: Run benchmark uint hash_id_map insert
-        run: build/benchmark/plain_uint_hash_id_map_insert --benchmark_format=json | tee benchmark_result_plain_uint_hash_id_map_insert.json
+        run: build/benchmark/plain_hash_id_map_insert --benchmark_format=json | tee benchmark_result_plain_hash_id_map_insert.json
       - name: Run benchmark uint hash_id_map read
-        run: build/benchmark/plain_uint_hash_id_map_read --benchmark_format=json | tee benchmark_result_plain_uint_hash_id_map_read.json
+        run: build/benchmark/plain_hash_id_map_read --benchmark_format=json | tee benchmark_result_plain_hash_id_map_read.json
       - name: Run benchmark uint hash_id_map iterator
-        run: build/benchmark/plain_uint_hash_id_map_iterator --benchmark_format=json | tee benchmark_result_plain_uint_hash_id_map_iterator.json
+        run: build/benchmark/plain_hash_id_map_iterator --benchmark_format=json | tee benchmark_result_plain_hash_id_map_iterator.json
 
       # Combine outputs to a single file
       - name: Combine JSON files
-        run: python3 benchmark/combine_results.py benchmark_result_plain_uint_swiss_insert.json benchmark_result_plain_uint_swiss_read.json benchmark_result_plain_uint_swiss_iterator.json benchmark_result_plain_uint_hash_id_map_insert.json benchmark_result_plain_uint_hash_id_map_read.json benchmark_result_plain_uint_hash_id_map_iterator.json > benchmark_result.json
+        run: python3 benchmark/combine_results.py benchmark_result_plain_swiss_insert.json benchmark_result_plain_swiss_read.json benchmark_result_plain_swiss_iterator.json benchmark_result_plain_hash_id_map_insert.json benchmark_result_plain_hash_id_map_read.json benchmark_result_plain_hash_id_map_iterator.json > benchmark_result.json
 
       # Run `github-action-benchmark` action
       - name: Store benchmark result

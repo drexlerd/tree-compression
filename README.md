@@ -1,6 +1,6 @@
-# Tree-Compression
+# Dynamic Tree Databases
 
-This repository contains implementations of two variants of tree compression: plain and delta. The plain tree compression inserts values of an input sequence as given, while the delta tree compression inserts the differences between adjacent values. Both implementations assume sorted input sequences, which often results in better sharing capabilities, and therefore, lower memory footprint.
+This repository contains a C++ libary for Dynamic Swiss Tree Databases (DTDB-S) and Dynamic HashID Tree Databases (DTDB-H). 
 
 ## Getting Started
 
@@ -33,6 +33,26 @@ cmake --build build -j$(nproc)
 cmake --install build --prefix=<path/to/installation-directory>
 ```
 
+### Testing 
+
+The testing framework depends on GoogleTest and requires the additional compile flag `-DBUILD_TESTS=ON` to be set in the cmake configure step. The tests can be run by executing the following commands from the root.
+
+```console
+./build/tests/unit/plain_swiss
+./build/tests/unit/plain_hash_id_map
+```
+
 ### Benchmarking
 
-The benchmark framework depends on GoogleBenchmark and requires the additional compile flag `-DBUILD_PROFILING=ON` to be set in the cmake configure step. The results from the GitHub action can be viewed [here](https://drexlerd.github.io/tree-compression/dev/bench/).
+The benchmark framework depends on GoogleBenchmark and requires the additional compile flag `-DBUILD_PROFILING=ON` to be set in the cmake configure step. The benchmarks can be run by executing the following commands from the root.
+
+```console
+./build/benchmark/plain_swiss_insert
+./build/benchmark/plain_swiss_read
+./build/benchmark/plain_swiss_iterator
+./build/benchmark/plain_hash_id_map_insert
+./build/benchmark/plain_hash_id_map_read
+./build/benchmark/plain_hash_id_map_iterator
+```
+
+The results from the GitHub action can be viewed [here](https://drexlerd.github.io/tree-compression/dev/bench/).
