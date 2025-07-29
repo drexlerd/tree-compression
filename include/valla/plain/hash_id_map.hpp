@@ -42,13 +42,6 @@ namespace valla::plain::uint::hash_id_map
  * Insert recursively
  */
 
-/// @brief Recursively insert the elements from `it` until `end` into the `inner_table` and `leaf_table`.
-/// @param it points to the first element.
-/// @param end points one after the last element.
-/// @param size is the number of elements in the range from it to end.
-/// @param inner_table is the table to uniquely insert the inner slots.
-/// @param leaf_table is the table to uniquely insert the leaf slots.
-/// @return the index of the slot representing the subsequence it to end.
 template<std::input_iterator Iterator, typename Hash, typename EqualTo, size_t InitialCapacity, typename T>
     requires std::same_as<std::iter_value_t<Iterator>, T>
 inline Index
@@ -77,16 +70,10 @@ insert_recursively(Iterator it, Iterator end, size_t size, TreeHashIDMap<Hash, E
     return inner_table.insert_internal(Slot(i1, i2));
 }
 
-/// @brief Inserts the elements from the given `state` into the `table`.
-/// @param state is the given state.
-/// @param table is the tree table whose nodes encode the tree structure without size information.
-/// @return A pair (it, bool) where it points to the entry in the root table and bool is true if and only if the state was newly inserted.
 template<std::ranges::input_range Range, typename Hash, typename EqualTo, size_t InitialCapacity, typename T>
     requires std::same_as<std::ranges::range_value_t<Range>, T>
 Index insert(const Range& state, TreeHashIDMap<Hash, EqualTo, InitialCapacity>& inner_table, IndexedHashSet<T>& leaf_table)
 {
-    assert(std::is_sorted(state.begin(), state.end()));
-
     // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
     const auto size = static_cast<Index>(std::distance(state.begin(), state.end()));
 
@@ -103,11 +90,6 @@ Index insert(const Range& state, TreeHashIDMap<Hash, EqualTo, InitialCapacity>& 
  * Read recursively
  */
 
-/// @brief Recursively reads the state from the tree induced by the given `index` and the `len`.
-/// @param index is the index of the slot in the tree table.
-/// @param size is the length of the state that defines the shape of the tree at the index.
-/// @param tree_table is the tree table.
-/// @param out_state is the output state.
 template<typename Hash, typename EqualTo, size_t InitialCapacity, typename T>
 inline void read_state_recursively(Index index,
                                    size_t size,
@@ -139,11 +121,6 @@ inline void read_state_recursively(Index index,
     read_state_recursively(slot.i2, size - mid, inner_table, leaf_table, ref_state);
 }
 
-/// @brief Read the `out_state` from the given `tree_index` from the `tree_table`.
-/// @param index
-/// @param size
-/// @param tree_table
-/// @param out_state
 template<typename Hash, typename EqualTo, size_t InitialCapacity, typename T>
 inline void read_state(Index tree_index,
                        size_t size,
@@ -159,11 +136,6 @@ inline void read_state(Index tree_index,
     read_state_recursively(tree_index, size, tree_table, leaf_table, out_state);
 }
 
-/// @brief Read the `out_state` from the given `root_index` from the `root_table`.
-/// @param root_index is the index of the slot in the root table.
-/// @param tree_table is the tree table.
-/// @param root_table is the root table.
-/// @param out_state is the output state.
 template<typename Hash, typename EqualTo, size_t InitialCapacity, typename T>
 inline void
 read_state(Index root_index, const TreeHashIDMap<Hash, EqualTo, InitialCapacity>& tree_table, const IndexedHashSet<T>& leaf_table, std::vector<T>& out_state)
@@ -177,15 +149,6 @@ read_state(Index root_index, const TreeHashIDMap<Hash, EqualTo, InitialCapacity>
 /**
  * ConstIterator
  */
-
-static thread_local UniqueObjectPool<std::vector<Entry>> s_inner_stack_pool = UniqueObjectPool<std::vector<Entry>> {};
-
-template<typename T>
-UniqueObjectPool<std::vector<T>>& get_leaf_stack_pool()
-{
-    static thread_local UniqueObjectPool<std::vector<T>> s_leaf_stack_pool {};
-    return s_leaf_stack_pool;
-}
 
 template<typename Hash, typename EqualTo, size_t InitialCapacity, typename T>
 class const_iterator
@@ -233,7 +196,7 @@ private:
                     }
                     else if (entry.m_size == 2)
                     {
-                        const auto& slot = this->inner_table()[entry.m_index];
+                        const auto& slot = this->inner_table().lookup_internal(entry.m_index);
                         m_leaf_stack->emplace_back(this->leaf_table()[slot.i2]);
                         m_leaf_stack->emplace_back(this->leaf_table()[slot.i1]);
                         break;
@@ -297,9 +260,9 @@ public:
 
         if (begin)
         {
-            m_inner_stack = s_inner_stack_pool.get_or_allocate();
+            m_inner_stack = get_stack_pool<std::vector<Entry>>().get_or_allocate();
             m_inner_stack->clear();
-            m_leaf_stack = get_leaf_stack_pool<T>().get_or_allocate();
+            m_leaf_stack = get_stack_pool<std::vector<T>>().get_or_allocate();
             m_leaf_stack->clear();
 
             const auto& root_slot = inner_table.lookup_root(root);
@@ -312,7 +275,7 @@ public:
                 }
                 else if (root_slot.i2 == 2)
                 {
-                    const auto& slot = this->inner_table()[root_slot.i1];
+                    const auto& slot = this->inner_table().lookup_internal(root_slot.i1);
                     m_leaf_stack->emplace_back(this->leaf_table()[slot.i2]);
                     m_leaf_stack->emplace_back(this->leaf_table()[slot.i1]);
                 }
@@ -394,8 +357,6 @@ template<std::ranges::input_range Range, typename Hash, typename EqualTo, size_t
     requires std::same_as<std::ranges::range_value_t<Range>, Index>
 Index insert(const Range& state, TreeHashIDMap<Hash, EqualTo, InitialCapacity>& table)
 {
-    assert(std::is_sorted(state.begin(), state.end()));
-
     // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
     const auto size = static_cast<Index>(std::distance(state.begin(), state.end()));
 
@@ -534,7 +495,7 @@ public:
 
         if (begin)
         {
-            m_stack = s_stack_pool.get_or_allocate();
+            m_stack = get_stack_pool<std::vector<Entry>>().get_or_allocate();
             m_stack->clear();
 
             const auto& root_slot = table.lookup_root(root);
