@@ -1,6 +1,5 @@
 
 add_library(core STATIC
-    "../include/valla/internal/raw_hash_set.hpp"
     "../include/valla/declarations.hpp"
     "../include/valla/hash_id_map.hpp"
     "../include/valla/unique_object_pool.hpp"

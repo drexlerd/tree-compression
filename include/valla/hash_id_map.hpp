@@ -20,7 +20,6 @@
 
 #include "valla/declarations.hpp"
 #include "valla/indexed_hash_set.hpp"
-#include "valla/internal/raw_hash_set.hpp"
 
 #include <chrono>
 #include <cstddef>
@@ -29,7 +28,6 @@
 
 namespace valla
 {
-
 /// @brief `HashIDMap implements a hash ID map with open addressing in a Swiss table format where the position of a key implicitly becomes the index.
 /// @tparam Derived is the derived class that must implement the rehash logic in rehash_impl.
 /// @tparam Key is the key.
@@ -53,12 +51,14 @@ private:
 
 protected:
     std::vector<Key> m_slots;
-    std::vector<ctrl_t> m_controls;
+    std::vector<absl::container_internal::ctrl_t> m_controls;
     size_t m_size;
     size_t m_capacity;
 
     Hash m_hash;
     EqualTo m_equal_to;
+
+    absl::container_internal::GrowthInfo m_growth_info;
 
     struct Statistics
     {
@@ -77,8 +77,8 @@ public:
 
         // Sentinel-padded rolling buffer
         m_controls.reserve(m_capacity + 15);
-        m_controls.resize(m_capacity, ctrl_t::kEmpty);
-        m_controls.resize(m_capacity + 15, ctrl_t::kSentinel);
+        m_controls.resize(m_capacity, absl::container_internal::ctrl_t::kEmpty);
+        m_controls.resize(m_capacity + 15, absl::container_internal::ctrl_t::kSentinel);
     }
 
     bool has_capacity_for(size_t amount) const { return (static_cast<double>(size() + amount) / capacity()) <= MAX_LOAD_FACTOR; }
@@ -88,62 +88,43 @@ public:
         assert(size() < capacity() && "Insert failed. Rehashing to higher capacity is required.");
 
         size_t h = m_hash(slot);
-        size_t mask = (m_capacity - 1);
-        size_t i = h & mask;
-        ctrl_t ctrl = static_cast<ctrl_t>(h >> 57);
-        assert(static_cast<int8_t>(ctrl) >= 0);
+        absl::container_internal::h2_t h2 = h >> 57;
+
+        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, m_capacity - 1);
 
         while (true)
         {
-            assert(i < m_capacity);
-            assert(i + 15 < m_controls.size());
+            absl::container_internal::Group group(&m_controls[probe.offset()]);
 
-            const ctrl_t* control_ptr = &m_controls[i];
-
-            // Match control bytes
-            int mask_ctrl = ProbeImpl::match_ctrl(control_ptr, ctrl);
-
-            // Check if slot exists
-            while (mask_ctrl != 0)
+            for (const auto offset : group.Match(h2))
             {
-                int offset = __builtin_ctz(mask_ctrl);
-                size_t idx = (i + offset) & mask;
+                m_statistics.m_sum_probe_lengths += offset;
+                size_t idx = probe.offset() + offset;
+                assert(is_within_bounds(m_slots, idx));
 
                 if (m_equal_to(m_slots[idx], slot))
-                {
-                    m_statistics.m_sum_probe_lengths += offset;
-                    return idx;
-                }
 
-                mask_ctrl &= mask_ctrl - 1;  // Clear the lowest set bit
+                    return idx;
             }
 
-            // Compare against kEmpty
-            int mask_empty = ProbeImpl::match_empty(control_ptr);
-
-            // Second: insert into first empty slot if found
-            if (mask_empty != 0)
+            auto mask_empty = group.MaskEmpty();
+            if (mask_empty)
             {
-                int offset = __builtin_ctz(mask_empty);
+                int offset = mask_empty.LowestBitSet();
                 m_statistics.m_sum_probe_lengths += offset;
-                size_t idx = (i + offset) & mask;
 
-                if (m_controls[idx] == ctrl_t::kEmpty)
-                {
-                    assert(m_controls[idx] == ctrl_t::kEmpty && "Unexpected overwrite!");
+                size_t idx = probe.offset() + offset;
+                assert(is_within_bounds(m_slots, idx));
 
-                    m_slots[idx] = slot;
-                    m_controls[idx] = ctrl;
-                    ++m_size;
-                    ++m_statistics.m_num_probes;
-
-                    return idx;
-                }
+                m_slots[idx] = slot;
+                m_controls[idx] = static_cast<absl::container_internal::ctrl_t>(h2);
+                ++m_size;
+                ++m_statistics.m_num_probes;
+                return idx;
             }
 
-            // Else probe further
-            i = (i + 16) & mask;
-            m_statistics.m_sum_probe_lengths += 16;
+            probe.next();
+            m_statistics.m_sum_probe_lengths += absl::container_internal::Group::kWidth;
         }
     }
 
@@ -169,79 +150,60 @@ private:
         size_t capacity;
         size_t size;
         std::vector<Slot<I>> slots;
-        std::vector<ctrl_t> controls;
+        std::vector<absl::container_internal::ctrl_t> controls;
 
         explicit RehashData(size_t capacity) : capacity(capacity), size(0), slots(capacity), controls()
         {
             // Sentinel-padded rolling buffer
             controls.reserve(capacity + 15);
-            controls.resize(capacity, ctrl_t::kEmpty);
-            controls.resize(capacity + 15, ctrl_t::kSentinel);
+            controls.resize(capacity, absl::container_internal::ctrl_t::kEmpty);
+            controls.resize(capacity + 15, absl::container_internal::ctrl_t::kSentinel);
         }
 
         bool has_capacity_for(size_t amount) const { return (static_cast<double>(size + amount) / capacity) <= MAX_LOAD_FACTOR; }
     };
 
-    I insert(Slot<I> slot, RehashData& tmp)
+    I insert(const Slot<I>& slot, RehashData& tmp)
     {
-        assert(this->size() < tmp.capacity && "Insert failed. Rehashing to higher capacity is required.");
+        assert(this->size() < this->capacity() && "Insert failed. Rehashing to higher capacity is required.");
 
         size_t h = this->m_hash(slot);
-        size_t mask = (tmp.capacity - 1);
-        size_t i = h & mask;
-        ctrl_t ctrl = static_cast<ctrl_t>(h >> 57);
-        assert(static_cast<int8_t>(ctrl) >= 0);
+        absl::container_internal::h2_t h2 = h >> 57;
+
+        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, tmp.capacity - 1);
 
         while (true)
         {
-            assert(i < tmp.capacity);
-            assert(i + 15 < tmp.controls.size());
+            absl::container_internal::Group group(&tmp.controls[probe.offset()]);
 
-            const ctrl_t* control_ptr = &tmp.controls[i];
-
-            // Match control bytes
-            int mask_ctrl = ProbeImpl::match_ctrl(control_ptr, ctrl);
-
-            // Check if slot exists
-            while (mask_ctrl != 0)
+            for (const auto offset : group.Match(h2))
             {
-                int offset = __builtin_ctz(mask_ctrl);
-                size_t idx = (i + offset) & mask;
+                this->m_statistics.m_sum_probe_lengths += offset;
+                size_t idx = probe.offset() + offset;
+                assert(is_within_bounds(tmp.slots, idx));
 
                 if (this->m_equal_to(tmp.slots[idx], slot))
-                {
-                    this->m_statistics.m_sum_probe_lengths += offset;
                     return idx;
-                }
-
-                mask_ctrl &= mask_ctrl - 1;  // Clear the lowest set bit
             }
 
-            // Compare against kEmpty
-            int mask_empty = ProbeImpl::match_empty(control_ptr);
-
-            // Second: insert into first empty slot if found
-            if (mask_empty != 0)
+            auto mask_empty = group.MaskEmpty();
+            if (mask_empty)
             {
-                int offset = __builtin_ctz(mask_empty);
+                int offset = mask_empty.LowestBitSet();
                 this->m_statistics.m_sum_probe_lengths += offset;
-                size_t idx = (i + offset) & mask;
 
-                if (tmp.controls[idx] == ctrl_t::kEmpty)
-                {
-                    assert(tmp.controls[idx] == ctrl_t::kEmpty && "Unexpected overwrite!");
+                size_t idx = probe.offset() + offset;
+                assert(is_within_bounds(tmp.slots, idx));
 
-                    tmp.slots[idx] = slot;
-                    tmp.controls[idx] = ctrl;
-                    ++tmp.size;
-                    ++this->m_statistics.m_num_probes;
-                    return idx;
-                }
+                tmp.slots[idx] = slot;
+                tmp.controls[idx] = static_cast<absl::container_internal::ctrl_t>(h2);
+                ++tmp.size;
+                ++this->m_statistics.m_num_probes;
+                return idx;
             }
 
-            // Else probe further
-            i = (i + 16) & mask;
-            this->m_statistics.m_sum_probe_lengths += 16;
+            probe.next();
+            this->m_statistics.m_sum_probe_lengths += absl::container_internal::Group::kWidth;
         }
     }
 
@@ -368,7 +330,7 @@ public:
         size_t usage = 0;
         usage += m_roots.mem_usage();
         usage += this->m_slots.capacity() * sizeof(Slot<I>);
-        usage += this->m_controls.capacity() * sizeof(ctrl_t);
+        usage += this->m_controls.capacity() * sizeof(absl::container_internal::ctrl_t);
         return usage;
     }
 

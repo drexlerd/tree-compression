@@ -19,37 +19,6 @@
 #define VALLA_INCLUDE_CONFIG_HPP_
 
 // ----------------------------------------------------------------------
-// Figure out SSE support
-// ----------------------------------------------------------------------
-#ifndef VALLA_HAVE_SSE2
-#if defined(__SSE2__) || (defined(_MSC_VER) && (defined(_M_X64) || (defined(_M_IX86) && _M_IX86_FP >= 2)))
-#define VALLA_HAVE_SSE2 1
-#else
-#define VALLA_HAVE_SSE2 0
-#endif
-#endif
-
-#ifndef VALLA_HAVE_SSSE3
-#if defined(__SSSE3__) || defined(__AVX2__)
-#define VALLA_HAVE_SSSE3 1
-#else
-#define VALLA_HAVE_SSSE3 0
-#endif
-#endif
-
-#if VALLA_HAVE_SSSE3 && !VALLA_HAVE_SSE2
-#error "Bad configuration!"
-#endif
-
-#if VALLA_HAVE_SSE2
-#include <emmintrin.h>
-#endif
-
-#if VALLA_HAVE_SSSE3
-#include <tmmintrin.h>
-#endif
-
-// ----------------------------------------------------------------------
 // Constants
 // ----------------------------------------------------------------------
 
