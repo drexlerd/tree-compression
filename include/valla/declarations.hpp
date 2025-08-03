@@ -61,6 +61,8 @@ struct Slot
 
     constexpr friend bool operator==(const Slot& lhs, const Slot& rhs) { return lhs.i1 == rhs.i1 && lhs.i2 == rhs.i2; }
 
+    constexpr uint8_t bit_width() const { return 2 * std::max(std::bit_width(i1), std::bit_width(i2)); }
+
     friend std::ostream& operator<<(std::ostream& os, const Slot& slot)
     {
         os << "<" << slot.i1 << ", " << slot.i2 << ">";
@@ -168,6 +170,15 @@ struct IndexReferencedEqualTo
     }
 };
 
+template<typename T>
+concept IsUint64tCodable = requires(T a, uint64_t v) {
+    requires std::is_standard_layout_v<T>;
+    requires(sizeof(T) < sizeof(uint64_t));
+
+    { a.bit_width() } -> std::same_as<uint8_t>;
+    { a.to_uint64_t() } -> std::same_as<uint64_t>;
+    { T::from_uint64_t(v) } -> std::same_as<T>;
+};
 }
 
 #endif

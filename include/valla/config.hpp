@@ -49,4 +49,10 @@
 #include <tmmintrin.h>
 #endif
 
+// ----------------------------------------------------------------------
+// Constants
+// ----------------------------------------------------------------------
+
+static constexpr double MAX_LOAD_FACTOR = static_cast<double>(7) / 8;
+
 #endif

@@ -20,6 +20,7 @@
 
 #include "valla/declarations.hpp"
 #include "valla/indexed_hash_set.hpp"
+#include "valla/internal/raw_hash_set.hpp"
 
 #include <chrono>
 #include <cstddef>
@@ -28,30 +29,6 @@
 
 namespace valla
 {
-
-/// @brief `ctrl_t` implements the control byte in a Swiss table.
-enum class ctrl_t : int8_t
-{
-    kEmpty = -128,   // 0b10000000
-    kDeleted = -2,   // 0b11111110
-    kSentinel = -1,  // 0b11111111
-};
-
-inline std::ostream& operator<<(std::ostream& out, const std::vector<ctrl_t>& vec)
-{
-    out << "[";
-    for (const auto x : vec)
-    {
-        out << static_cast<int32_t>(x) << ", ";
-    }
-    out << "]";
-
-    return out;
-}
-
-alignas(16) inline static const __m128i kEmptyPattern = _mm_set1_epi8(static_cast<signed char>(ctrl_t::kEmpty));
-
-static constexpr double MAX_LOAD_FACTOR = static_cast<double>(7) / 8;
 
 /// @brief `HashIDMap implements a hash ID map with open addressing in a Swiss table format where the position of a key implicitly becomes the index.
 /// @tparam Derived is the derived class that must implement the rehash logic in rehash_impl.
@@ -121,13 +98,10 @@ public:
             assert(i < m_capacity);
             assert(i + 15 < m_controls.size());
 
-            // Load 16 control bytes
-            __m128i ctrl_block = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&m_controls[i]));
-            __m128i broadcast_ctrl = _mm_set1_epi8(static_cast<signed char>(ctrl));
+            const ctrl_t* control_ptr = &m_controls[i];
 
-            // Compare against ctrl byte
-            __m128i cmp_ctrl = _mm_cmpeq_epi8(ctrl_block, broadcast_ctrl);
-            int mask_ctrl = _mm_movemask_epi8(cmp_ctrl);
+            // Match control bytes
+            int mask_ctrl = ProbeImpl::match_ctrl(control_ptr, ctrl);
 
             // Check if slot exists
             while (mask_ctrl != 0)
@@ -145,8 +119,7 @@ public:
             }
 
             // Compare against kEmpty
-            __m128i cmp_empty = _mm_cmpeq_epi8(ctrl_block, kEmptyPattern);
-            int mask_empty = _mm_movemask_epi8(cmp_empty);
+            int mask_empty = ProbeImpl::match_empty(control_ptr);
 
             // Second: insert into first empty slot if found
             if (mask_empty != 0)
@@ -224,13 +197,10 @@ private:
             assert(i < tmp.capacity);
             assert(i + 15 < tmp.controls.size());
 
-            // Load 16 control bytes
-            __m128i ctrl_block = _mm_loadu_si128(reinterpret_cast<const __m128i*>(&tmp.controls[i]));
-            __m128i broadcast_ctrl = _mm_set1_epi8(static_cast<signed char>(ctrl));
+            const ctrl_t* control_ptr = &tmp.controls[i];
 
-            // Compare against ctrl byte
-            __m128i cmp_ctrl = _mm_cmpeq_epi8(ctrl_block, broadcast_ctrl);
-            int mask_ctrl = _mm_movemask_epi8(cmp_ctrl);
+            // Match control bytes
+            int mask_ctrl = ProbeImpl::match_ctrl(control_ptr, ctrl);
 
             // Check if slot exists
             while (mask_ctrl != 0)
@@ -248,8 +218,7 @@ private:
             }
 
             // Compare against kEmpty
-            __m128i cmp_empty = _mm_cmpeq_epi8(ctrl_block, kEmptyPattern);
-            int mask_empty = _mm_movemask_epi8(cmp_empty);
+            int mask_empty = ProbeImpl::match_empty(control_ptr);
 
             // Second: insert into first empty slot if found
             if (mask_empty != 0)

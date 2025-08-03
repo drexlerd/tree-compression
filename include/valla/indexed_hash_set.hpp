@@ -28,8 +28,6 @@
 
 namespace valla
 {
-/// @brief `IndexedHashSet` encapsulates a bijective function f : Slot -> Index with inverse mapping f^{-1} : Index -> Slot
-/// where the indices in the image are enumerated 0,1,2,... and so on.
 template<typename T, std::unsigned_integral I>
 class IndexedHashSet
 {
