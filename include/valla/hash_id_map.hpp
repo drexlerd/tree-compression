@@ -37,13 +37,15 @@ namespace valla
 template<typename Derived,
          typename Key,
          std::unsigned_integral I,
-         typename Hash = Hasher<Key>,
+         typename Hash = Hash<Key>,
          typename EqualTo = std::equal_to<Key>,
-         size_t InitialCapacity = 1024>
+         size_t InitialCapacity = 128>
 class HashIDMap
 {
 private:
-    static_assert(InitialCapacity % 16 == 0, "InitialCapacity must be a multiple of 16.");
+    static_assert(InitialCapacity % 2 == 0, "InitialCapacity must be a multiple of 2.");
+    static_assert(InitialCapacity % absl::container_internal::Group::kWidth == 0, "InitialCapacity must be a multiple of group width.");
+    static_assert(InitialCapacity >= MIN_RAW_CAPACITY, "InitialCapacity must be greater than minumum raw capacity.");
 
     /// @brief Helper to cast to Derived.
     constexpr const auto& self() const { return static_cast<const Derived&>(*this); }
@@ -57,8 +59,6 @@ protected:
 
     Hash m_hash;
     EqualTo m_equal_to;
-
-    absl::container_internal::GrowthInfo m_growth_info;
 
     struct Statistics
     {
@@ -76,9 +76,9 @@ public:
         m_slots.resize(m_capacity);
 
         // Sentinel-padded rolling buffer
-        m_controls.reserve(m_capacity + 15);
+        m_controls.reserve(m_capacity + absl::container_internal::Group::kWidth - 1);
         m_controls.resize(m_capacity, absl::container_internal::ctrl_t::kEmpty);
-        m_controls.resize(m_capacity + 15, absl::container_internal::ctrl_t::kSentinel);
+        m_controls.resize(m_capacity + absl::container_internal::Group::kWidth - 1, absl::container_internal::ctrl_t::kSentinel);
     }
 
     bool has_capacity_for(size_t amount) const { return (static_cast<double>(size() + amount) / capacity()) <= MAX_LOAD_FACTOR; }
@@ -138,7 +138,7 @@ public:
 };
 
 /// @brief `TreeHashIDMap` implements a HashIDMap for chains of perfectly balanced binary trees with DFS style rehash policy.
-template<std::unsigned_integral I, typename Hash = Hasher<Slot<I>>, typename EqualTo = std::equal_to<Slot<I>>, size_t InitialCapacity = 1024>
+template<std::unsigned_integral I, typename Hash = Hash<Slot<I>>, typename EqualTo = std::equal_to<Slot<I>>, size_t InitialCapacity = 128>
 class TreeHashIDMap : public HashIDMap<TreeHashIDMap<I, Hash, EqualTo, InitialCapacity>, Slot<I>, I, Hash, EqualTo, InitialCapacity>
 {
 private:
@@ -155,9 +155,9 @@ private:
         explicit RehashData(size_t capacity) : capacity(capacity), size(0), slots(capacity), controls()
         {
             // Sentinel-padded rolling buffer
-            controls.reserve(capacity + 15);
+            controls.reserve(capacity + absl::container_internal::Group::kWidth - 1);
             controls.resize(capacity, absl::container_internal::ctrl_t::kEmpty);
-            controls.resize(capacity + 15, absl::container_internal::ctrl_t::kSentinel);
+            controls.resize(capacity + absl::container_internal::Group::kWidth - 1, absl::container_internal::ctrl_t::kSentinel);
         }
 
         bool has_capacity_for(size_t amount) const { return (static_cast<double>(size + amount) / capacity) <= MAX_LOAD_FACTOR; }

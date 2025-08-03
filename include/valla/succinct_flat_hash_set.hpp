@@ -18,10 +18,25 @@
 #ifndef VALLA_INCLUDE_SUCCINCT_FLAT_HASH_SET_HPP_
 #define VALLA_INCLUDE_SUCCINCT_FLAT_HASH_SET_HPP_
 
+#include "valla/declarations.hpp"
+
+#include <absl/container/internal/raw_hash_set.h>
+#include <sdsl/int_vector.hpp>
+
 namespace valla
 {
+template<IsUint64tCodable T, typename Hash = Hash<T>, typename EqualTo = EqualTo<T>, size_t InitialCapacity = 1024>
 class succinct_flat_hash_set
 {
+private:
+    static_assert(InitialCapacity % 2 == 0, "InitialCapacity must be a multiple of 2.");
+    static_assert(InitialCapacity % absl::container_internal::Group::kWidth == 0, "InitialCapacity must be a multiple of group width.");
+    static_assert(InitialCapacity >= MIN_RAW_CAPACITY, "InitialCapacity must be greater than minumum raw capacity.");
+
+    sdsl::int_vector<> m_slots;
+    std::vector<absl::container_internal::ctrl_t> m_controls;
+
+public:
 };
 }
 

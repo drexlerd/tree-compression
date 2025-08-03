@@ -18,10 +18,16 @@
 #ifndef VALLA_INCLUDE_CONFIG_HPP_
 #define VALLA_INCLUDE_CONFIG_HPP_
 
+#include <absl/container/internal/raw_hash_set.h>
+
 // ----------------------------------------------------------------------
 // Constants
 // ----------------------------------------------------------------------
 
 static constexpr double MAX_LOAD_FACTOR = static_cast<double>(7) / 8;
+
+constexpr size_t RAW_CAPACITY = static_cast<size_t>((absl::container_internal::Group::kWidth - 1) / (1.0 - MAX_LOAD_FACTOR));
+constexpr size_t MIN_RAW_CAPACITY =
+    ((RAW_CAPACITY + absl::container_internal::Group::kWidth - 1) / absl::container_internal::Group::kWidth) * absl::container_internal::Group::kWidth;
 
 #endif

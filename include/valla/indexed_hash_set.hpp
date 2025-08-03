@@ -28,11 +28,11 @@
 
 namespace valla
 {
-template<typename T, std::unsigned_integral I>
+template<typename T, std::unsigned_integral I, typename Hash = Hash<T>, typename EqualTo = EqualTo<T>>
 class IndexedHashSet
 {
 public:
-    IndexedHashSet() : m_slots(), m_uniqueness(0, IndexReferencedHash<T, I>(m_slots), IndexReferencedEqualTo<T, I>(m_slots)) {}
+    IndexedHashSet() : m_slots(), m_uniqueness(0, IndexReferencedHash<T, I, Hash>(m_slots), IndexReferencedEqualTo<T, I, EqualTo>(m_slots)) {}
     // Uncopieable and unmoveable to avoid dangling references of m_slots in hash and equal_to.
     IndexedHashSet(const IndexedHashSet& other) = delete;
     IndexedHashSet& operator=(const IndexedHashSet& other) = delete;
@@ -74,9 +74,9 @@ public:
 
 private:
     std::vector<T> m_slots;
-    absl::flat_hash_set<I, IndexReferencedHash<T, I>, IndexReferencedEqualTo<T, I>> m_uniqueness;
+    absl::flat_hash_set<I, IndexReferencedHash<T, I, Hash>, IndexReferencedEqualTo<T, I, EqualTo>> m_uniqueness;
 
-    template<std::unsigned_integral I_, typename Hash, typename EqualTo, size_t InitialCapacity>
+    template<std::unsigned_integral I_, typename Hash_, typename EqualTo_, size_t InitialCapacity_>
     friend class TreeHashIDMap;
 };
 

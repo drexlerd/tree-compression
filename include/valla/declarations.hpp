@@ -126,47 +126,59 @@ inline std::ostream& operator<<(std::ostream& out, const std::vector<uint8_t>& v
 }
 
 /**
+ * EqualTo
+ */
+
+template<typename T>
+struct EqualTo
+{
+    bool operator()(const T& lhs, const T& rhs) const { return lhs == rhs; }
+};
+
+/**
  * Hashing
  */
 
 template<typename T>
-struct Hasher
+struct Hash
 {
     size_t operator()(const T& el) const { return std::hash<T> {}(el); }
 };
 
 template<std::unsigned_integral I>
-struct Hasher<Slot<I>>
+struct Hash<Slot<I>>
 {
     size_t operator()(const Slot<I>& el) const { return absl::HashOf(el.i1, el.i2); }
 };
 
-template<typename T, std::unsigned_integral I>
+template<typename T, std::unsigned_integral I, typename Hash = Hash<T>>
 struct IndexReferencedHash
 {
     const std::vector<T>& vec;
+    Hash hash;
 
-    IndexReferencedHash(const std::vector<T>& vec) : vec(vec) {}
+    IndexReferencedHash(const std::vector<T>& vec) : vec(vec), hash() {}
 
     size_t operator()(I el) const
     {
         assert(el < vec.size());
-        return Hasher<T> {}(vec[el]);
+        return hash(vec[el]);
     }
 };
 
-template<typename T, std::unsigned_integral I>
+template<typename T, std::unsigned_integral I, typename EqualTo = EqualTo<T>>
 struct IndexReferencedEqualTo
 {
     const std::vector<T>& vec;
+    EqualTo equal_to;
 
-    IndexReferencedEqualTo(const std::vector<T>& vec) : vec(vec) {}
+    IndexReferencedEqualTo(const std::vector<T>& vec) : vec(vec), equal_to() {}
 
     size_t operator()(I lhs, I rhs) const
     {
         assert(lhs < vec.size());
         assert(rhs < vec.size());
-        return vec[lhs] == vec[rhs];
+        return equal_to(vec[lhs], vec[rhs]);
     }
 };
 
