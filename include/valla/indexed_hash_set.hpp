@@ -32,6 +32,9 @@ template<typename T, std::unsigned_integral I, typename Hash = Hash<T>, typename
 class IndexedHashSet
 {
 public:
+    using ValueType = T;
+    using IndexType = I;
+
     IndexedHashSet() : m_slots(), m_uniqueness(0, IndexReferencedHash<T, I, Hash>(m_slots), IndexReferencedEqualTo<T, I, EqualTo>(m_slots)) {}
     // Uncopieable and unmoveable to avoid dangling references of m_slots in hash and equal_to.
     IndexedHashSet(const IndexedHashSet& other) = delete;

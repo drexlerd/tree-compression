@@ -135,6 +135,22 @@ struct EqualTo
     bool operator()(const T& lhs, const T& rhs) const { return lhs == rhs; }
 };
 
+template<typename T, std::unsigned_integral I, typename EqualTo = EqualTo<T>>
+struct IndexReferencedEqualTo
+{
+    const std::vector<T>& vec;
+    EqualTo equal_to;
+
+    IndexReferencedEqualTo(const std::vector<T>& vec) : vec(vec), equal_to() {}
+
+    size_t operator()(I lhs, I rhs) const
+    {
+        assert(lhs < vec.size());
+        assert(rhs < vec.size());
+        return equal_to(vec[lhs], vec[rhs]);
+    }
+};
+
 /**
  * Hashing
  */
@@ -166,21 +182,9 @@ struct IndexReferencedHash
     }
 };
 
-template<typename T, std::unsigned_integral I, typename EqualTo = EqualTo<T>>
-struct IndexReferencedEqualTo
-{
-    const std::vector<T>& vec;
-    EqualTo equal_to;
-
-    IndexReferencedEqualTo(const std::vector<T>& vec) : vec(vec), equal_to() {}
-
-    size_t operator()(I lhs, I rhs) const
-    {
-        assert(lhs < vec.size());
-        assert(rhs < vec.size());
-        return equal_to(vec[lhs], vec[rhs]);
-    }
-};
+/**
+ * Concepts
+ */
 
 template<typename T>
 concept IsUint64tCodable = requires(T a, uint64_t v) {
@@ -190,6 +194,14 @@ concept IsUint64tCodable = requires(T a, uint64_t v) {
     { a.bit_width() } -> std::same_as<uint8_t>;
     { a.to_uint64_t() } -> std::same_as<uint64_t>;
     { T::from_uint64_t(v) } -> std::same_as<T>;
+};
+
+template<typename T>
+concept IsIndexedHashSet = requires(T a, typename T::ValueType v, typename T::IndexType i) {
+    requires std::unsigned_integral<typename T::IndexType>;
+
+    { a.insert(v) } -> std::same_as<typename T::IndexType>;
+    { a[i] } -> std::convertible_to<typename T::ValueType>;
 };
 }
 

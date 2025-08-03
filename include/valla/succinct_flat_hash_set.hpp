@@ -37,6 +37,7 @@ private:
     std::vector<absl::container_internal::ctrl_t> m_controls;
 
 public:
+    using ValueType = T;
 };
 }
 
