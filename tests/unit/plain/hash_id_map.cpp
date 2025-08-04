@@ -251,82 +251,119 @@ TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
     std::uniform_int_distribution<size_t> changes_dist(1, 5);
     std::uniform_int_distribution<size_t> pos_dist(0, sequence_size - 1);
 
-    std::vector<std::vector<uint32_t>> index_lists;
-    index_lists.reserve(num_sequences);
-    std::vector<std::vector<double>> double_lists;
-    double_lists.reserve(num_sequences);
+    std::vector<std::vector<uint32_t>> ils;
+    ils.reserve(num_sequences);
+    std::vector<std::vector<double>> dls;
+    dls.reserve(num_sequences);
 
-    std::vector<uint32_t> start_index_list(sequence_size);
-    for (auto& v : start_index_list)
+    std::vector<uint32_t> start_il(sequence_size);
+    for (auto& v : start_il)
         v = index_dist(rng);
-    index_lists.push_back(start_index_list);
+    ils.push_back(start_il);
 
-    std::vector<double> start_double_list(sequence_size);
-    for (auto& v : start_double_list)
+    std::vector<double> start_dl(sequence_size);
+    for (auto& v : start_dl)
         v = double_dist(rng);
-    double_lists.push_back(start_double_list);
+    dls.push_back(start_dl);
 
     // Generate sorted random states
     for (size_t i = 1; i < num_sequences; ++i)
     {
         size_t num_changes = changes_dist(rng);
 
-        std::vector<uint32_t> index_list = index_lists[i - 1];
+        std::vector<uint32_t> il = ils[i - 1];
         for (size_t j = 0; j < num_changes; ++j)
-            index_list[pos_dist(rng)] = index_dist(rng);
-        index_lists.push_back(std::move(index_list));
+            il[pos_dist(rng)] = index_dist(rng);
+        ils.push_back(std::move(il));
 
-        std::vector<double> double_list = double_lists[i - 1];
+        std::vector<double> dl = dls[i - 1];
         for (size_t j = 0; j < num_changes; ++j)
-            double_list[pos_dist(rng)] = double_dist(rng);
-        double_lists.push_back(std::move(double_list));
+            dl[pos_dist(rng)] = double_dist(rng);
+        dls.push_back(std::move(dl));
     }
 
     auto table = TreeHashIDMap<uint32_t>();
     auto leaf_table = IndexedHashSet<double, uint32_t>();
 
-    auto out_index_list = std::vector<uint32_t> {};
-    auto out_double_list = std::vector<uint32_t> {};
+    auto out_il = std::vector<uint32_t> {};
+    auto out_dl = std::vector<double> {};
 
-    auto index_list_roots = std::vector<uint32_t> {};
-    auto double_list_roots = std::vector<uint32_t> {};
+    auto irs = std::vector<uint32_t> {};
+    auto drs = std::vector<uint32_t> {};
 
-    for (size_t i = 0; i < index_lists.size(); ++i)
+    for (size_t i = 0; i < ils.size(); ++i)
     {
-        const auto& s1 = index_lists[i];
+        const auto& il = ils[i];
+        const auto& dl = dls[i];
 
-        auto root = v::insert(s1, table);
+        auto ir = v::insert(il, table);
+        auto dr = v::insert(dl, table, leaf_table);
 
-        v::read_state(root, table, out_index_list);
-        EXPECT_EQ(s1, out_index_list);
+        irs.push_back(ir);
+        drs.push_back(dr);
 
-        out_index_list.clear();
-        out_index_list.insert(out_index_list.end(), v::begin(root, table), v::end(table));
-        EXPECT_EQ(s1, out_index_list);
+        /* Ensure newly inserted index sequence is readable*/
+        v::read_state(ir, table, out_il);
+        EXPECT_EQ(il, out_il);
 
-        out_index_list.clear();
-        for (const auto x : v::range(root, table))
-            out_index_list.push_back(x);
-        EXPECT_EQ(s1, out_index_list);
+        out_il.clear();
+        out_il.insert(out_il.end(), v::begin(ir, table), v::end(table));
+        EXPECT_EQ(il, out_il);
 
-        index_list_roots.push_back(root);
+        out_il.clear();
+        for (const auto x : v::range(ir, table))
+            out_il.push_back(x);
+        EXPECT_EQ(il, out_il);
 
+        /* Ensure newly inserted double sequence is readable*/
+        v::read_state(dr, table, leaf_table, out_dl);
+        EXPECT_EQ(dl, out_dl);
+
+        out_dl.clear();
+        out_dl.insert(out_dl.end(), v::begin(dr, table, leaf_table), v::end(table, leaf_table));
+        EXPECT_EQ(dl, out_dl);
+
+        out_dl.clear();
+        for (const auto x : v::range(dr, table, leaf_table))
+            out_dl.push_back(x);
+        EXPECT_EQ(dl, out_dl);
+
+        /* Ensure that all index sequences are readable after rehash. */
         for (size_t j = 0; j <= i; ++j)
         {
-            const auto& s2 = index_lists[j];
-            const auto& root = index_list_roots[j];
+            const auto& il_2 = ils[j];
+            const auto& ir_2 = irs[j];
 
-            v::read_state(root, table, out_index_list);
-            EXPECT_EQ(s2, out_index_list);
+            v::read_state(ir_2, table, out_il);
+            EXPECT_EQ(il_2, out_il);
 
-            out_index_list.clear();
-            out_index_list.insert(out_index_list.end(), v::begin(root, table), v::end(table));
-            EXPECT_EQ(s2, out_index_list);
+            out_il.clear();
+            out_il.insert(out_il.end(), v::begin(ir_2, table), v::end(table));
+            EXPECT_EQ(il_2, out_il);
 
-            out_index_list.clear();
-            for (const auto x : v::range(root, table))
-                out_index_list.push_back(x);
-            EXPECT_EQ(s2, out_index_list);
+            out_il.clear();
+            for (const auto x : v::range(ir_2, table))
+                out_il.push_back(x);
+            EXPECT_EQ(il_2, out_il);
+        }
+
+        /* Ensure that all double sequences are readable after rehash. */
+        for (size_t j = 0; j <= i; ++j)
+        {
+            const auto& dl_2 = dls[j];
+            const auto& dr_2 = drs[j];
+
+            v::read_state(dr_2, table, leaf_table, out_dl);
+            EXPECT_EQ(dl_2, out_dl);
+
+            out_dl.clear();
+            out_dl.insert(out_dl.end(), v::begin(dr_2, table, leaf_table), v::end(table, leaf_table));
+            EXPECT_EQ(dl_2, out_dl);
+
+            out_dl.clear();
+            for (const auto x : v::range(dr_2, table, leaf_table))
+                out_dl.push_back(x);
+            EXPECT_EQ(dl_2, out_dl);
         }
     }
 }

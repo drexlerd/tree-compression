@@ -88,7 +88,7 @@ public:
         assert(size() < capacity() && "Insert failed. Rehashing to higher capacity is required.");
 
         size_t h = m_hash(slot);
-        absl::container_internal::h2_t h2 = h >> 57;
+        absl::container_internal::h2_t h2 = absl::container_internal::H2(h);
 
         absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, capacity());
 
@@ -100,28 +100,29 @@ public:
             {
                 m_statistics.m_sum_probe_lengths += i;
 
-                size_t idx = probe.offset(i);
-                assert(is_within_bounds(m_slots, idx));
+                size_t offset = probe.offset(i);
+                assert(is_within_bounds(m_slots, offset));
 
-                if (m_equal_to(m_slots[idx], slot))
-                    return idx;
+                if (m_equal_to(m_slots[offset], slot))
+                    return offset;
             }
 
             auto mask_empty = group.MaskEmpty();
             if (mask_empty)
             {
-                int offset = mask_empty.LowestBitSet();
-                m_statistics.m_sum_probe_lengths += offset;
+                int i = mask_empty.LowestBitSet();
 
-                size_t idx = probe.offset() + offset;
-                assert(is_within_bounds(m_slots, idx));
+                size_t offset = probe.offset() + i;
+                assert(is_within_bounds(m_slots, offset));
 
-                m_slots[idx] = slot;
-                m_controls[idx] = static_cast<absl::container_internal::ctrl_t>(h2);
+                m_slots[offset] = slot;
+                m_controls[offset] = static_cast<absl::container_internal::ctrl_t>(h2);
                 ++m_size;
-                ++m_statistics.m_num_probes;
 
-                return idx;
+                ++m_statistics.m_num_probes;
+                m_statistics.m_sum_probe_lengths += i;
+
+                return offset;
             }
 
             probe.next();
@@ -175,7 +176,7 @@ private:
         assert(tmp.size < tmp.capacity && "Insert failed. Rehashing to higher capacity is required.");
 
         size_t h = this->m_hash(slot);
-        absl::container_internal::h2_t h2 = h >> 57;
+        absl::container_internal::h2_t h2 = absl::container_internal::H2(h);
 
         absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, tmp.capacity);
 
@@ -187,28 +188,29 @@ private:
             {
                 this->m_statistics.m_sum_probe_lengths += i;
 
-                size_t idx = probe.offset(i);
-                assert(is_within_bounds(tmp.slots, idx));
+                size_t offset = probe.offset(i);
+                assert(is_within_bounds(tmp.slots, offset));
 
-                if (this->m_equal_to(tmp.slots[idx], slot))
-                    return idx;
+                if (this->m_equal_to(tmp.slots[offset], slot))
+                    return offset;
             }
 
             auto mask_empty = group.MaskEmpty();
             if (mask_empty)
             {
-                int offset = mask_empty.LowestBitSet();
-                this->m_statistics.m_sum_probe_lengths += offset;
+                int i = mask_empty.LowestBitSet();
 
-                size_t idx = probe.offset() + offset;
-                assert(is_within_bounds(tmp.slots, idx));
+                size_t offset = probe.offset() + i;
+                assert(is_within_bounds(tmp.slots, offset));
 
-                tmp.slots[idx] = slot;
-                tmp.controls[idx] = static_cast<absl::container_internal::ctrl_t>(h2);
+                tmp.slots[offset] = slot;
+                tmp.controls[offset] = static_cast<absl::container_internal::ctrl_t>(h2);
                 ++tmp.size;
-                ++this->m_statistics.m_num_probes;
 
-                return idx;
+                ++this->m_statistics.m_num_probes;
+                this->m_statistics.m_sum_probe_lengths += i;
+
+                return offset;
             }
 
             probe.next();

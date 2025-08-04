@@ -56,7 +56,7 @@ private:
         assert(Uint64tCoder<T>::bit_width(key) <= m_slots.width() && "Insert failed. Slot width is insufficient to store the key.");
 
         size_t h = m_hash(key);
-        absl::container_internal::h2_t h2 = h >> 57;
+        absl::container_internal::h2_t h2 = absl::container_internal::H2(h);
         assert(static_cast<int>(h2) >= 0);
 
         absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, capacity());
@@ -68,31 +68,32 @@ private:
             for (const auto i : group.Match(h2))
             {
                 m_statistics.m_sum_probe_lengths += i;
-                size_t idx = probe.offset(i);
-                assert(is_within_bounds(m_slots, idx));
 
-                if (m_equal_to(m_slots[idx], key))
-                    return { const_iterator(*this, idx), false };
+                size_t offset = probe.offset(i);
+                assert(is_within_bounds(m_slots, offset));
+
+                if (m_equal_to(m_slots[offset], key))
+                    return { const_iterator(*this, offset), false };
             }
 
             auto mask_empty = group.MaskEmpty();
             if (mask_empty)
             {
                 int i = mask_empty.LowestBitSet();
+
+                size_t offset = probe.offset() + i;
+
+                assert(is_within_bounds(m_slots, offset));
+                assert(m_controls[offset] == absl::container_internal::ctrl_t::kEmpty);
+
+                m_slots[offset] = Uint64tCoder<T>::to_uint64_t(key, m_slots.width());
+                m_controls[offset] = static_cast<absl::container_internal::ctrl_t>(h2);
+                ++m_size;
+
+                ++m_statistics.m_num_probes;
                 m_statistics.m_sum_probe_lengths += i;
 
-                size_t idx = probe.offset() + i;
-
-                assert(is_within_bounds(m_slots, idx));
-                assert(m_controls[idx] == absl::container_internal::ctrl_t::kEmpty);
-
-                m_slots[idx] = Uint64tCoder<T>::to_uint64_t(key, m_slots.width());
-                m_controls[idx] = static_cast<absl::container_internal::ctrl_t>(h2);
-
-                ++m_size;
-                ++m_statistics.m_num_probes;
-
-                return { const_iterator(*this, idx), true };
+                return { const_iterator(*this, offset), true };
             }
 
             probe.next();
@@ -102,8 +103,6 @@ private:
 
     void resize_width(uint8_t old_width, uint8_t new_width)
     {
-        // std::cout << "Resize: " << static_cast<int>(old_width) << " -> " << static_cast<int>(new_width) << std::endl;
-
         auto slots = sdsl::int_vector<>(capacity(), 0, new_width);
 
         if (size() > 0)
@@ -153,8 +152,6 @@ public:
 
     void rehash()
     {
-        // std::cout << "Rehash: " << size() << " " << capacity() << std::endl;
-
         auto tmp = succinct_flat_hash_set((capacity() << 1) | 1, slots().width(), m_hash, m_equal_to);
 
         for (size_t i = 0; i < capacity(); ++i)
@@ -162,6 +159,7 @@ public:
             if (static_cast<int>(m_controls[i]) >= 0)
                 tmp.insert(m_slots[i]);
         }
+        tmp.m_statistics += m_statistics;
 
         std::swap(*this, tmp);
     }

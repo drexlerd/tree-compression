@@ -216,6 +216,15 @@ struct HashSetStatistics
     std::chrono::milliseconds m_total_rehash_time = std::chrono::milliseconds::zero();
     size_t m_num_probes = 0;
     size_t m_sum_probe_lengths = 0;
+
+    HashSetStatistics& operator+=(const HashSetStatistics& rhs)
+    {
+        m_num_rehashes += rhs.m_num_rehashes;
+        m_total_rehash_time += rhs.m_total_rehash_time;
+        m_num_probes += rhs.m_num_probes;
+        m_sum_probe_lengths += rhs.m_sum_probe_lengths;
+        return *this;
+    }
 };
 
 /**
