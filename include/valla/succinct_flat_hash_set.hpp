@@ -57,6 +57,7 @@ private:
 
         size_t h = m_hash(key);
         absl::container_internal::h2_t h2 = h >> 57;
+        assert(static_cast<int>(h2) >= 0);
 
         absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, m_capacity);
 
@@ -82,11 +83,13 @@ private:
 
                 size_t idx = probe.offset() + offset;
                 assert(is_within_bounds(m_slots, idx));
+                assert(m_controls[idx] == absl::container_internal::ctrl_t::kEmpty);
 
                 m_slots[idx] = Uint64tCoder<T>::to_uint64_t(key, m_slots.width());
                 m_controls[idx] = static_cast<absl::container_internal::ctrl_t>(h2);
                 ++m_size;
                 ++m_statistics.m_num_probes;
+
                 return { const_iterator(*this, idx), true };
             }
 
@@ -97,13 +100,12 @@ private:
 
     void resize_width(uint8_t old_width, uint8_t new_width)
     {
+        std::cout << "Resize: " << static_cast<int>(old_width) << " -> " << static_cast<int>(new_width) << std::endl;
+
         auto slots = sdsl::int_vector<>(m_capacity, 0, new_width);
 
         for (I i = 0; i < m_capacity; ++i)
-        {
-            if (static_cast<int>(m_controls[i]) > 0)
-                slots[i] = Uint64tCoder<T>::to_uint64_t(Uint64tCoder<T>::from_uint64_t(m_slots[i], old_width), new_width);
-        }
+            slots[i] = Uint64tCoder<T>::to_uint64_t(Uint64tCoder<T>::from_uint64_t(m_slots[i], old_width), new_width);
 
         std::swap(m_slots, slots);
     }
@@ -146,7 +148,7 @@ public:
         size_t size;
         size_t capacity;
 
-        explicit RehashData(size_t capacity) : slots(capacity), controls(), size(0), capacity(capacity)
+        explicit RehashData(size_t capacity, uint8_t bit_width) : slots(capacity, 0, bit_width), controls(), size(0), capacity(capacity)
         {
             // Sentinel-padded rolling buffer
             controls.reserve(capacity + absl::container_internal::Group::kWidth - 1);
@@ -157,20 +159,30 @@ public:
 
     void rehash()
     {
-        auto tmp = RehashData((m_capacity << 1) | 1);
+        size_t new_capacity = (m_capacity << 1) | 1;
+
+        std::cout << "Rehash: " << m_capacity << " -> " << new_capacity << std::endl;
+
+        assert(absl::container_internal::IsValidCapacity(new_capacity));
+
+        auto tmp = RehashData(new_capacity, m_slots.width());
 
         for (size_t i = 0; i < capacity(); ++i)
         {
             if (static_cast<int>(m_controls[i]) >= 0)
             {
+                std::cout << tmp.size << std::endl;
                 size_t h = m_hash(m_slots[i]);
                 absl::container_internal::h2_t h2 = h >> 57;
-                size_t idx = h & m_capacity;
+                assert(static_cast<int>(h2) >= 0);
+                size_t idx = h & tmp.capacity;
                 tmp.slots[idx] = m_slots[i];
                 tmp.controls[idx] = static_cast<absl::container_internal::ctrl_t>(h2);
                 ++tmp.size;
             }
         }
+
+        std::cout << size() << " " << tmp.size << std::endl;
 
         assert(size() == tmp.size);
 
@@ -178,6 +190,8 @@ public:
         m_controls = std::move(tmp.controls);
         m_capacity = tmp.capacity;
         m_size = tmp.size;
+
+        assert(m_slots.size() + absl::container_internal::Group::kWidth - 1 == m_controls.size());
     }
 
     class const_iterator

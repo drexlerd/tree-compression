@@ -150,6 +150,13 @@ concept IsIndexedHashSet = requires(T a, typename T::value_type v, typename T::i
     { a[i] } -> std::convertible_to<typename T::value_type>;
 };
 
+template<typename Set1, typename Set2, typename V = typename Set2::value_type>
+concept AreCompatibleIndexedHashSets = IsIndexedHashSet<Set1>                                                 //
+                                       && IsIndexedHashSet<Set2>                                              //
+                                       && std::same_as<V, typename Set2::value_type>                          //
+                                       && std::same_as<typename Set1::index_type, typename Set2::index_type>  //
+                                       && std::same_as<typename Set1::value_type, Slot<typename Set1::index_type>>;
+
 /**
  * Iterator
  */

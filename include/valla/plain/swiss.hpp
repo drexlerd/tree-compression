@@ -37,17 +37,12 @@ namespace valla::plain::swiss
 /// General case with special leaf table
 ///////////////////////////////////////////
 
-template<typename Set1, typename Set2, typename V = typename Set2::value_type>
-concept CompatibleTables = std::same_as<V, typename Set2::value_type>                             //
-                           && std::same_as<typename Set1::index_type, typename Set2::index_type>  //
-                           && std::same_as<typename Set1::value_type, Slot<typename Set1::index_type>>;
-
 /**
  * Insert recursively
  */
 
 template<std::input_iterator Iterator, IsIndexedHashSet Set1, IsIndexedHashSet Set2>
-    requires CompatibleTables<Set1, Set2, std::iter_value_t<Iterator>> && IsStable<Set1> && IsStable<Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2, std::iter_value_t<Iterator>> && IsStable<Set1> && IsStable<Set2>
 inline auto insert_recursively(Iterator it, Iterator end, typename Set1::index_type size, Set1& table, Set2& leaf_table)
 {
     using I = typename Set1::index_type;
@@ -75,7 +70,7 @@ inline auto insert_recursively(Iterator it, Iterator end, typename Set1::index_t
 }
 
 template<std::ranges::input_range Range, IsIndexedHashSet Set1, IsIndexedHashSet Set2>
-    requires CompatibleTables<Set1, Set2, std::ranges::range_value_t<Range>> && IsStable<Set1> && IsStable<Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2, std::ranges::range_value_t<Range>> && IsStable<Set1> && IsStable<Set2>
 inline auto insert(const Range& state, Set1& table, Set2& leaf_table)
 {
     using I = typename Set1::index_type;
@@ -94,7 +89,7 @@ inline auto insert(const Range& state, Set1& table, Set2& leaf_table)
  */
 
 template<IsIndexedHashSet Set1, IsIndexedHashSet Set2>
-    requires CompatibleTables<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
 inline void read_state_recursively(typename Set1::index_type index,
                                    typename Set1::index_type size,
                                    const Set1& table,
@@ -127,7 +122,7 @@ inline void read_state_recursively(typename Set1::index_type index,
 }
 
 template<IsIndexedHashSet Set1, IsIndexedHashSet Set2>
-    requires CompatibleTables<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
 inline void read_state(typename Set1::index_type tree_index,
                        typename Set1::index_type size,
                        const Set1& table,
@@ -143,7 +138,7 @@ inline void read_state(typename Set1::index_type tree_index,
 }
 
 template<IsIndexedHashSet Set1, IsIndexedHashSet Set2>
-    requires CompatibleTables<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
 inline void
 read_state(const Slot<typename Set1::index_type>& root_slot, const Set1& table, const Set2& leaf_table, std::vector<typename Set2::value_type>& out_state)
 {
@@ -155,23 +150,34 @@ read_state(const Slot<typename Set1::index_type>& root_slot, const Set1& table, 
  * ConstIterator
  */
 
-template<typename T, std::unsigned_integral I>
+template<IsIndexedHashSet Set1, IsIndexedHashSet Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
 class const_iterator
 {
-private:
-    const IndexedHashSet<Slot<I>, I>* m_inner_table;
-    const IndexedHashSet<T, I>* m_leaf_table;
-    UniqueObjectPoolPtr<std::vector<Entry<I>>> m_inner_stack;
-    UniqueObjectPoolPtr<std::vector<T>> m_leaf_stack;
-    std::optional<T> m_value;
+public:
+    using difference_type = std::ptrdiff_t;
+    using value_type = typename Set2::value_type;
+    using pointer = value_type*;
+    using reference = value_type;
+    using iterator_category = std::input_iterator_tag;
+    using iterator_concept = std::input_iterator_tag;
 
-    const IndexedHashSet<Slot<I>, I>& inner_table() const
+    using index_type = typename Set1::index_type;
+
+private:
+    const Set1* m_inner_table;
+    const Set2* m_leaf_table;
+    UniqueObjectPoolPtr<std::vector<Entry<index_type>>> m_inner_stack;
+    UniqueObjectPoolPtr<std::vector<value_type>> m_leaf_stack;
+    std::optional<value_type> m_value;
+
+    const Set1& inner_table() const
     {
         assert(m_inner_table);
         return *m_inner_table;
     }
 
-    const IndexedHashSet<T, I>& leaf_table() const
+    const Set2& leaf_table() const
     {
         assert(m_leaf_table);
         return *m_leaf_table;
@@ -224,13 +230,6 @@ private:
     }
 
 public:
-    using difference_type = std::ptrdiff_t;
-    using value_type = T;
-    using pointer = value_type*;
-    using reference = value_type;
-    using iterator_category = std::input_iterator_tag;
-    using iterator_concept = std::input_iterator_tag;
-
     const_iterator() : m_inner_table(nullptr), m_leaf_table(nullptr), m_inner_stack(), m_leaf_stack(), m_value(std::nullopt) {}
     const_iterator(const const_iterator& other) :
         m_inner_table(other.m_inner_table),
@@ -254,7 +253,7 @@ public:
     }
     const_iterator(const_iterator&& other) = default;
     const_iterator& operator=(const_iterator&& other) = default;
-    const_iterator(const IndexedHashSet<Slot<I>, I>& inner_table, const IndexedHashSet<T, I>& leaf_table, const Slot<I>& root_slot, bool begin) :
+    const_iterator(const Set1& inner_table, const Set2& leaf_table, const Slot<index_type>& root_slot, bool begin) :
         m_inner_table(&inner_table),
         m_leaf_table(&leaf_table),
         m_inner_stack(),
@@ -265,9 +264,9 @@ public:
 
         if (begin && root_slot.i2 > 0)
         {
-            m_inner_stack = get_stack_pool<std::vector<Entry<I>>>().get_or_allocate();
+            m_inner_stack = get_stack_pool<std::vector<Entry<index_type>>>().get_or_allocate();
             m_inner_stack->clear();
-            m_leaf_stack = get_stack_pool<std::vector<T>>().get_or_allocate();
+            m_leaf_stack = get_stack_pool<std::vector<value_type>>().get_or_allocate();
             m_leaf_stack->clear();
 
             if (root_slot.i2 == 1)
@@ -304,22 +303,25 @@ public:
     bool operator!=(const const_iterator& other) const { return !(*this == other); }
 };
 
-template<typename T, std::unsigned_integral I>
-inline auto begin(Slot<I> root, const IndexedHashSet<Slot<I>, I>& table, const IndexedHashSet<T, I>& leaf_table)
+template<IsIndexedHashSet Set1, IsIndexedHashSet Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
+inline auto begin(Slot<typename Set1::index_type> root, const Set1& table, const Set2& leaf_table)
 {
-    return const_iterator<T, I>(table, leaf_table, root, true);
+    return const_iterator<Set1, Set2>(table, leaf_table, root, true);
 }
 
-template<typename T, std::unsigned_integral I>
-inline auto end(const IndexedHashSet<T, I>&)
+template<IsIndexedHashSet Set1, IsIndexedHashSet Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
+inline auto end(const Set1&, const Set2&)
 {
-    return const_iterator<T, I>();
+    return const_iterator<Set1, Set2>();
 }
 
-template<typename T, std::unsigned_integral I>
-inline auto range(Slot<I> root, const IndexedHashSet<Slot<I>, I>& table, const IndexedHashSet<T, I>& leaf_table)
+template<IsIndexedHashSet Set1, IsIndexedHashSet Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
+inline auto range(Slot<typename Set1::index_type> root, const Set1& table, const Set2& leaf_table)
 {
-    return std::ranges::subrange(begin(root, table, leaf_table), end(leaf_table));
+    return std::ranges::subrange(begin(root, table, leaf_table), end(table, leaf_table));
 }
 
 ///////////////////////////////////////////
@@ -431,17 +433,26 @@ inline void read_state(const Slot<typename Set::index_type>& root_slot, const Se
  * ConstIterator
  */
 
-template<std::unsigned_integral I>
-class const_iterator<I, I>
+template<IsIndexedHashSet Set1>
+    requires IsStable<Set1>
+class const_iterator<Set1, Set1>
 {
+public:
+    using difference_type = std::ptrdiff_t;
+    using value_type = typename Set1::index_type;
+    using pointer = value_type*;
+    using reference = value_type;
+    using iterator_category = std::input_iterator_tag;
+    using iterator_concept = std::input_iterator_tag;
+
 private:
-    const IndexedHashSet<Slot<I>, I>* m_table;
-    UniqueObjectPoolPtr<std::vector<Entry<I>>> m_stack;
-    I m_value;
+    const Set1* m_table;
+    UniqueObjectPoolPtr<std::vector<Entry<value_type>>> m_stack;
+    value_type m_value;
 
-    static constexpr const I END_POS = std::numeric_limits<I>::max();
+    static constexpr const value_type END_POS = std::numeric_limits<value_type>::max();
 
-    const IndexedHashSet<Slot<I>, I>& table() const
+    const Set1& table() const
     {
         assert(m_table);
         return *m_table;
@@ -473,13 +484,6 @@ private:
     }
 
 public:
-    using difference_type = std::ptrdiff_t;
-    using value_type = I;
-    using pointer = value_type*;
-    using reference = value_type;
-    using iterator_category = std::input_iterator_tag;
-    using iterator_concept = std::input_iterator_tag;
-
     const_iterator() : m_table(nullptr), m_stack(), m_value(END_POS) {}
     const_iterator(const const_iterator& other) : m_table(other.m_table), m_stack(other.m_stack.clone()), m_value(other.m_value) {}
     const_iterator& operator=(const const_iterator& other)
@@ -494,13 +498,13 @@ public:
     }
     const_iterator(const_iterator&& other) = default;
     const_iterator& operator=(const_iterator&& other) = default;
-    const_iterator(const IndexedHashSet<Slot<I>, I>& table, Slot<I> root, bool begin) : m_table(&table), m_stack(), m_value(END_POS)
+    const_iterator(const Set1& table, Slot<value_type> root, bool begin) : m_table(&table), m_stack(), m_value(END_POS)
     {
         assert(m_table);
 
         if (begin)
         {
-            m_stack = get_stack_pool<std::vector<Entry<I>>>().get_or_allocate();
+            m_stack = get_stack_pool<std::vector<Entry<value_type>>>().get_or_allocate();
             m_stack->clear();
 
             if (root.i2 > 0)  ///< Push to stack only if there leafs
@@ -526,22 +530,25 @@ public:
     bool operator!=(const const_iterator& other) const { return !(*this == other); }
 };
 
-template<std::unsigned_integral I>
-inline auto begin(Slot<I> root, const IndexedHashSet<Slot<I>, I>& table)
+template<IsIndexedHashSet Set1>
+    requires IsStable<Set1>
+inline auto begin(Slot<typename Set1::index_type> root, const Set1& table)
 {
-    return const_iterator<I, I>(table, root, true);
+    return const_iterator<Set1, Set1>(table, root, true);
 }
 
-template<std::unsigned_integral I>
-inline auto end()
+template<IsIndexedHashSet Set1>
+    requires IsStable<Set1>
+inline auto end(const Set1&)
 {
-    return const_iterator<I, I>();
+    return const_iterator<Set1, Set1>();
 }
 
-template<std::unsigned_integral I>
-inline auto range(Slot<I> root, const IndexedHashSet<Slot<I>, I>& table)
+template<IsIndexedHashSet Set1>
+    requires IsStable<Set1>
+inline auto range(Slot<typename Set1::index_type> root, const Set1& table)
 {
-    return std::ranges::subrange(begin(root, table), end<I>());
+    return std::ranges::subrange(begin(root, table), end(table));
 }
 }
 

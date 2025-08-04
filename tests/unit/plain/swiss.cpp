@@ -235,24 +235,24 @@ TEST(VallaTests, PlainUintSwissIteratorTest)
         const auto s0 = std::vector<uint32_t> { 1, 2, 4, 5, 6 };
         const auto s0_idx = v::insert(s0, inner_table);
 
-        EXPECT_EQ(s0, std::vector<uint32_t>(v::begin(s0_idx, inner_table), v::end<uint32_t>()));
+        EXPECT_EQ(s0, std::vector<uint32_t>(v::begin(s0_idx, inner_table), v::end(inner_table)));
     }
 
     {
         const auto s0 = std::vector<uint32_t> {};
-        EXPECT_EQ(s0, std::vector<uint32_t>(v::begin(get_empty_slot<uint32_t>(), inner_table), v::end<uint32_t>()));
+        EXPECT_EQ(s0, std::vector<uint32_t>(v::begin(get_empty_slot<uint32_t>(), inner_table), v::end(inner_table)));
     }
 
     {
         const auto s0 = std::vector<double> { 1, 2, 4, 5, 6 };
         const auto s0_idx = v::insert(s0, inner_table, leaf_table);
 
-        EXPECT_EQ(s0, std::vector<double>(v::begin(s0_idx, inner_table, leaf_table), v::end(leaf_table)));
+        EXPECT_EQ(s0, std::vector<double>(v::begin(s0_idx, inner_table, leaf_table), v::end(inner_table, leaf_table)));
     }
 
     {
         const auto s0 = std::vector<double> {};
-        EXPECT_EQ(s0, std::vector<double>(v::begin(get_empty_slot<uint32_t>(), inner_table, leaf_table), v::end(leaf_table)));
+        EXPECT_EQ(s0, std::vector<double>(v::begin(get_empty_slot<uint32_t>(), inner_table, leaf_table), v::end(inner_table, leaf_table)));
     }
 }
 
@@ -325,7 +325,7 @@ TEST(VallaTests, PlainUintSwissExhaustiveTest)
         EXPECT_EQ(il, out_il);
 
         out_il.clear();
-        out_il.insert(out_il.end(), v::begin(ir, inner_table), v::end<uint32_t>());
+        out_il.insert(out_il.end(), v::begin(ir, inner_table), v::end(inner_table));
         EXPECT_EQ(il, out_il);
 
         out_il.clear();
@@ -338,7 +338,7 @@ TEST(VallaTests, PlainUintSwissExhaustiveTest)
         EXPECT_EQ(dl, out_dl);
 
         out_dl.clear();
-        out_dl.insert(out_dl.end(), v::begin(dr, inner_table, leaf_table), v::end(leaf_table));
+        out_dl.insert(out_dl.end(), v::begin(dr, inner_table, leaf_table), v::end(inner_table, leaf_table));
         EXPECT_EQ(dl, out_dl);
 
         out_dl.clear();
@@ -356,7 +356,7 @@ TEST(VallaTests, PlainUintSwissExhaustiveTest)
             EXPECT_EQ(il_2, out_il);
 
             out_il.clear();
-            out_il.insert(out_il.end(), v::begin(ir_2, inner_table), v::end<uint32_t>());
+            out_il.insert(out_il.end(), v::begin(ir_2, inner_table), v::end(inner_table));
             EXPECT_EQ(il_2, out_il);
 
             out_il.clear();
@@ -375,7 +375,7 @@ TEST(VallaTests, PlainUintSwissExhaustiveTest)
             EXPECT_EQ(dl_2, out_dl);
 
             out_dl.clear();
-            out_dl.insert(out_dl.end(), v::begin(dr_2, inner_table, leaf_table), v::end(leaf_table));
+            out_dl.insert(out_dl.end(), v::begin(dr_2, inner_table, leaf_table), v::end(inner_table, leaf_table));
             EXPECT_EQ(dl_2, out_dl);
 
             out_dl.clear();
@@ -516,6 +516,137 @@ TEST(VallaTests, SuccinctUintSwissTest)
 
         v::read_state(s3_slot, inner_table, leaf_table, double_list);
         EXPECT_EQ(double_list, s3);
+    }
+}
+
+TEST(VallaTests, SuccinctUintSwissExhaustiveTest)
+{
+    const size_t num_sequences = static_cast<size_t>(1000);  // number of states
+    const size_t sequence_size = static_cast<size_t>(29);    // size of each state
+
+    /* Create random sequences */
+
+    std::mt19937 rng(42);  // fixed seed for reproducibility
+    std::uniform_int_distribution<uint32_t> index_dist(0, 1000);
+    std::uniform_real_distribution<double> double_dist(0, 1000);
+    std::uniform_int_distribution<size_t> changes_dist(1, 5);
+    std::uniform_int_distribution<size_t> pos_dist(0, sequence_size - 1);
+
+    std::vector<std::vector<uint32_t>> ils;
+    ils.reserve(num_sequences);
+    std::vector<std::vector<double>> dls;
+    dls.reserve(num_sequences);
+
+    std::vector<uint32_t> start_il(sequence_size);
+    for (auto& v : start_il)
+        v = index_dist(rng);
+    ils.push_back(start_il);
+
+    std::vector<double> start_dl(sequence_size);
+    for (auto& v : start_dl)
+        v = double_dist(rng);
+    dls.push_back(start_dl);
+
+    // Generate sorted random states
+    for (size_t i = 1; i < num_sequences; ++i)
+    {
+        size_t num_changes = changes_dist(rng);
+
+        std::vector<uint32_t> index_list = ils[i - 1];
+        for (size_t j = 0; j < num_changes; ++j)
+            index_list[pos_dist(rng)] = index_dist(rng);
+        ils.push_back(std::move(index_list));
+
+        std::vector<double> double_list = dls[i - 1];
+        for (size_t j = 0; j < num_changes; ++j)
+            double_list[pos_dist(rng)] = double_dist(rng);
+        dls.push_back(std::move(double_list));
+    }
+
+    auto root_table = SuccinctIndexedHashSet<Slot<uint32_t>, uint32_t>();
+    auto inner_table = SuccinctIndexedHashSet<Slot<uint32_t>, uint32_t>();
+    auto leaf_table = IndexedHashSet<double, uint32_t>();
+
+    auto out_il = std::vector<uint32_t> {};
+    auto out_dl = std::vector<double> {};
+
+    auto irs = std::vector<Slot<uint32_t>> {};
+    auto drs = std::vector<Slot<uint32_t>> {};
+
+    for (size_t i = 0; i < ils.size(); ++i)
+    {
+        const auto& il = ils[i];
+        const auto& dl = dls[i];
+
+        auto ir = v::insert(il, inner_table);
+        auto dr = v::insert(dl, inner_table, leaf_table);
+
+        irs.push_back(ir);
+        drs.push_back(dr);
+
+        /* Ensure newly inserted index sequence is readable*/
+        v::read_state(ir, inner_table, out_il);
+        EXPECT_EQ(il, out_il);
+
+        out_il.clear();
+        out_il.insert(out_il.end(), v::begin(ir, inner_table), v::end(inner_table));
+        EXPECT_EQ(il, out_il);
+
+        out_il.clear();
+        for (const auto x : v::range(ir, inner_table))
+            out_il.push_back(x);
+        EXPECT_EQ(il, out_il);
+
+        /* Ensure newly inserted double sequence is readable*/
+        v::read_state(dr, inner_table, leaf_table, out_dl);
+        EXPECT_EQ(dl, out_dl);
+
+        out_dl.clear();
+        out_dl.insert(out_dl.end(), v::begin(dr, inner_table, leaf_table), v::end(inner_table, leaf_table));
+        EXPECT_EQ(dl, out_dl);
+
+        out_dl.clear();
+        for (const auto x : v::range(dr, inner_table, leaf_table))
+            out_dl.push_back(x);
+        EXPECT_EQ(dl, out_dl);
+
+        /* Ensure that all index sequences are readable after rehash. */
+        for (size_t j = 0; j <= i; ++j)
+        {
+            const auto& il_2 = ils[j];
+            const auto& ir_2 = irs[j];
+
+            v::read_state(ir_2, inner_table, out_il);
+            EXPECT_EQ(il_2, out_il);
+
+            out_il.clear();
+            out_il.insert(out_il.end(), v::begin(ir_2, inner_table), v::end(inner_table));
+            EXPECT_EQ(il_2, out_il);
+
+            out_il.clear();
+            for (const auto x : v::range(ir_2, inner_table))
+                out_il.push_back(x);
+            EXPECT_EQ(il_2, out_il);
+        }
+
+        /* Ensure that all double sequences are readable after rehash. */
+        for (size_t j = 0; j <= i; ++j)
+        {
+            const auto& dl_2 = dls[j];
+            const auto& dr_2 = drs[j];
+
+            v::read_state(dr_2, inner_table, leaf_table, out_dl);
+            EXPECT_EQ(dl_2, out_dl);
+
+            out_dl.clear();
+            out_dl.insert(out_dl.end(), v::begin(dr_2, inner_table, leaf_table), v::end(inner_table, leaf_table));
+            EXPECT_EQ(dl_2, out_dl);
+
+            out_dl.clear();
+            for (const auto x : v::range(dr_2, inner_table, leaf_table))
+                out_dl.push_back(x);
+            EXPECT_EQ(dl_2, out_dl);
+        }
     }
 }
 
