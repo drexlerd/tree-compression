@@ -71,7 +71,7 @@ public:
     {
         size_t usage = 0;
         usage += m_slots.capacity() * sizeof(T);
-        usage += m_uniqueness.capacity() * (sizeof(I) + 1);
+        usage += m_uniqueness.capacity() * (sizeof(I) + sizeof(absl::container_internal::ctrl_t));
         return usage;
     }
 

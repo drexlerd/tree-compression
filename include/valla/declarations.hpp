@@ -126,6 +126,18 @@ inline std::ostream& operator<<(std::ostream& out, const std::vector<uint8_t>& v
 }
 
 /**
+ * Statistics
+ */
+
+struct HashSetStatistics
+{
+    size_t m_num_rehashes = 0;
+    std::chrono::milliseconds m_total_rehash_time = std::chrono::milliseconds::zero();
+    size_t m_num_probes = 0;
+    size_t m_sum_probe_lengths = 0;
+};
+
+/**
  * EqualTo
  */
 

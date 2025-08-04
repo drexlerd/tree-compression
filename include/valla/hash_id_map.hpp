@@ -33,19 +33,18 @@ namespace valla
 /// @tparam Key is the key.
 /// @tparam Hash is the hash functor for a key.
 /// @tparam EqualTo is the equality comparison functor for a key.
-/// @tparam InitialCapacity is the initial capacity, which must be a multiplicative of 16.
+/// @tparam InitialCapacity is the initial capacity.
 template<typename Derived,
          typename Key,
          std::unsigned_integral I,
          typename Hash = Hash<Key>,
          typename EqualTo = std::equal_to<Key>,
-         size_t InitialCapacity = 128>
+         size_t InitialCapacity = 127>
 class HashIDMap
 {
 private:
-    static_assert(InitialCapacity % 2 == 0, "InitialCapacity must be a multiple of 2.");
-    static_assert(InitialCapacity % absl::container_internal::Group::kWidth == 0, "InitialCapacity must be a multiple of group width.");
-    static_assert(InitialCapacity >= MIN_RAW_CAPACITY, "InitialCapacity must be greater than minumum raw capacity.");
+    static_assert(((InitialCapacity + 1) & InitialCapacity) == 0, "InitialCapacity must be 2^{InitialCapacity}-1.");
+    static_assert(InitialCapacity >= 127, "InitialCapacity must be greater than 127.");
 
     /// @brief Helper to cast to Derived.
     constexpr const auto& self() const { return static_cast<const Derived&>(*this); }
@@ -54,31 +53,24 @@ private:
 protected:
     std::vector<Key> m_slots;
     std::vector<absl::container_internal::ctrl_t> m_controls;
-    size_t m_size;
-    size_t m_capacity;
+    absl::container_internal::CommonFields m_common;
 
     Hash m_hash;
     EqualTo m_equal_to;
 
-    struct Statistics
-    {
-        size_t m_num_rehashes = 0;
-        std::chrono::milliseconds m_total_rehash_time = std::chrono::milliseconds::zero();
-        size_t m_num_probes = 0;
-        size_t m_sum_probe_lengths = 0;
-    };
-
-    Statistics m_statistics;
+    HashSetStatistics m_statistics;
 
 public:
-    HashIDMap() : m_slots(), m_controls(), m_size(0), m_capacity(InitialCapacity), m_hash(), m_equal_to()
+    HashIDMap() : m_slots(), m_controls(), m_common(absl::container_internal::non_soo_tag_t {}), m_hash(), m_equal_to()
     {
-        m_slots.resize(m_capacity);
+        m_common.set_capacity(InitialCapacity);
+        m_common.set_size(0);
+        m_slots.resize(m_common.capacity());
 
         // Sentinel-padded rolling buffer
-        m_controls.reserve(m_capacity + absl::container_internal::Group::kWidth - 1);
-        m_controls.resize(m_capacity, absl::container_internal::ctrl_t::kEmpty);
-        m_controls.resize(m_capacity + absl::container_internal::Group::kWidth - 1, absl::container_internal::ctrl_t::kSentinel);
+        m_controls.reserve(m_common.capacity() + absl::container_internal::Group::kWidth - 1);
+        m_controls.resize(m_common.capacity(), absl::container_internal::ctrl_t::kEmpty);
+        m_controls.resize(m_common.capacity() + absl::container_internal::Group::kWidth - 1, absl::container_internal::ctrl_t::kSentinel);
     }
 
     bool has_capacity_for(size_t amount) const { return (static_cast<double>(size() + amount) / capacity()) <= MAX_LOAD_FACTOR; }
@@ -90,7 +82,7 @@ public:
         size_t h = m_hash(slot);
         absl::container_internal::h2_t h2 = h >> 57;
 
-        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, m_capacity - 1);
+        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, m_common.capacity());
 
         while (true)
         {
@@ -118,7 +110,7 @@ public:
 
                 m_slots[idx] = slot;
                 m_controls[idx] = static_cast<absl::container_internal::ctrl_t>(h2);
-                ++m_size;
+                m_common.increment_size();
                 ++m_statistics.m_num_probes;
                 return idx;
             }
@@ -130,15 +122,15 @@ public:
 
     const Key& operator[](I pos) const { return m_slots[pos]; }
 
-    size_t size() const { return m_size; }
-    size_t capacity() const { return m_capacity; }
+    size_t size() const { return m_common.size(); }
+    size_t capacity() const { return m_common.capacity(); }
     double load_factor() const { return static_cast<double>(size()) / capacity(); }
     constexpr double max_load_factor() const { return MAX_LOAD_FACTOR; }
-    const Statistics& statistics() const { return m_statistics; }
+    const HashSetStatistics& statistics() const { return m_statistics; }
 };
 
 /// @brief `TreeHashIDMap` implements a HashIDMap for chains of perfectly balanced binary trees with DFS style rehash policy.
-template<std::unsigned_integral I, typename Hash = Hash<Slot<I>>, typename EqualTo = std::equal_to<Slot<I>>, size_t InitialCapacity = 128>
+template<std::unsigned_integral I, typename Hash = Hash<Slot<I>>, typename EqualTo = std::equal_to<Slot<I>>, size_t InitialCapacity = 127>
 class TreeHashIDMap : public HashIDMap<TreeHashIDMap<I, Hash, EqualTo, InitialCapacity>, Slot<I>, I, Hash, EqualTo, InitialCapacity>
 {
 private:
@@ -147,30 +139,32 @@ private:
 
     struct RehashData
     {
-        size_t capacity;
-        size_t size;
         std::vector<Slot<I>> slots;
         std::vector<absl::container_internal::ctrl_t> controls;
+        absl::container_internal::CommonFields common;
 
-        explicit RehashData(size_t capacity) : capacity(capacity), size(0), slots(capacity), controls()
+        explicit RehashData(size_t capacity) : slots(capacity), controls(), common(absl::container_internal::non_soo_tag_t {})
         {
+            common.set_capacity(capacity);
+            common.set_size(0);
+
             // Sentinel-padded rolling buffer
             controls.reserve(capacity + absl::container_internal::Group::kWidth - 1);
             controls.resize(capacity, absl::container_internal::ctrl_t::kEmpty);
             controls.resize(capacity + absl::container_internal::Group::kWidth - 1, absl::container_internal::ctrl_t::kSentinel);
         }
 
-        bool has_capacity_for(size_t amount) const { return (static_cast<double>(size + amount) / capacity) <= MAX_LOAD_FACTOR; }
+        bool has_capacity_for(size_t amount) const { return (static_cast<double>(common.size() + amount) / common.capacity()) <= MAX_LOAD_FACTOR; }
     };
 
     I insert(const Slot<I>& slot, RehashData& tmp)
     {
-        assert(this->size() < this->capacity() && "Insert failed. Rehashing to higher capacity is required.");
+        assert(tmp.common.size() < tmp.common.capacity() && "Insert failed. Rehashing to higher capacity is required.");
 
         size_t h = this->m_hash(slot);
         absl::container_internal::h2_t h2 = h >> 57;
 
-        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, tmp.capacity - 1);
+        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, tmp.common.capacity());
 
         while (true)
         {
@@ -197,7 +191,7 @@ private:
 
                 tmp.slots[idx] = slot;
                 tmp.controls[idx] = static_cast<absl::container_internal::ctrl_t>(h2);
-                ++tmp.size;
+                tmp.common.increment_size();
                 ++this->m_statistics.m_num_probes;
                 return idx;
             }
@@ -269,13 +263,12 @@ private:
             this->m_roots.m_uniqueness.emplace(stable_index);
         }
 
-        if (tmp.size > new_capacity)
+        if (tmp.common.size() > new_capacity)
             throw std::runtime_error("Encountered insufficient capacity during rehash due to changed structural sharing.");
 
-        this->m_capacity = new_capacity;
-        this->m_size = tmp.size;
         std::swap(this->m_slots, tmp.slots);
         std::swap(this->m_controls, tmp.controls);
+        std::swap(this->m_common, tmp.common);
 
         return true;
     }
@@ -291,7 +284,7 @@ public:
         this->m_stable_leaves.push_back(false);
     }
 
-    void rehash(double factor = 2.)
+    void rehash()
     {
         using clock = std::chrono::high_resolution_clock;
 
@@ -299,11 +292,12 @@ public:
 
         ++this->m_statistics.m_num_rehashes;
 
-        size_t new_capacity = this->m_capacity;
+        size_t new_capacity = this->capacity();
 
         while (true)
         {
-            new_capacity *= factor;
+            new_capacity = (new_capacity << 1) | 1;
+            assert(absl::container_internal::IsValidCapacity(new_capacity));
 
             if (rehash_impl(new_capacity))
                 break;
