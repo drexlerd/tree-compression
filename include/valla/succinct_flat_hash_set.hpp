@@ -59,16 +59,16 @@ private:
         absl::container_internal::h2_t h2 = h >> 57;
         assert(static_cast<int>(h2) >= 0);
 
-        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, m_capacity);
+        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, capacity());
 
         while (true)
         {
             absl::container_internal::Group group(&m_controls[probe.offset()]);
 
-            for (const auto offset : group.Match(h2))
+            for (const auto i : group.Match(h2))
             {
-                m_statistics.m_sum_probe_lengths += offset;
-                size_t idx = probe.offset() + offset;
+                m_statistics.m_sum_probe_lengths += i;
+                size_t idx = probe.offset(i);
                 assert(is_within_bounds(m_slots, idx));
 
                 if (m_equal_to(m_slots[idx], key))
@@ -78,15 +78,17 @@ private:
             auto mask_empty = group.MaskEmpty();
             if (mask_empty)
             {
-                int offset = mask_empty.LowestBitSet();
-                m_statistics.m_sum_probe_lengths += offset;
+                int i = mask_empty.LowestBitSet();
+                m_statistics.m_sum_probe_lengths += i;
 
-                size_t idx = probe.offset() + offset;
+                size_t idx = probe.offset() + i;
+
                 assert(is_within_bounds(m_slots, idx));
                 assert(m_controls[idx] == absl::container_internal::ctrl_t::kEmpty);
 
                 m_slots[idx] = Uint64tCoder<T>::to_uint64_t(key, m_slots.width());
                 m_controls[idx] = static_cast<absl::container_internal::ctrl_t>(h2);
+
                 ++m_size;
                 ++m_statistics.m_num_probes;
 
@@ -100,30 +102,38 @@ private:
 
     void resize_width(uint8_t old_width, uint8_t new_width)
     {
-        std::cout << "Resize: " << static_cast<int>(old_width) << " -> " << static_cast<int>(new_width) << std::endl;
+        // std::cout << "Resize: " << static_cast<int>(old_width) << " -> " << static_cast<int>(new_width) << std::endl;
 
-        auto slots = sdsl::int_vector<>(m_capacity, 0, new_width);
+        auto slots = sdsl::int_vector<>(capacity(), 0, new_width);
 
-        for (I i = 0; i < m_capacity; ++i)
-            slots[i] = Uint64tCoder<T>::to_uint64_t(Uint64tCoder<T>::from_uint64_t(m_slots[i], old_width), new_width);
+        if (size() > 0)
+            for (I i = 0; i < capacity(); ++i)
+                slots[i] = Uint64tCoder<T>::to_uint64_t(Uint64tCoder<T>::from_uint64_t(m_slots[i], old_width), new_width);
 
         std::swap(m_slots, slots);
     }
 
 public:
-    succinct_flat_hash_set(Hash hash, EqualTo equal_to) :
-        m_slots(InitialCapacity, 0, 2),
+    succinct_flat_hash_set(size_t capacity, uint8_t bit_width, Hash hash, EqualTo equal_to) :
+        m_slots(capacity, 0, bit_width),
         m_controls(),
         m_size(0),
-        m_capacity(InitialCapacity),
+        m_capacity(capacity),
         m_hash(hash),
         m_equal_to(equal_to)
     {
+        if (!absl::container_internal::IsValidCapacity(capacity) || capacity < 127)
+            throw std::logic_error("Invalid value for capacity specified. The capacity must be 2^n-1 for integer n > 0 and greater or equal to 127.");
+        if (bit_width < 1)
+            throw std::logic_error("Invalid value for bit_width specified. The bit_width has to be nonzero.");
+
         // Sentinel-padded rolling buffer
-        m_controls.reserve(InitialCapacity + absl::container_internal::Group::kWidth - 1);
-        m_controls.resize(InitialCapacity, absl::container_internal::ctrl_t::kEmpty);
-        m_controls.resize(InitialCapacity + absl::container_internal::Group::kWidth - 1, absl::container_internal::ctrl_t::kSentinel);
+        m_controls.reserve(capacity + absl::container_internal::Group::kWidth);
+        m_controls.resize(capacity, absl::container_internal::ctrl_t::kEmpty);
+        m_controls.resize(capacity + absl::container_internal::Group::kWidth, absl::container_internal::ctrl_t::kSentinel);
     }
+
+    succinct_flat_hash_set(Hash hash, EqualTo equal_to) : succinct_flat_hash_set(InitialCapacity, 1, hash, equal_to) {}
 
     succinct_flat_hash_set() : succinct_flat_hash_set(Hash {}, EqualTo {}) {}
 
@@ -141,57 +151,19 @@ public:
         return insert_impl(key);
     }
 
-    struct RehashData
-    {
-        sdsl::int_vector<> slots;
-        std::vector<absl::container_internal::ctrl_t> controls;
-        size_t size;
-        size_t capacity;
-
-        explicit RehashData(size_t capacity, uint8_t bit_width) : slots(capacity, 0, bit_width), controls(), size(0), capacity(capacity)
-        {
-            // Sentinel-padded rolling buffer
-            controls.reserve(capacity + absl::container_internal::Group::kWidth - 1);
-            controls.resize(capacity, absl::container_internal::ctrl_t::kEmpty);
-            controls.resize(capacity + absl::container_internal::Group::kWidth - 1, absl::container_internal::ctrl_t::kSentinel);
-        }
-    };
-
     void rehash()
     {
-        size_t new_capacity = (m_capacity << 1) | 1;
+        // std::cout << "Rehash: " << size() << " " << capacity() << std::endl;
 
-        std::cout << "Rehash: " << m_capacity << " -> " << new_capacity << std::endl;
-
-        assert(absl::container_internal::IsValidCapacity(new_capacity));
-
-        auto tmp = RehashData(new_capacity, m_slots.width());
+        auto tmp = succinct_flat_hash_set((capacity() << 1) | 1, slots().width(), m_hash, m_equal_to);
 
         for (size_t i = 0; i < capacity(); ++i)
         {
             if (static_cast<int>(m_controls[i]) >= 0)
-            {
-                std::cout << tmp.size << std::endl;
-                size_t h = m_hash(m_slots[i]);
-                absl::container_internal::h2_t h2 = h >> 57;
-                assert(static_cast<int>(h2) >= 0);
-                size_t idx = h & tmp.capacity;
-                tmp.slots[idx] = m_slots[i];
-                tmp.controls[idx] = static_cast<absl::container_internal::ctrl_t>(h2);
-                ++tmp.size;
-            }
+                tmp.insert(m_slots[i]);
         }
 
-        std::cout << size() << " " << tmp.size << std::endl;
-
-        assert(size() == tmp.size);
-
-        m_slots = std::move(tmp.slots);
-        m_controls = std::move(tmp.controls);
-        m_capacity = tmp.capacity;
-        m_size = tmp.size;
-
-        assert(m_slots.size() + absl::container_internal::Group::kWidth - 1 == m_controls.size());
+        std::swap(*this, tmp);
     }
 
     class const_iterator
@@ -254,6 +226,7 @@ public:
         bool operator!=(const const_iterator& other) const { return !(*this == other); }
     };
 
+    const sdsl::int_vector<>& slots() const { return m_slots; }
     size_t size() const { return m_size; }
     size_t capacity() const { return m_capacity; }
     double load_factor() const { return static_cast<double>(size()) / capacity(); }

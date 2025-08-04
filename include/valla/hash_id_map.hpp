@@ -76,9 +76,9 @@ public:
         m_slots.resize(InitialCapacity);
 
         // Sentinel-padded rolling buffer
-        m_controls.reserve(InitialCapacity + absl::container_internal::Group::kWidth - 1);
+        m_controls.reserve(InitialCapacity + absl::container_internal::Group::kWidth);
         m_controls.resize(InitialCapacity, absl::container_internal::ctrl_t::kEmpty);
-        m_controls.resize(InitialCapacity + absl::container_internal::Group::kWidth - 1, absl::container_internal::ctrl_t::kSentinel);
+        m_controls.resize(InitialCapacity + absl::container_internal::Group::kWidth, absl::container_internal::ctrl_t::kSentinel);
     }
 
     bool has_capacity_for(size_t amount) const { return (static_cast<double>(size() + amount) / capacity()) <= MAX_LOAD_FACTOR; }
@@ -96,14 +96,14 @@ public:
         {
             absl::container_internal::Group group(&m_controls[probe.offset()]);
 
-            for (const auto offset : group.Match(h2))
+            for (const auto i : group.Match(h2))
             {
-                m_statistics.m_sum_probe_lengths += offset;
-                size_t idx = probe.offset() + offset;
+                m_statistics.m_sum_probe_lengths += i;
+
+                size_t idx = probe.offset(i);
                 assert(is_within_bounds(m_slots, idx));
 
                 if (m_equal_to(m_slots[idx], slot))
-
                     return idx;
             }
 
@@ -120,6 +120,7 @@ public:
                 m_controls[idx] = static_cast<absl::container_internal::ctrl_t>(h2);
                 ++m_size;
                 ++m_statistics.m_num_probes;
+
                 return idx;
             }
 
@@ -161,9 +162,9 @@ private:
         explicit RehashData(size_t capacity) : slots(capacity), controls(), size(0), capacity(capacity)
         {
             // Sentinel-padded rolling buffer
-            controls.reserve(capacity + absl::container_internal::Group::kWidth - 1);
+            controls.reserve(capacity + absl::container_internal::Group::kWidth);
             controls.resize(capacity, absl::container_internal::ctrl_t::kEmpty);
-            controls.resize(capacity + absl::container_internal::Group::kWidth - 1, absl::container_internal::ctrl_t::kSentinel);
+            controls.resize(capacity + absl::container_internal::Group::kWidth, absl::container_internal::ctrl_t::kSentinel);
         }
 
         bool has_capacity_for(size_t amount) const { return (static_cast<double>(size + amount) / capacity) <= MAX_LOAD_FACTOR; }
@@ -182,10 +183,11 @@ private:
         {
             absl::container_internal::Group group(&tmp.controls[probe.offset()]);
 
-            for (const auto offset : group.Match(h2))
+            for (const auto i : group.Match(h2))
             {
-                this->m_statistics.m_sum_probe_lengths += offset;
-                size_t idx = probe.offset() + offset;
+                this->m_statistics.m_sum_probe_lengths += i;
+
+                size_t idx = probe.offset(i);
                 assert(is_within_bounds(tmp.slots, idx));
 
                 if (this->m_equal_to(tmp.slots[idx], slot))
@@ -205,6 +207,7 @@ private:
                 tmp.controls[idx] = static_cast<absl::container_internal::ctrl_t>(h2);
                 ++tmp.size;
                 ++this->m_statistics.m_num_probes;
+
                 return idx;
             }
 
