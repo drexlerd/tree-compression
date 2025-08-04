@@ -44,7 +44,7 @@ private:
         size_t operator()(I el) const
         {
             assert(el < vec->size());
-            return hash(T::from_uint64_t(vec->operator[](el), vec->width()));
+            return hash(Uint64tCoder<T>::from_uint64_t(vec->operator[](el), vec->width()));
         }
     };
 
@@ -65,18 +65,18 @@ private:
 
     void resize_width(uint8_t old_width, uint8_t new_width)
     {
-        /* Rebuild index_to_slot */
+        /* Rebuild slots */
         auto slots = sdsl::int_vector<>(m_capacity, 0, new_width);
 
         for (I i = 0; i < m_size; ++i)
-            slots[i] = Slot<I>::from_uint64_t(m_slots[i], old_width).to_uint64_t(new_width);
+            slots[i] = Uint64tCoder<T>::to_uint64_t(Uint64tCoder<T>::from_uint64_t(m_slots[i], old_width), new_width);
 
         std::swap(m_slots, slots);
 
         /* Rebuild uniqueness */
-        m_uniqueness = absl::flat_hash_set<I, IndexReferencedHash, IndexReferencedEqualTo>(0, IndexReferencedHash(m_slots), IndexReferencedEqualTo(m_slots));
+        m_uniqueness = succinct_flat_hash_set<I, I, IndexReferencedHash, IndexReferencedEqualTo>(IndexReferencedHash(m_slots), IndexReferencedEqualTo(m_slots));
         for (I i = 0; i < m_size; ++i)
-            m_uniqueness.emplace(i);
+            m_uniqueness.insert(i);
     }
 
 public:
@@ -84,7 +84,7 @@ public:
         m_size(0),
         m_capacity(1),
         m_slots(1, 0, 2),  // size 0, value 0, width 2
-        m_uniqueness(0, IndexReferencedHash(m_slots), IndexReferencedEqualTo(m_slots))
+        m_uniqueness(IndexReferencedHash(m_slots), IndexReferencedEqualTo(m_slots))
     {
     }
     // Uncopieable and unmoveable to avoid dangling references of m_slots in hash and equal_to.
@@ -101,7 +101,7 @@ public:
         if (m_size == m_capacity)
             m_slots.resize(m_capacity <<= 1);
 
-        const auto new_width = slot.bit_width();
+        const auto new_width = Uint64tCoder<T>::bit_width(slot);
         const auto old_width = m_slots.width();
 
         /* Rebuild on insufficient width. */
@@ -110,8 +110,8 @@ public:
 
         I index = m_size++;
 
-        m_slots[index] = slot.to_uint64_t(new_width);
-        const auto result = m_uniqueness.emplace(index);
+        m_slots[index] = Uint64tCoder<T>::to_uint64_t(slot, new_width);
+        const auto result = m_uniqueness.insert(index);
 
         if (!result.second)
             --m_size;
@@ -132,7 +132,7 @@ private:
     size_t m_size;
     size_t m_capacity;
     sdsl::int_vector<> m_slots;
-    absl::flat_hash_set<I, IndexReferencedHash, IndexReferencedEqualTo> m_uniqueness;  // TODO: change to succinct_flat_hash_set
+    succinct_flat_hash_set<I, I, IndexReferencedHash, IndexReferencedEqualTo> m_uniqueness;  // TODO: change to succinct_flat_hash_set
 };
 }
 

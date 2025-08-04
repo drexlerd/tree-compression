@@ -47,28 +47,6 @@ inline bool is_within_bounds(const Container& container, size_t index)
 }
 
 /**
- * Concepts
- */
-
-template<typename T>
-concept IsUint64tCodable = requires(T a, uint64_t v, uint8_t b) {
-    requires std::is_standard_layout_v<T>;
-    requires(sizeof(T) <= sizeof(uint64_t));
-
-    { a.bit_width() } -> std::same_as<uint8_t>;
-    { a.to_uint64_t(b) } -> std::same_as<uint64_t>;
-    { T::from_uint64_t(v, b) } -> std::same_as<T>;
-};
-
-template<typename T>
-concept IsIndexedHashSet = requires(T a, typename T::ValueType v, typename T::IndexType i) {
-    requires std::unsigned_integral<typename T::IndexType>;
-
-    { a.insert(v) } -> std::same_as<typename T::IndexType>;
-    { a[i] } -> std::convertible_to<typename T::ValueType>;
-};
-
-/**
  * Slot
  */
 
@@ -83,13 +61,34 @@ struct Slot
 
     constexpr friend bool operator==(const Slot& lhs, const Slot& rhs) { return lhs.i1 == rhs.i1 && lhs.i2 == rhs.i2; }
 
-    constexpr uint8_t bit_width() const { return std::max(1, 2 * std::max(std::bit_width(i1), std::bit_width(i2))); }
-    constexpr uint64_t to_uint64_t(uint8_t bit_width) const
+    friend std::ostream& operator<<(std::ostream& os, const Slot& slot)
+    {
+        os << "<" << slot.i1 << ", " << slot.i2 << ">";
+        return os;
+    }
+};
+
+/**
+ * Uint64tCoder
+ */
+
+template<typename T>
+struct Uint64tCoder
+{
+};
+
+template<std::unsigned_integral I>
+struct Uint64tCoder<Slot<I>>
+{
+    constexpr static uint8_t bit_width(const Slot<I>& el) { return std::max(1, 2 * std::max(std::bit_width(el.i1), std::bit_width(el.i2))); }
+
+    constexpr static uint64_t to_uint64_t(const Slot<I>& el, uint8_t bit_width)
     {
         uint8_t half = bit_width / 2;
-        return (uint64_t(i1) << half) | i2;
+        return (uint64_t(el.i1) << half) | el.i2;
     }
-    constexpr static Slot from_uint64_t(uint64_t packed, uint8_t bit_width)
+
+    constexpr static Slot<I> from_uint64_t(uint64_t packed, uint8_t bit_width)
     {
         uint8_t half = bit_width / 2;
         uint64_t mask = (uint64_t(1) << half) - 1;
@@ -97,13 +96,43 @@ struct Slot
         I i1 = static_cast<I>(packed >> half);
         return Slot(i1, i2);
     }
-
-    friend std::ostream& operator<<(std::ostream& os, const Slot& slot)
-    {
-        os << "<" << slot.i1 << ", " << slot.i2 << ">";
-        return os;
-    }
 };
+
+template<std::unsigned_integral T>
+struct Uint64tCoder<T>
+{
+    constexpr static uint8_t bit_width(const T& el) { return std::max(1, std::bit_width(el)); }
+
+    constexpr static uint64_t to_uint64_t(const T& el, uint8_t) { return static_cast<uint64_t>(el); }
+
+    constexpr static T from_uint64_t(uint64_t packed, uint8_t) { return static_cast<T>(packed); }
+};
+
+/**
+ * Concepts
+ */
+
+template<typename T>
+concept IsUint64tCodable = requires(T a, uint64_t p, uint8_t b) {
+    requires std::is_standard_layout_v<T>;
+    requires(sizeof(T) <= sizeof(uint64_t));
+
+    { Uint64tCoder<T>::bit_width(a) } -> std::same_as<uint8_t>;
+    { Uint64tCoder<T>::to_uint64_t(a, b) } -> std::same_as<uint64_t>;
+    { Uint64tCoder<T>::from_uint64_t(p, b) } -> std::same_as<T>;
+};
+
+template<typename T>
+concept IsIndexedHashSet = requires(T a, typename T::ValueType v, typename T::IndexType i) {
+    requires std::unsigned_integral<typename T::IndexType>;
+
+    { a.insert(v) } -> std::same_as<typename T::IndexType>;
+    { a[i] } -> std::convertible_to<typename T::ValueType>;
+};
+
+static_assert(IsUint64tCodable<uint16_t>);
+static_assert(IsUint64tCodable<uint32_t>);
+static_assert(IsUint64tCodable<uint64_t>);
 
 static_assert(IsUint64tCodable<Slot<uint16_t>>);
 static_assert(IsUint64tCodable<Slot<uint32_t>>);
