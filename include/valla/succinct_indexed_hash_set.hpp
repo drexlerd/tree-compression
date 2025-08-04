@@ -130,7 +130,16 @@ public:
     size_t size() const { return m_size; }
     size_t capacity() const { return m_capacity; }
     uint8_t bit_width() const { return m_slots.width(); }
+    const sdsl::int_vector<>& slots() const { return m_slots; }
     const succinct_flat_hash_set<I, I, IndexReferencedHash, IndexReferencedEqualTo> uniqueness() const { return m_uniqueness; }
+
+    size_t mem_usage() const
+    {
+        size_t usage = 0;
+        usage += m_slots.capacity() / 8;
+        usage += m_uniqueness.mem_usage();
+        return usage;
+    }
 
 private:
     size_t m_size;
