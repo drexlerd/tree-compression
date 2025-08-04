@@ -32,6 +32,25 @@ namespace valla
 template<IsUint64tCodable T, std::unsigned_integral I>
 class SuccinctIndexedHashSet
 {
+private:
+    void resize_width(uint8_t old_width, uint8_t new_width)
+    {
+        /* Rebuild index_to_slot */
+        auto slots = sdsl::int_vector<>(m_capacity, 0, new_width);
+
+        for (I i = 0; i < m_size; ++i)
+            slots[i] = Slot<I>::from_uint64_t(m_slots[i], old_width).to_uint64_t(new_width);
+
+        std::swap(m_slots, slots);
+
+        /* Rebuild uniqueness */
+        m_uniqueness = absl::flat_hash_set<I, IndexReferencedHash<T, I>, IndexReferencedEqualTo<T, I>>(0,
+                                                                                                       IndexReferencedHash<T, I>(m_slots),
+                                                                                                       IndexReferencedEqualTo<T, I>(m_slots));
+        for (I i = 0; i < m_size; ++i)
+            m_uniqueness.emplace(i);
+    }
+
 public:
     SuccinctIndexedHashSet() :
         m_size(0),
@@ -54,32 +73,16 @@ public:
         if (m_size == m_capacity)
             m_slots.resize(m_capacity <<= 1);
 
+        const auto new_width = slot.bit_width();
+        const auto old_width = m_slots.width();
+
         /* Rebuild on insufficient width. */
-        if (slot.bit_width() > m_slots.width())
-        {
-            uint8_t old_width = m_slots.width();
-            uint8_t new_width = slot.bit_width();
-
-            /* Rebuild index_to_slot */
-            auto slots = sdsl::int_vector<>(m_capacity, 0, new_width);
-
-            for (I i = 0; i < m_size; ++i)
-                slots[i] = PackedSlot(UnpackedSlot(PackedSlot(m_slots[i], old_width)), new_width).data();
-
-            std::swap(m_slots, slots);
-
-            /* Rebuild uniqueness */
-            m_uniqueness = absl::flat_hash_set<I, IndexReferencedHash<T, I>, IndexReferencedEqualTo<T, I>>(0,
-                                                                                                           IndexReferencedHash<T, I>(m_slots),
-                                                                                                           IndexReferencedEqualTo<T, I>(m_slots));
-            for (I i = 0; i < m_size; ++i)
-                m_uniqueness.emplace(i);
-        }
+        if (new_width > old_width)
+            resize_width(old_width, new_width);
 
         I index = m_size++;
 
-        m_slots[index] = packed.data();
-
+        m_slots[index] = slot.to_uint64_t();
         const auto result = m_uniqueness.emplace(index);
 
         if (!result.second)
@@ -92,7 +95,7 @@ public:
     {
         assert(index < m_slots.size() && "Index out of bounds");
 
-        return UnpackedSlot(PackedSlot(m_slots[index], m_slots.width()));
+        return Slot<I>::from_uint64_t(m_slots[index], m_slots.width());
     }
 
     size_t size() const { return m_size; }

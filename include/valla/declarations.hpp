@@ -47,6 +47,28 @@ inline bool is_within_bounds(const Container& container, size_t index)
 }
 
 /**
+ * Concepts
+ */
+
+template<typename T>
+concept IsUint64tCodable = requires(T a, uint64_t v, uint8_t b) {
+    requires std::is_standard_layout_v<T>;
+    requires(sizeof(T) <= sizeof(uint64_t));
+
+    { a.bit_width() } -> std::same_as<uint8_t>;
+    { a.to_uint64_t(b) } -> std::same_as<uint64_t>;
+    { T::from_uint64_t(v, b) } -> std::same_as<T>;
+};
+
+template<typename T>
+concept IsIndexedHashSet = requires(T a, typename T::ValueType v, typename T::IndexType i) {
+    requires std::unsigned_integral<typename T::IndexType>;
+
+    { a.insert(v) } -> std::same_as<typename T::IndexType>;
+    { a[i] } -> std::convertible_to<typename T::ValueType>;
+};
+
+/**
  * Slot
  */
 
@@ -61,7 +83,20 @@ struct Slot
 
     constexpr friend bool operator==(const Slot& lhs, const Slot& rhs) { return lhs.i1 == rhs.i1 && lhs.i2 == rhs.i2; }
 
-    constexpr uint8_t bit_width() const { return 2 * std::max(std::bit_width(i1), std::bit_width(i2)); }
+    constexpr uint8_t bit_width() const { return std::max(1, 2 * std::max(std::bit_width(i1), std::bit_width(i2))); }
+    constexpr uint64_t to_uint64_t(uint8_t bit_width) const
+    {
+        uint8_t half = bit_width / 2;
+        return (uint64_t(i1) << half) | i2;
+    }
+    constexpr static Slot from_uint64_t(uint64_t packed, uint8_t bit_width)
+    {
+        uint8_t half = bit_width / 2;
+        uint64_t mask = (uint64_t(1) << half) - 1;
+        I i2 = static_cast<I>(packed & mask);
+        I i1 = static_cast<I>(packed >> half);
+        return Slot(i1, i2);
+    }
 
     friend std::ostream& operator<<(std::ostream& os, const Slot& slot)
     {
@@ -69,6 +104,10 @@ struct Slot
         return os;
     }
 };
+
+static_assert(IsUint64tCodable<Slot<uint16_t>>);
+static_assert(IsUint64tCodable<Slot<uint32_t>>);
+static_assert(!IsUint64tCodable<Slot<uint64_t>>);
 
 template<std::unsigned_integral I>
 constexpr inline Slot<I> get_empty_slot()
@@ -194,27 +233,6 @@ struct IndexReferencedHash
     }
 };
 
-/**
- * Concepts
- */
-
-template<typename T>
-concept IsUint64tCodable = requires(T a, uint64_t v) {
-    requires std::is_standard_layout_v<T>;
-    requires(sizeof(T) < sizeof(uint64_t));
-
-    { a.bit_width() } -> std::same_as<uint8_t>;
-    { a.to_uint64_t() } -> std::same_as<uint64_t>;
-    { T::from_uint64_t(v) } -> std::same_as<T>;
-};
-
-template<typename T>
-concept IsIndexedHashSet = requires(T a, typename T::ValueType v, typename T::IndexType i) {
-    requires std::unsigned_integral<typename T::IndexType>;
-
-    { a.insert(v) } -> std::same_as<typename T::IndexType>;
-    { a[i] } -> std::convertible_to<typename T::ValueType>;
-};
 }
 
 #endif
