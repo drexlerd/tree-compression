@@ -53,24 +53,32 @@ private:
 protected:
     std::vector<Key> m_slots;
     std::vector<absl::container_internal::ctrl_t> m_controls;
-    absl::container_internal::CommonFields m_common;
+
+    size_t m_size;
+    size_t m_capacity;
 
     Hash m_hash;
     EqualTo m_equal_to;
 
-    HashSetStatistics m_statistics;
+    struct Statistics
+    {
+        size_t m_num_rehashes = 0;
+        std::chrono::milliseconds m_total_rehash_time = std::chrono::milliseconds::zero();
+        size_t m_num_probes = 0;
+        size_t m_sum_probe_lengths = 0;
+    };
+
+    Statistics m_statistics;
 
 public:
-    HashIDMap() : m_slots(), m_controls(), m_common(absl::container_internal::non_soo_tag_t {}), m_hash(), m_equal_to()
+    HashIDMap() : m_slots(), m_controls(), m_size(0), m_capacity(0), m_hash(), m_equal_to()
     {
-        m_common.set_capacity(InitialCapacity);
-        m_common.set_size(0);
-        m_slots.resize(m_common.capacity());
+        m_slots.resize(capacity());
 
         // Sentinel-padded rolling buffer
-        m_controls.reserve(m_common.capacity() + absl::container_internal::Group::kWidth - 1);
-        m_controls.resize(m_common.capacity(), absl::container_internal::ctrl_t::kEmpty);
-        m_controls.resize(m_common.capacity() + absl::container_internal::Group::kWidth - 1, absl::container_internal::ctrl_t::kSentinel);
+        m_controls.reserve(capacity() + absl::container_internal::Group::kWidth - 1);
+        m_controls.resize(capacity(), absl::container_internal::ctrl_t::kEmpty);
+        m_controls.resize(capacity() + absl::container_internal::Group::kWidth - 1, absl::container_internal::ctrl_t::kSentinel);
     }
 
     bool has_capacity_for(size_t amount) const { return (static_cast<double>(size() + amount) / capacity()) <= MAX_LOAD_FACTOR; }
@@ -82,7 +90,7 @@ public:
         size_t h = m_hash(slot);
         absl::container_internal::h2_t h2 = h >> 57;
 
-        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, m_common.capacity());
+        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, capacity());
 
         while (true)
         {
@@ -110,7 +118,7 @@ public:
 
                 m_slots[idx] = slot;
                 m_controls[idx] = static_cast<absl::container_internal::ctrl_t>(h2);
-                m_common.increment_size();
+                ++m_size;
                 ++m_statistics.m_num_probes;
                 return idx;
             }
@@ -122,11 +130,11 @@ public:
 
     const Key& operator[](I pos) const { return m_slots[pos]; }
 
-    size_t size() const { return m_common.size(); }
-    size_t capacity() const { return m_common.capacity(); }
+    size_t size() const { return m_size; }
+    size_t capacity() const { return m_capacity; }
     double load_factor() const { return static_cast<double>(size()) / capacity(); }
     constexpr double max_load_factor() const { return MAX_LOAD_FACTOR; }
-    const HashSetStatistics& statistics() const { return m_statistics; }
+    const Statistics& statistics() const { return m_statistics; }
 };
 
 /// @brief `TreeHashIDMap` implements a HashIDMap for chains of perfectly balanced binary trees with DFS style rehash policy.
@@ -141,30 +149,28 @@ private:
     {
         std::vector<Slot<I>> slots;
         std::vector<absl::container_internal::ctrl_t> controls;
-        absl::container_internal::CommonFields common;
+        size_t size;
+        size_t capacity;
 
-        explicit RehashData(size_t capacity) : slots(capacity), controls(), common(absl::container_internal::non_soo_tag_t {})
+        explicit RehashData(size_t capacity) : slots(capacity), controls(), size(0), capacity(capacity)
         {
-            common.set_capacity(capacity);
-            common.set_size(0);
-
             // Sentinel-padded rolling buffer
             controls.reserve(capacity + absl::container_internal::Group::kWidth - 1);
             controls.resize(capacity, absl::container_internal::ctrl_t::kEmpty);
             controls.resize(capacity + absl::container_internal::Group::kWidth - 1, absl::container_internal::ctrl_t::kSentinel);
         }
 
-        bool has_capacity_for(size_t amount) const { return (static_cast<double>(common.size() + amount) / common.capacity()) <= MAX_LOAD_FACTOR; }
+        bool has_capacity_for(size_t amount) const { return (static_cast<double>(size + amount) / capacity) <= MAX_LOAD_FACTOR; }
     };
 
     I insert(const Slot<I>& slot, RehashData& tmp)
     {
-        assert(tmp.common.size() < tmp.common.capacity() && "Insert failed. Rehashing to higher capacity is required.");
+        assert(tmp.size < tmp.capacity && "Insert failed. Rehashing to higher capacity is required.");
 
         size_t h = this->m_hash(slot);
         absl::container_internal::h2_t h2 = h >> 57;
 
-        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, tmp.common.capacity());
+        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, tmp.capacity);
 
         while (true)
         {
@@ -191,7 +197,7 @@ private:
 
                 tmp.slots[idx] = slot;
                 tmp.controls[idx] = static_cast<absl::container_internal::ctrl_t>(h2);
-                tmp.common.increment_size();
+                ++tmp.size;
                 ++this->m_statistics.m_num_probes;
                 return idx;
             }
@@ -263,12 +269,13 @@ private:
             this->m_roots.m_uniqueness.emplace(stable_index);
         }
 
-        if (tmp.common.size() > new_capacity)
+        if (tmp.size > new_capacity)
             throw std::runtime_error("Encountered insufficient capacity during rehash due to changed structural sharing.");
 
         std::swap(this->m_slots, tmp.slots);
         std::swap(this->m_controls, tmp.controls);
-        std::swap(this->m_common, tmp.common);
+        this->m_size = tmp.size;
+        this->m_capacity = tmp.capacity;
 
         return true;
     }
