@@ -22,7 +22,11 @@ namespace valla::tests
 {
 namespace v = valla::plain::swiss;
 
-TEST(VallaTests, PlainUintHashIDMapTest)
+/**
+ * Plain
+ */
+
+TEST(VallaTests, PlainUintSwissTest)
 {
     auto root_table = IndexedHashSet<Slot<uint32_t>, uint32_t>();
     auto inner_table = IndexedHashSet<Slot<uint32_t>, uint32_t>();
@@ -151,7 +155,7 @@ TEST(VallaTests, PlainUintHashIDMapTest)
     }
 }
 
-TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
+TEST(VallaTests, PlainUintSwissEdgeCasesTest)
 {
     auto root_table = IndexedHashSet<Slot<uint32_t>, uint32_t>();
     auto inner_table = IndexedHashSet<Slot<uint32_t>, uint32_t>();
@@ -219,7 +223,7 @@ TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
     }
 }
 
-TEST(VallaTests, PlainUintHashIDMapIteratorTest)
+TEST(VallaTests, PlainUintSwissIteratorTest)
 {
     auto inner_table = IndexedHashSet<Slot<uint32_t>, uint32_t>();
     auto leaf_table = IndexedHashSet<double, uint32_t>();
@@ -252,7 +256,7 @@ TEST(VallaTests, PlainUintHashIDMapIteratorTest)
     }
 }
 
-TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
+TEST(VallaTests, PlainUintSwissExhaustiveTest)
 {
     const size_t num_sequences = static_cast<size_t>(1000);  // number of states
     const size_t sequence_size = static_cast<size_t>(29);    // size of each state
@@ -379,6 +383,139 @@ TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
                 out_dl.push_back(x);
             EXPECT_EQ(dl_2, out_dl);
         }
+    }
+}
+
+/**
+ * Succinct
+ */
+
+TEST(VallaTests, SuccinctUintSwissTest)
+{
+    auto root_table = SuccinctIndexedHashSet<Slot<uint32_t>, uint32_t>();
+    auto inner_table = SuccinctIndexedHashSet<Slot<uint32_t>, uint32_t>();
+    auto leaf_table = IndexedHashSet<double, uint32_t>();
+
+    auto index_list = std::vector<uint32_t>();
+    auto double_list = std::vector<double>();
+
+    /* uint32_t */
+    {
+        const auto s0 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+        const auto s0_slot = v::insert(s0, inner_table);
+        const auto s0_root = root_table.insert(s0_slot);
+
+        EXPECT_EQ(inner_table.size(), 8);
+
+        // Created new state!
+        EXPECT_EQ(s0_root, 0);
+
+        v::read_state(s0_slot, inner_table, index_list);
+        EXPECT_EQ(index_list, s0);
+    }
+
+    {
+        const auto s1 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
+        const auto s1_slot = v::insert(s1, inner_table);
+        const auto s1_root = root_table.insert(s1_slot);
+
+        EXPECT_EQ(inner_table.size(), 9);
+
+        // Created new state!
+        EXPECT_EQ(s1_root, 1);
+
+        v::read_state(s1_slot, inner_table, index_list);
+        EXPECT_EQ(index_list, s1);
+    }
+
+    {
+        const auto s2 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
+        const auto s2_slot = v::insert(s2, inner_table);
+        const auto s2_root = root_table.insert(s2_slot);
+
+        EXPECT_EQ(inner_table.size(), 11);
+
+        // Created new state!
+        EXPECT_EQ(s2_root, 2);
+
+        v::read_state(s2_slot, inner_table, index_list);
+        EXPECT_EQ(index_list, s2);
+    }
+
+    {
+        const auto s3 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
+        const auto s3_slot = v::insert(s3, inner_table);
+        const auto s3_root = root_table.insert(s3_slot);
+
+        EXPECT_EQ(inner_table.size(), 11);
+
+        // std::vector<uint32_t> already exists!
+        EXPECT_EQ(s3_root, 2);
+
+        v::read_state(s3_slot, inner_table, index_list);
+        EXPECT_EQ(index_list, s3);
+    }
+
+    /* double*/
+
+    {
+        const auto s0 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15. };
+        const auto s0_slot = v::insert(s0, inner_table, leaf_table);
+        const auto s0_root = root_table.insert(s0_slot);
+
+        EXPECT_EQ(inner_table.size(), 11);
+        EXPECT_EQ(leaf_table.size(), 16);
+
+        // Created new state!
+        EXPECT_EQ(s0_root, 0);
+
+        v::read_state(s0_slot, inner_table, leaf_table, double_list);
+        EXPECT_EQ(double_list, s0);
+    }
+
+    {
+        const auto s1 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16. };
+        const auto s1_slot = v::insert(s1, inner_table, leaf_table);
+        const auto s1_root = root_table.insert(s1_slot);
+
+        EXPECT_EQ(inner_table.size(), 11);
+        EXPECT_EQ(leaf_table.size(), 17);
+
+        // Created new state!
+        EXPECT_EQ(s1_root, 1);
+
+        v::read_state(s1_slot, inner_table, leaf_table, double_list);
+        EXPECT_EQ(double_list, s1);
+    }
+
+    {
+        const auto s2 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
+        const auto s2_slot = v::insert(s2, inner_table, leaf_table);
+        const auto s2_root = root_table.insert(s2_slot);
+
+        EXPECT_EQ(inner_table.size(), 11);
+        EXPECT_EQ(leaf_table.size(), 18);
+
+        // Created new state!
+        EXPECT_EQ(s2_root, 2);
+
+        v::read_state(s2_slot, inner_table, leaf_table, double_list);
+        EXPECT_EQ(double_list, s2);
+    }
+
+    {
+        const auto s3 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
+        const auto s3_slot = v::insert(s3, inner_table, leaf_table);
+        const auto s3_root = root_table.insert(s3_slot);
+
+        EXPECT_EQ(inner_table.size(), 11);
+        EXPECT_EQ(leaf_table.size(), 18);
+
+        // std::vector<double> already exists!
+        EXPECT_EQ(s3_root, 2);
+
+        v::read_state(s3_slot, inner_table, leaf_table, double_list);
+        EXPECT_EQ(double_list, s3);
     }
 }
 

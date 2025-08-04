@@ -32,8 +32,9 @@ TEST(VallaTests, SuccinctIndexedHashSetTest)
     EXPECT_EQ(set.uniqueness().bit_width(), 2);
     EXPECT_EQ(set.slots().bit_size(), 2);
     EXPECT_EQ(set.slots().capacity(), 64);
+    EXPECT_EQ(set[s0], Slot<uint32_t>(0, 1));
 
-    // Insert s1
+    // Insert s1 (bit resize from 2 to 6)
     const auto s1 = set.insert(Slot<uint32_t>(4, 5));
     EXPECT_EQ(s1, 1);
     EXPECT_EQ(set.size(), 2);
@@ -41,6 +42,7 @@ TEST(VallaTests, SuccinctIndexedHashSetTest)
     EXPECT_EQ(set.uniqueness().bit_width(), 2);
     EXPECT_EQ(set.slots().bit_size(), 12);
     EXPECT_EQ(set.slots().capacity(), 64);
+    EXPECT_EQ(set[s1], Slot<uint32_t>(4, 5));
 
     // Insert s2 (same as s0)
     const auto s2 = set.insert(Slot<uint32_t>(0, 1));
@@ -50,6 +52,7 @@ TEST(VallaTests, SuccinctIndexedHashSetTest)
     EXPECT_EQ(set.uniqueness().bit_width(), 2);
     EXPECT_EQ(set.slots().bit_size(), 24);
     EXPECT_EQ(set.slots().capacity(), 64);
+    EXPECT_EQ(set[s2], Slot<uint32_t>(0, 1));
 
     // Insert s3
     const auto s3 = set.insert(Slot<uint32_t>(3, 2));
@@ -59,6 +62,7 @@ TEST(VallaTests, SuccinctIndexedHashSetTest)
     EXPECT_EQ(set.uniqueness().bit_width(), 2);
     EXPECT_EQ(set.slots().bit_size(), 24);
     EXPECT_EQ(set.slots().capacity(), 64);
+    EXPECT_EQ(set[s3], Slot<uint32_t>(3, 2));
 
     // Insert s4
     const auto s4 = set.insert(Slot<uint32_t>(1, 4));
@@ -68,6 +72,7 @@ TEST(VallaTests, SuccinctIndexedHashSetTest)
     EXPECT_EQ(set.uniqueness().bit_width(), 2);
     EXPECT_EQ(set.slots().bit_size(), 24);
     EXPECT_EQ(set.slots().capacity(), 64);
+    EXPECT_EQ(set[s4], Slot<uint32_t>(1, 4));
 
     // Insert s5
     const auto s5 = set.insert(Slot<uint32_t>(5, 1));
@@ -77,5 +82,6 @@ TEST(VallaTests, SuccinctIndexedHashSetTest)
     EXPECT_EQ(set.uniqueness().bit_width(), 3);
     EXPECT_EQ(set.slots().bit_size(), 48);
     EXPECT_EQ(set.slots().capacity(), 64);
+    EXPECT_EQ(set[s5], Slot<uint32_t>(5, 1));
 }
 }

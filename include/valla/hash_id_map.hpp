@@ -141,6 +141,12 @@ public:
 template<std::unsigned_integral I, typename Hash = Hash<Slot<I>>, typename EqualTo = std::equal_to<Slot<I>>, size_t InitialCapacity = 127>
 class TreeHashIDMap : public HashIDMap<TreeHashIDMap<I, Hash, EqualTo, InitialCapacity>, Slot<I>, I, Hash, EqualTo, InitialCapacity>
 {
+public:
+    using value_type = Slot<I>;
+    using index_type = I;
+
+    static constexpr bool is_stable = false;
+
 private:
     IndexedHashSet<Slot<I>, I> m_roots;  ///< Dynamic hash ID maps require stable mapping for root nodes.
     std::vector<bool> m_stable_leaves;

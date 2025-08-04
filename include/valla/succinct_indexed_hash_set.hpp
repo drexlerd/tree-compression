@@ -33,6 +33,12 @@ namespace valla
 template<IsUint64tCodable T, std::unsigned_integral I, typename Hash = Hash<T>, typename EqualTo = EqualTo<T>>
 class SuccinctIndexedHashSet
 {
+public:
+    using value_type = T;
+    using index_type = I;
+
+    static constexpr bool is_stable = true;
+
 private:
     struct IndexReferencedHash
     {
@@ -111,7 +117,8 @@ public:
 
         I index = m_size++;
 
-        m_slots[index] = Uint64tCoder<T>::to_uint64_t(slot, new_width);
+        m_slots[index] = Uint64tCoder<T>::to_uint64_t(slot, m_slots.width());
+
         const auto result = m_uniqueness.insert(index);
 
         if (!result.second)
@@ -124,7 +131,7 @@ public:
     {
         assert(index < m_slots.size() && "Index out of bounds");
 
-        return Slot<I>::from_uint64_t(m_slots[index], m_slots.width());
+        return Uint64tCoder<T>::from_uint64_t(m_slots[index], m_slots.width());
     }
 
     size_t size() const { return m_size; }
@@ -147,6 +154,8 @@ private:
     sdsl::int_vector<> m_slots;
     succinct_flat_hash_set<I, I, IndexReferencedHash, IndexReferencedEqualTo> m_uniqueness;  // TODO: change to succinct_flat_hash_set
 };
+
+static_assert(IsIndexedHashSet<SuccinctIndexedHashSet<Slot<uint32_t>, uint32_t>>);
 }
 
 #endif

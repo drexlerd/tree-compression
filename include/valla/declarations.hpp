@@ -68,6 +68,12 @@ struct Slot
     }
 };
 
+template<std::unsigned_integral I>
+constexpr inline Slot<I> get_empty_slot()
+{
+    return Slot<I>();
+}
+
 /**
  * Uint64tCoder
  */
@@ -122,14 +128,6 @@ concept IsUint64tCodable = requires(T a, uint64_t p, uint8_t b) {
     { Uint64tCoder<T>::from_uint64_t(p, b) } -> std::same_as<T>;
 };
 
-template<typename T>
-concept IsIndexedHashSet = requires(T a, typename T::ValueType v, typename T::IndexType i) {
-    requires std::unsigned_integral<typename T::IndexType>;
-
-    { a.insert(v) } -> std::same_as<typename T::IndexType>;
-    { a[i] } -> std::convertible_to<typename T::ValueType>;
-};
-
 static_assert(IsUint64tCodable<uint16_t>);
 static_assert(IsUint64tCodable<uint32_t>);
 static_assert(IsUint64tCodable<uint64_t>);
@@ -138,11 +136,19 @@ static_assert(IsUint64tCodable<Slot<uint16_t>>);
 static_assert(IsUint64tCodable<Slot<uint32_t>>);
 static_assert(!IsUint64tCodable<Slot<uint64_t>>);
 
-template<std::unsigned_integral I>
-constexpr inline Slot<I> get_empty_slot()
-{
-    return Slot<I>();
-}
+template<typename Set>
+concept IsStable = Set::is_stable;
+
+template<typename T>
+concept IsIndexedHashSet = requires(T a, typename T::value_type v, typename T::index_type i) {
+    typename T::value_type;
+    typename T::index_type;
+
+    requires std::unsigned_integral<typename T::index_type>;
+
+    { a.insert(v) } -> std::same_as<typename T::index_type>;
+    { a[i] } -> std::convertible_to<typename T::value_type>;
+};
 
 /**
  * Iterator

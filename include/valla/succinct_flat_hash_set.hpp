@@ -71,7 +71,6 @@ private:
                 assert(is_within_bounds(m_slots, idx));
 
                 if (m_equal_to(m_slots[idx], key))
-
                     return { const_iterator(*this, idx), false };
             }
 
@@ -100,8 +99,11 @@ private:
     {
         auto slots = sdsl::int_vector<>(m_capacity, 0, new_width);
 
-        for (I i = 0; i < m_size; ++i)
-            slots[i] = Uint64tCoder<Slot<I>>::to_uint64_t(Uint64tCoder<Slot<I>>::from_uint64_t(m_slots[i], old_width), new_width);
+        for (I i = 0; i < m_capacity; ++i)
+        {
+            if (static_cast<int>(m_controls[i]) > 0)
+                slots[i] = Uint64tCoder<T>::to_uint64_t(Uint64tCoder<T>::from_uint64_t(m_slots[i], old_width), new_width);
+        }
 
         std::swap(m_slots, slots);
     }

@@ -20,6 +20,7 @@
 
 #include "valla/declarations.hpp"
 #include "valla/indexed_hash_set.hpp"
+#include "valla/succinct_indexed_hash_set.hpp"
 #include "valla/unique_object_pool.hpp"
 
 #include <algorithm>
@@ -36,14 +37,21 @@ namespace valla::plain::swiss
 /// General case with special leaf table
 ///////////////////////////////////////////
 
+template<typename Set1, typename Set2, typename V = typename Set2::value_type>
+concept CompatibleTables = std::same_as<V, typename Set2::value_type>                             //
+                           && std::same_as<typename Set1::index_type, typename Set2::index_type>  //
+                           && std::same_as<typename Set1::value_type, Slot<typename Set1::index_type>>;
+
 /**
  * Insert recursively
  */
 
-template<std::input_iterator Iterator, typename T, std::unsigned_integral I>
-    requires std::same_as<std::iter_value_t<Iterator>, T>
-inline I insert_recursively(Iterator it, Iterator end, I size, IndexedHashSet<Slot<I>, I>& table, IndexedHashSet<T, I>& leaf_table)
+template<std::input_iterator Iterator, IsIndexedHashSet Set1, IsIndexedHashSet Set2>
+    requires CompatibleTables<Set1, Set2, std::iter_value_t<Iterator>> && IsStable<Set1> && IsStable<Set2>
+inline auto insert_recursively(Iterator it, Iterator end, typename Set1::index_type size, Set1& table, Set2& leaf_table)
 {
+    using I = typename Set1::index_type;
+
     /* Base cases */
     if (size == 1)
         return leaf_table.insert(*it);
@@ -66,10 +74,12 @@ inline I insert_recursively(Iterator it, Iterator end, I size, IndexedHashSet<Sl
     return table.insert(Slot<I>(i1, i2));
 }
 
-template<std::ranges::input_range Range, typename T, std::unsigned_integral I>
-    requires std::same_as<std::ranges::range_value_t<Range>, T>
-auto insert(const Range& state, IndexedHashSet<Slot<I>, I>& table, IndexedHashSet<T, I>& leaf_table)
+template<std::ranges::input_range Range, IsIndexedHashSet Set1, IsIndexedHashSet Set2>
+    requires CompatibleTables<Set1, Set2, std::ranges::range_value_t<Range>> && IsStable<Set1> && IsStable<Set2>
+inline auto insert(const Range& state, Set1& table, Set2& leaf_table)
 {
+    using I = typename Set1::index_type;
+
     // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
     const auto size = static_cast<I>(std::distance(state.begin(), state.end()));
 
@@ -83,8 +93,13 @@ auto insert(const Range& state, IndexedHashSet<Slot<I>, I>& table, IndexedHashSe
  * Read recursively
  */
 
-template<typename T, std::unsigned_integral I>
-inline void read_state_recursively(I index, I size, const IndexedHashSet<Slot<I>, I>& table, const IndexedHashSet<T, I>& leaf_table, std::vector<T>& ref_state)
+template<IsIndexedHashSet Set1, IsIndexedHashSet Set2>
+    requires CompatibleTables<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
+inline void read_state_recursively(typename Set1::index_type index,
+                                   typename Set1::index_type size,
+                                   const Set1& table,
+                                   const Set2& leaf_table,
+                                   std::vector<typename Set2::value_type>& ref_state)
 {
     /* Base case */
     if (size == 1)
@@ -111,8 +126,13 @@ inline void read_state_recursively(I index, I size, const IndexedHashSet<Slot<I>
     read_state_recursively(slot.i2, size - mid, table, leaf_table, ref_state);
 }
 
-template<typename T, std::unsigned_integral I>
-inline void read_state(I tree_index, I size, const IndexedHashSet<Slot<I>, I>& table, const IndexedHashSet<T, I>& leaf_table, std::vector<T>& out_state)
+template<IsIndexedHashSet Set1, IsIndexedHashSet Set2>
+    requires CompatibleTables<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
+inline void read_state(typename Set1::index_type tree_index,
+                       typename Set1::index_type size,
+                       const Set1& table,
+                       const Set2& leaf_table,
+                       std::vector<typename Set2::value_type>& out_state)
 {
     out_state.clear();
 
@@ -122,8 +142,10 @@ inline void read_state(I tree_index, I size, const IndexedHashSet<Slot<I>, I>& t
     read_state_recursively(tree_index, size, table, leaf_table, out_state);
 }
 
-template<typename T, std::unsigned_integral I>
-inline void read_state(const Slot<I>& root_slot, const IndexedHashSet<Slot<I>, I>& table, const IndexedHashSet<T, I>& leaf_table, std::vector<T>& out_state)
+template<IsIndexedHashSet Set1, IsIndexedHashSet Set2>
+    requires CompatibleTables<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
+inline void
+read_state(const Slot<typename Set1::index_type>& root_slot, const Set1& table, const Set2& leaf_table, std::vector<typename Set2::value_type>& out_state)
 {
     /* Observe: a root slot wraps the root tree_index together with the length that defines the tree structure! */
     read_state(root_slot.i1, root_slot.i2, table, leaf_table, out_state);
@@ -308,10 +330,14 @@ inline auto range(Slot<I> root, const IndexedHashSet<Slot<I>, I>& table, const I
  * Insert recursively
  */
 
-template<std::input_iterator Iterator, std::unsigned_integral I>
-    requires std::same_as<std::iter_value_t<Iterator>, I>
-inline I insert_recursively(Iterator it, Iterator end, I size, IndexedHashSet<Slot<I>, I>& table)
+template<std::input_iterator Iterator, IsIndexedHashSet Set>
+    requires std::same_as<std::iter_value_t<Iterator>, typename Set::index_type>        //
+             && std::same_as<typename Set::value_type, Slot<typename Set::index_type>>  //
+             && IsStable<Set>
+inline auto insert_recursively(Iterator it, Iterator end, typename Set::index_type size, Set& table)
 {
+    using I = Set::index_type;
+
     /* Base cases */
     if (size == 1)
         return *it;  ///< Skip node creation
@@ -330,10 +356,14 @@ inline I insert_recursively(Iterator it, Iterator end, I size, IndexedHashSet<Sl
     return table.insert(Slot<I>(i1, i2));
 }
 
-template<std::ranges::input_range Range, std::unsigned_integral I>
-    requires std::same_as<std::ranges::range_value_t<Range>, I>
-auto insert(const Range& state, IndexedHashSet<Slot<I>, I>& table)
+template<std::ranges::input_range Range, IsIndexedHashSet Set>
+    requires std::same_as<std::ranges::range_value_t<Range>, typename Set::index_type>  //
+             && std::same_as<typename Set::value_type, Slot<typename Set::index_type>>  //
+             && IsStable<Set>
+inline auto insert(const Range& state, Set& table)
 {
+    using I = Set::index_type;
+
     // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
     const auto size = static_cast<I>(std::distance(state.begin(), state.end()));
 
@@ -347,8 +377,10 @@ auto insert(const Range& state, IndexedHashSet<Slot<I>, I>& table)
  * Read recursively
  */
 
-template<std::unsigned_integral I>
-inline void read_state_recursively(I index, I size, const IndexedHashSet<Slot<I>, I>& table, std::vector<I>& ref_state)
+template<IsIndexedHashSet Set>
+    requires IsStable<Set>
+inline void
+read_state_recursively(typename Set::index_type index, typename Set::index_type size, const Set& table, std::vector<typename Set::index_type>& ref_state)
 {
     /* Base case */
     if (size == 1)
@@ -375,8 +407,9 @@ inline void read_state_recursively(I index, I size, const IndexedHashSet<Slot<I>
     read_state_recursively(slot.i2, size - mid, table, ref_state);
 }
 
-template<std::unsigned_integral I>
-inline void read_state(I tree_index, I size, const IndexedHashSet<Slot<I>, I>& table, std::vector<I>& out_state)
+template<IsIndexedHashSet Set>
+    requires IsStable<Set>
+inline void read_state(typename Set::index_type tree_index, typename Set::index_type size, const Set& table, std::vector<typename Set::index_type>& out_state)
 {
     out_state.clear();
 
@@ -386,8 +419,9 @@ inline void read_state(I tree_index, I size, const IndexedHashSet<Slot<I>, I>& t
     read_state_recursively(tree_index, size, table, out_state);
 }
 
-template<std::unsigned_integral I>
-inline void read_state(const Slot<I>& root_slot, const IndexedHashSet<Slot<I>, I>& table, std::vector<I>& out_state)
+template<IsIndexedHashSet Set>
+    requires IsStable<Set>
+inline void read_state(const Slot<typename Set::index_type>& root_slot, const Set& table, std::vector<typename Set::index_type>& out_state)
 {
     /* Observe: a root slot wraps the root tree_index together with the length that defines the tree structure! */
     read_state(root_slot.i1, root_slot.i2, table, out_state);

@@ -31,6 +31,12 @@ namespace valla
 template<typename T, std::unsigned_integral I, typename Hash = Hash<T>, typename EqualTo = EqualTo<T>>
 class IndexedHashSet
 {
+public:
+    using value_type = T;
+    using index_type = I;
+
+    static constexpr bool is_stable = true;
+
 private:
     struct IndexReferencedHash
     {
@@ -62,9 +68,6 @@ private:
     };
 
 public:
-    using ValueType = T;
-    using IndexType = I;
-
     IndexedHashSet() : m_slots(), m_uniqueness(0, IndexReferencedHash(m_slots), IndexReferencedEqualTo(m_slots)) {}
     // Uncopieable and unmoveable to avoid dangling references of m_slots in hash and equal_to.
     IndexedHashSet(const IndexedHashSet& other) = delete;
@@ -112,6 +115,8 @@ private:
     template<std::unsigned_integral I_, typename Hash_, typename EqualTo_, size_t InitialCapacity_>
     friend class TreeHashIDMap;
 };
+
+static_assert(IsIndexedHashSet<IndexedHashSet<Slot<uint32_t>, uint32_t>>);
 
 }
 
