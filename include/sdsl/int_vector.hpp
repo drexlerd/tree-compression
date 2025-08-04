@@ -728,8 +728,7 @@ inline void swap(int_vector_reference<bit_vector> x, bool& y)
 }
 
 template<class t_int_vector>
-class int_vector_iterator_base :
-    public std::iterator<std::random_access_iterator_tag, typename t_int_vector::value_type, typename t_int_vector::difference_type>
+class int_vector_iterator_base
 {
 public:
     typedef uint64_t size_type;
@@ -739,6 +738,12 @@ protected:
     uint8_t m_len;
 
 public:
+    using iterator_category = std::random_access_iterator_tag;
+    using value_type = typename t_int_vector::value_type;
+    using difference_type = typename t_int_vector::difference_type;
+    using pointer = value_type*;
+    using reference = value_type&;
+
     int_vector_iterator_base(uint8_t offset, uint8_t len) : m_offset(offset), m_len(len) {}
 
     int_vector_iterator_base(const t_int_vector* v = nullptr, size_type idx = 0) : m_offset(idx & 0x3F), m_len(v == nullptr ? 0 : v->m_width) {}

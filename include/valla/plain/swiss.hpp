@@ -122,11 +122,6 @@ inline void read_state(I tree_index, I size, const IndexedHashSet<Slot<I>, I>& t
     read_state_recursively(tree_index, size, table, leaf_table, out_state);
 }
 
-/// @brief Read the `out_state` from the given `root_index` from the `root_table`.
-/// @param root_index is the index of the slot in the root table.
-/// @param table is the tree table.
-/// @param root_table is the root table.
-/// @param out_state is the output state.
 template<typename T, std::unsigned_integral I>
 inline void read_state(const Slot<I>& root_slot, const IndexedHashSet<Slot<I>, I>& table, const IndexedHashSet<T, I>& leaf_table, std::vector<T>& out_state)
 {

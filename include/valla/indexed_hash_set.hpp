@@ -31,11 +31,41 @@ namespace valla
 template<typename T, std::unsigned_integral I, typename Hash = Hash<T>, typename EqualTo = EqualTo<T>>
 class IndexedHashSet
 {
+private:
+    struct IndexReferencedHash
+    {
+        const std::vector<T>& vec;
+        Hash hash;
+
+        IndexReferencedHash(const std::vector<T>& vec) : vec(vec), hash() {}
+
+        size_t operator()(I el) const
+        {
+            assert(el < vec.size());
+            return hash(vec[el]);
+        }
+    };
+
+    struct IndexReferencedEqualTo
+    {
+        const std::vector<T>& vec;
+        EqualTo equal_to;
+
+        IndexReferencedEqualTo(const std::vector<T>& vec) : vec(vec), equal_to() {}
+
+        size_t operator()(I lhs, I rhs) const
+        {
+            assert(lhs < vec.size());
+            assert(rhs < vec.size());
+            return equal_to(vec[lhs], vec[rhs]);
+        }
+    };
+
 public:
     using ValueType = T;
     using IndexType = I;
 
-    IndexedHashSet() : m_slots(), m_uniqueness(0, IndexReferencedHash<T, I, Hash>(m_slots), IndexReferencedEqualTo<T, I, EqualTo>(m_slots)) {}
+    IndexedHashSet() : m_slots(), m_uniqueness(0, IndexReferencedHash(m_slots), IndexReferencedEqualTo(m_slots)) {}
     // Uncopieable and unmoveable to avoid dangling references of m_slots in hash and equal_to.
     IndexedHashSet(const IndexedHashSet& other) = delete;
     IndexedHashSet& operator=(const IndexedHashSet& other) = delete;
@@ -77,7 +107,7 @@ public:
 
 private:
     std::vector<T> m_slots;
-    absl::flat_hash_set<I, IndexReferencedHash<T, I, Hash>, IndexReferencedEqualTo<T, I, EqualTo>> m_uniqueness;
+    absl::flat_hash_set<I, IndexReferencedHash, IndexReferencedEqualTo> m_uniqueness;
 
     template<std::unsigned_integral I_, typename Hash_, typename EqualTo_, size_t InitialCapacity_>
     friend class TreeHashIDMap;

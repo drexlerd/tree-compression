@@ -19,6 +19,7 @@
 #define VALLA_INCLUDE_SUCCINCT_INDEXED_HASH_SET_HPP_
 
 #include "valla/declarations.hpp"
+#include "valla/succinct_flat_hash_set.hpp"
 
 #include <algorithm>
 #include <cassert>
@@ -29,10 +30,39 @@
 
 namespace valla
 {
-template<IsUint64tCodable T, std::unsigned_integral I>
+template<IsUint64tCodable T, std::unsigned_integral I, typename Hash = Hash<T>, typename EqualTo = EqualTo<T>>
 class SuccinctIndexedHashSet
 {
 private:
+    struct IndexReferencedHash
+    {
+        const sdsl::int_vector<>* vec;
+        Hash hash;
+
+        IndexReferencedHash(const sdsl::int_vector<>& vec) : vec(&vec), hash() {}
+
+        size_t operator()(I el) const
+        {
+            assert(el < vec->size());
+            return hash(T::from_uint64_t(vec->operator[](el), vec->width()));
+        }
+    };
+
+    struct IndexReferencedEqualTo
+    {
+        const sdsl::int_vector<>* vec;
+        EqualTo equal_to;
+
+        IndexReferencedEqualTo(const sdsl::int_vector<>& vec) : vec(&vec), equal_to() {}
+
+        size_t operator()(I lhs, I rhs) const
+        {
+            assert(lhs < vec->size());
+            assert(rhs < vec->size());
+            return equal_to(vec->operator[](lhs), vec->operator[](rhs));
+        }
+    };
+
     void resize_width(uint8_t old_width, uint8_t new_width)
     {
         /* Rebuild index_to_slot */
@@ -44,9 +74,7 @@ private:
         std::swap(m_slots, slots);
 
         /* Rebuild uniqueness */
-        m_uniqueness = absl::flat_hash_set<I, IndexReferencedHash<T, I>, IndexReferencedEqualTo<T, I>>(0,
-                                                                                                       IndexReferencedHash<T, I>(m_slots),
-                                                                                                       IndexReferencedEqualTo<T, I>(m_slots));
+        m_uniqueness = absl::flat_hash_set<I, IndexReferencedHash, IndexReferencedEqualTo>(0, IndexReferencedHash(m_slots), IndexReferencedEqualTo(m_slots));
         for (I i = 0; i < m_size; ++i)
             m_uniqueness.emplace(i);
     }
@@ -55,8 +83,8 @@ public:
     SuccinctIndexedHashSet() :
         m_size(0),
         m_capacity(1),
-        m_slots(1, 0, 2),  // size 1, value 0, width 2
-        m_uniqueness(0, IndexReferencedHash<T, I>(m_slots), IndexReferencedEqualTo<T, I>(m_slots))
+        m_slots(1, 0, 2),  // size 0, value 0, width 2
+        m_uniqueness(0, IndexReferencedHash(m_slots), IndexReferencedEqualTo(m_slots))
     {
     }
     // Uncopieable and unmoveable to avoid dangling references of m_slots in hash and equal_to.
@@ -67,7 +95,7 @@ public:
 
     I insert(T slot)
     {
-        assert(m_uniqueness.size() != std::numeric_limits<Index>::max() && "SuccinctIndexedHashSet: Index overflow! The maximum number of slots reached.");
+        assert(m_uniqueness.size() != std::numeric_limits<I>::max() && "SuccinctIndexedHashSet: Index overflow! The maximum number of slots reached.");
 
         /* Resize on insufficient capacity. */
         if (m_size == m_capacity)
@@ -82,13 +110,13 @@ public:
 
         I index = m_size++;
 
-        m_slots[index] = slot.to_uint64_t();
+        m_slots[index] = slot.to_uint64_t(new_width);
         const auto result = m_uniqueness.emplace(index);
 
         if (!result.second)
             --m_size;
 
-        return result;
+        return *result.first;
     }
 
     T operator[](I index) const
@@ -104,7 +132,7 @@ private:
     size_t m_size;
     size_t m_capacity;
     sdsl::int_vector<> m_slots;
-    absl::flat_hash_set<I, IndexReferencedHash<T, I>, IndexReferencedEqualTo<T, I>> m_uniqueness;
+    absl::flat_hash_set<I, IndexReferencedHash, IndexReferencedEqualTo> m_uniqueness;  // TODO: change to succinct_flat_hash_set
 };
 }
 

@@ -60,7 +60,7 @@ protected:
     Hash m_hash;
     EqualTo m_equal_to;
 
-    struct Statistics
+    struct HashSetStatistics
     {
         size_t m_num_rehashes = 0;
         std::chrono::milliseconds m_total_rehash_time = std::chrono::milliseconds::zero();
@@ -68,17 +68,17 @@ protected:
         size_t m_sum_probe_lengths = 0;
     };
 
-    Statistics m_statistics;
+    HashSetStatistics m_statistics;
 
 public:
-    HashIDMap() : m_slots(), m_controls(), m_size(0), m_capacity(0), m_hash(), m_equal_to()
+    HashIDMap() : m_slots(), m_controls(), m_size(0), m_capacity(InitialCapacity), m_hash(), m_equal_to()
     {
-        m_slots.resize(capacity());
+        m_slots.resize(InitialCapacity);
 
         // Sentinel-padded rolling buffer
-        m_controls.reserve(capacity() + absl::container_internal::Group::kWidth - 1);
-        m_controls.resize(capacity(), absl::container_internal::ctrl_t::kEmpty);
-        m_controls.resize(capacity() + absl::container_internal::Group::kWidth - 1, absl::container_internal::ctrl_t::kSentinel);
+        m_controls.reserve(InitialCapacity + absl::container_internal::Group::kWidth - 1);
+        m_controls.resize(InitialCapacity, absl::container_internal::ctrl_t::kEmpty);
+        m_controls.resize(InitialCapacity + absl::container_internal::Group::kWidth - 1, absl::container_internal::ctrl_t::kSentinel);
     }
 
     bool has_capacity_for(size_t amount) const { return (static_cast<double>(size() + amount) / capacity()) <= MAX_LOAD_FACTOR; }
@@ -134,7 +134,7 @@ public:
     size_t capacity() const { return m_capacity; }
     double load_factor() const { return static_cast<double>(size()) / capacity(); }
     constexpr double max_load_factor() const { return MAX_LOAD_FACTOR; }
-    const Statistics& statistics() const { return m_statistics; }
+    const HashSetStatistics& statistics() const { return m_statistics; }
 };
 
 /// @brief `TreeHashIDMap` implements a HashIDMap for chains of perfectly balanced binary trees with DFS style rehash policy.

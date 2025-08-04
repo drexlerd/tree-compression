@@ -177,32 +177,6 @@ struct HashSetStatistics
 };
 
 /**
- * EqualTo
- */
-
-template<typename T>
-struct EqualTo
-{
-    bool operator()(const T& lhs, const T& rhs) const { return lhs == rhs; }
-};
-
-template<typename T, std::unsigned_integral I, typename EqualTo = EqualTo<T>>
-struct IndexReferencedEqualTo
-{
-    const std::vector<T>& vec;
-    EqualTo equal_to;
-
-    IndexReferencedEqualTo(const std::vector<T>& vec) : vec(vec), equal_to() {}
-
-    size_t operator()(I lhs, I rhs) const
-    {
-        assert(lhs < vec.size());
-        assert(rhs < vec.size());
-        return equal_to(vec[lhs], vec[rhs]);
-    }
-};
-
-/**
  * Hashing
  */
 
@@ -216,20 +190,27 @@ template<std::unsigned_integral I>
 struct Hash<Slot<I>>
 {
     size_t operator()(const Slot<I>& el) const { return absl::HashOf(el.i1, el.i2); }
+
+    template<IsUint64tCodable U = Slot<I>>
+    bool operator()(uint64_t el) const
+    {
+        return Hash<uint64_t> {}(el);
+    }
 };
 
-template<typename T, std::unsigned_integral I, typename Hash = Hash<T>>
-struct IndexReferencedHash
+/**
+ * EqualTo
+ */
+
+template<typename T>
+struct EqualTo
 {
-    const std::vector<T>& vec;
-    Hash hash;
+    bool operator()(const T& lhs, const T& rhs) const { return lhs == rhs; }
 
-    IndexReferencedHash(const std::vector<T>& vec) : vec(vec), hash() {}
-
-    size_t operator()(I el) const
+    template<IsUint64tCodable U = T>
+    bool operator()(uint64_t lhs, uint64_t rhs) const
     {
-        assert(el < vec.size());
-        return hash(vec[el]);
+        return lhs == rhs;
     }
 };
 

@@ -28,33 +28,35 @@ namespace valla
 template<IsUint64tCodable T, std::unsigned_integral I, typename Hash = Hash<T>, typename EqualTo = EqualTo<T>, size_t InitialCapacity = 127>
 class succinct_flat_hash_set
 {
-private:
-    static_assert(((InitialCapacity + 1) & InitialCapacity) == 0, "InitialCapacity must be 2^{InitialCapacity}-1.");
-    static_assert(InitialCapacity >= 127, "InitialCapacity must be greater than 127.");
-
-    sdsl::int_vector<> m_slots;
-    std::vector<absl::container_internal::ctrl_t> m_controls;
-    absl::container_internal::CommonFields m_common;
-
-    Hash m_hash;
-    EqualTo m_equal_to;
-
-    HashSetStatistics m_statistics;
-
 public:
     class const_iterator;
 
     using value_type = T;
     using const_iterator_type = const_iterator;
 
-    std::pair<const_iterator, bool> insert(const T& key)
+private:
+    static_assert(((InitialCapacity + 1) & InitialCapacity) == 0, "InitialCapacity must be 2^{InitialCapacity}-1.");
+    static_assert(InitialCapacity >= 127, "InitialCapacity must be greater than 127.");
+
+    sdsl::int_vector<> m_slots;
+    std::vector<absl::container_internal::ctrl_t> m_controls;
+    size_t m_size;
+    size_t m_capacity;
+
+    Hash m_hash;
+    EqualTo m_equal_to;
+
+    HashSetStatistics m_statistics;
+
+private:
+    std::pair<const_iterator, bool> insert_impl(const T& key)
     {
         assert(size() < capacity() && "Insert failed. Rehashing to higher capacity is required.");
 
-        size_t h = m_hash(slot);
+        size_t h = m_hash(key);
         absl::container_internal::h2_t h2 = h >> 57;
 
-        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, m_common.capacity());
+        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, m_capacity);
 
         while (true)
         {
@@ -66,7 +68,7 @@ public:
                 size_t idx = probe.offset() + offset;
                 assert(is_within_bounds(m_slots, idx));
 
-                if (m_equal_to(m_slots[idx], slot))
+                if (m_equal_to(m_slots[idx], key))
 
                     return idx;
             }
@@ -80,9 +82,9 @@ public:
                 size_t idx = probe.offset() + offset;
                 assert(is_within_bounds(m_slots, idx));
 
-                m_slots[idx] = slot;
+                m_slots[idx] = key;
                 m_controls[idx] = static_cast<absl::container_internal::ctrl_t>(h2);
-                m_common.increment_size();
+                ++m_size;
                 ++m_statistics.m_num_probes;
                 return idx;
             }
@@ -92,7 +94,18 @@ public:
         }
     }
 
-    const_iterator find(const T& key) {}
+public:
+    succinct_flat_hash_set() : m_slots(InitialCapacity, 0, 2), m_controls(), m_size(0), m_capacity(InitialCapacity)
+    {
+        // Sentinel-padded rolling buffer
+        m_controls.reserve(InitialCapacity + absl::container_internal::Group::kWidth - 1);
+        m_controls.resize(InitialCapacity, absl::container_internal::ctrl_t::kEmpty);
+        m_controls.resize(InitialCapacity + absl::container_internal::Group::kWidth - 1, absl::container_internal::ctrl_t::kSentinel);
+    }
+
+    std::pair<const_iterator, bool> insert(const T& key) { const auto new_width = key.bit_width(); }
+
+    void rehash() {}
 
     class const_iterator
     {
@@ -104,8 +117,8 @@ public:
     public:
     };
 
-    size_t size() const {}
-    size_t capacity() const {}
+    size_t size() const { return m_size; }
+    size_t capacity() const { return m_capacity; }
     double load_factor() const { return static_cast<double>(size()) / capacity(); }
     constexpr double max_load_factor() const { return MAX_LOAD_FACTOR; }
 

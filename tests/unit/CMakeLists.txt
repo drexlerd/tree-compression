@@ -12,6 +12,7 @@ function(add_gtest test_name source_file)
 endfunction()
 
 # Add each test source file as a separate test executable
+add_gtest(succinct_indexed_hash_set     "succinct_indexed_hash_set.cpp")
 
 add_gtest(plain_hash_id_map             "plain/hash_id_map.cpp")
 add_gtest(plain_swiss                   "plain/swiss.cpp")
