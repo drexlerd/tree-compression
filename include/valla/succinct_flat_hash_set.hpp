@@ -243,6 +243,7 @@ public:
     double load_factor() const { return static_cast<double>(size()) / capacity(); }
     constexpr double max_load_factor() const { return MAX_LOAD_FACTOR; }
     bool has_capacity_for(size_t amount = 1) const { return (static_cast<double>(size() + amount) / capacity()) <= MAX_LOAD_FACTOR; }
+    uint8_t bit_width() const { return m_slots.width(); }
 
     size_t mem_usage() const
     {

@@ -44,6 +44,7 @@ private:
         size_t operator()(I el) const
         {
             assert(el < vec->size());
+            /* We obtain a stronger hash by decoding the slot and passing it into the Slot hash. */
             return hash(Uint64tCoder<T>::from_uint64_t(vec->operator[](el), vec->width()));
         }
     };
@@ -83,7 +84,7 @@ public:
     SuccinctIndexedHashSet() :
         m_size(0),
         m_capacity(1),
-        m_slots(1, 0, 2),  // size 0, value 0, width 2
+        m_slots(1, 0, 2),  // size 1, value 0, width 2
         m_uniqueness(IndexReferencedHash(m_slots), IndexReferencedEqualTo(m_slots))
     {
     }
@@ -127,6 +128,9 @@ public:
     }
 
     size_t size() const { return m_size; }
+    size_t capacity() const { return m_capacity; }
+    uint8_t bit_width() const { return m_slots.width(); }
+    const succinct_flat_hash_set<I, I, IndexReferencedHash, IndexReferencedEqualTo> uniqueness() const { return m_uniqueness; }
 
 private:
     size_t m_size;
