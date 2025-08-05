@@ -79,7 +79,7 @@ I insert(const Range& state, TreeHashIDMap<I, Hash, EqualTo, InitialCapacity>& i
     if (size == 0)  ///< Special case for empty state.
         return 0;   ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
 
-    while (!inner_table.has_capacity_for(2 * size))
+    while (inner_table.growth_info().growth_left() < 2 * size)
         inner_table.rehash();
 
     return inner_table.insert_root(Slot(insert_recursively(state.begin(), state.end(), size, inner_table, leaf_table), size));
@@ -362,7 +362,7 @@ I insert(const Range& state, TreeHashIDMap<I, Hash, EqualTo, InitialCapacity>& t
     if (size == 0)  ///< Special case for empty state.
         return 0;   ///< Len 0 marks the empty state, the tree index can be arbitrary so we set it to 0.
 
-    while (!table.has_capacity_for(2 * size))
+    while (table.growth_info().growth_left() < 2 * size)
         table.rehash();
 
     return table.insert_root(Slot<I>(insert_recursively(state.begin(), state.end(), size, table), size));

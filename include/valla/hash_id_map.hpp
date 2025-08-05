@@ -122,11 +122,9 @@ protected:
 
     const Key& operator[](I pos) const { return m_slots[pos]; }
 
+    const GrowthInfo& growth_info() const { return m_growth_info; }
     size_t size() const { return m_growth_info.size(); }
     size_t capacity() const { return m_growth_info.capacity(); }
-    double load_factor() const { return static_cast<double>(size()) / capacity(); }
-    constexpr double max_load_factor() const { return MAX_LOAD_FACTOR; }
-    bool has_capacity_for(size_t amount) const { return (static_cast<double>(size() + amount) / capacity()) <= MAX_LOAD_FACTOR; }
     const HashSetStatistics& statistics() const { return m_statistics; }
 };
 
@@ -281,8 +279,7 @@ private:
 
 public:
     using Base::capacity;
-    using Base::has_capacity_for;
-    using Base::load_factor;
+    using Base::growth_info;
     using Base::size;
     using Base::statistics;
 

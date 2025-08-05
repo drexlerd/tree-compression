@@ -39,8 +39,7 @@ private:
     static_assert(((InitialCapacity + 1) & InitialCapacity) == 0, "InitialCapacity must be 2^{InitialCapacity}-1.");
     static_assert(InitialCapacity >= 127, "InitialCapacity must be greater than 127.");
 
-    size_t m_size;
-    size_t m_capacity;
+    GrowthInfo m_growth_info;
     sdsl::int_vector<> m_slots;
     std::vector<absl::container_internal::ctrl_t> m_controls;
 
@@ -92,7 +91,7 @@ private:
 
                 m_slots[offset] = Uint64tCoder<T>::to_uint64_t(key, m_slots.width());
                 m_controls[offset] = static_cast<absl::container_internal::ctrl_t>(h2);
-                ++m_size;
+                m_growth_info.increment_size();
 
                 return { const_iterator(*this, offset), true };
             }
@@ -116,13 +115,14 @@ private:
 
 public:
     succinct_flat_hash_set(size_t capacity, uint8_t bit_width, Hash hash, EqualTo equal_to) :
-        m_size(0),
-        m_capacity(std::max(size_t(127), capacity)),                    ///< capacity must be at least 127 for deadlock free probing
+        m_growth_info(std::max(size_t(127), capacity)),                 ///< capacity must be at least 127 for deadlock free probing
         m_slots(this->capacity(), 0, std::max(uint8_t(1), bit_width)),  ///< bit width must be at least one, else it is set to 64
         m_controls(),
         m_hash(hash),
         m_equal_to(equal_to)
     {
+        assert(absl::container_internal::IsValidCapacity(m_capacity));
+
         // Sentinel-padded rolling buffer
         m_controls.reserve(this->capacity() + absl::container_internal::Group::kWidth);
         m_controls.resize(this->capacity(), absl::container_internal::ctrl_t::kEmpty);
@@ -141,7 +141,7 @@ public:
         if (new_width > old_width)
             resize_width(old_width, new_width);
 
-        if (!has_capacity_for())
+        if (m_growth_info.growth_left() == 0)
             rehash();
 
         return insert_impl(key);
@@ -221,12 +221,10 @@ public:
         bool operator!=(const const_iterator& other) const { return !(*this == other); }
     };
 
+    const GrowthInfo& growth_info() const { return m_growth_info; }
     const sdsl::int_vector<>& slots() const { return m_slots; }
-    size_t size() const { return m_size; }
-    size_t capacity() const { return m_capacity; }
-    double load_factor() const { return static_cast<double>(size()) / capacity(); }
-    constexpr double max_load_factor() const { return MAX_LOAD_FACTOR; }
-    bool has_capacity_for(size_t amount = 1) const { return (static_cast<double>(size() + amount) / capacity()) <= MAX_LOAD_FACTOR; }
+    size_t size() const { return m_growth_info.size(); }
+    size_t capacity() const { return m_growth_info.capacity(); }
     uint8_t bit_width() const { return m_slots.width(); }
 
     size_t mem_usage() const
