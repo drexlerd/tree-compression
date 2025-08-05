@@ -16,12 +16,10 @@
  */
 
 #include <benchmark/benchmark.h>
-#include <valla/plain/hash_id_map.hpp>
+#include <valla/dtdb_h.hpp>
 
 namespace valla::benchmarks
 {
-namespace v = valla::plain::hash_id_map;
-
 /// @brief In this benchmark, we evaluate the performance of accessing data in sequence
 static void BM_PlainUintSwissIterator(benchmark::State& state)
 {
@@ -53,7 +51,7 @@ static void BM_PlainUintSwissIterator(benchmark::State& state)
     for (size_t rep = 0; rep < repetitions; ++rep)
     {
         for (const auto& s : all_states)
-            all_roots.push_back(v::insert(s, table));
+            all_roots.push_back(insert(s, table));
     }
 
     for (auto _ : state)
@@ -64,7 +62,7 @@ static void BM_PlainUintSwissIterator(benchmark::State& state)
         {
             for (const auto& r : all_roots)
             {
-                for (auto x : v::range(r, table))
+                for (auto x : range(r, table))
                 {
                     benchmark::DoNotOptimize(x);
                 }

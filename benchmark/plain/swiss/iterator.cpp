@@ -16,11 +16,10 @@
  */
 
 #include <benchmark/benchmark.h>
-#include <valla/plain/swiss.hpp>
+#include <valla/dtdb_s.hpp>
 
 namespace valla::benchmarks
 {
-namespace v = valla::plain::swiss;
 
 /// @brief In this benchmark, we evaluate the performance of accessing data in sequence
 static void BM_PlainUintSwissIterator(benchmark::State& state)
@@ -54,7 +53,7 @@ static void BM_PlainUintSwissIterator(benchmark::State& state)
     for (size_t rep = 0; rep < repetitions; ++rep)
     {
         for (const auto& s : all_states)
-            all_roots.push_back(root_table[root_table.insert(v::insert(s, tree_table))]);
+            all_roots.push_back(root_table.lookup(root_table.insert(insert(s, tree_table))));
     }
 
     for (auto _ : state)
@@ -65,7 +64,7 @@ static void BM_PlainUintSwissIterator(benchmark::State& state)
         {
             for (const auto& r : all_roots)
             {
-                for (auto x : v::range(r, tree_table))
+                for (auto x : range(r, tree_table))
                 {
                     benchmark::DoNotOptimize(x);
                 }

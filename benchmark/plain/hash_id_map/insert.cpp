@@ -16,11 +16,10 @@
  */
 
 #include <benchmark/benchmark.h>
-#include <valla/plain/hash_id_map.hpp>
+#include <valla/dtdb_h.hpp>
 
 namespace valla::benchmarks
 {
-namespace v = valla::plain::hash_id_map;
 
 /// @brief In this benchmark, we evaluate the performance of accessing data in sequence
 static void BM_PlainUintHashIDMapInsert(benchmark::State& state)
@@ -54,7 +53,7 @@ static void BM_PlainUintHashIDMapInsert(benchmark::State& state)
         {
             for (const auto& s : all_states)
             {
-                benchmark::DoNotOptimize(v::insert(s, table));
+                benchmark::DoNotOptimize(insert(s, table));
             }
         }
 

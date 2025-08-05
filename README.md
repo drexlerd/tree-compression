@@ -38,8 +38,8 @@ cmake --install build --prefix=<path/to/installation-directory>
 The testing framework depends on GoogleTest and requires the additional compile flag `-DBUILD_TESTS=ON` to be set in the cmake configure step. The tests can be run by executing the following commands from the root.
 
 ```console
-./build/tests/unit/plain_swiss
-./build/tests/unit/plain_hash_id_map
+./build/tests/unit/dtdb_h
+./build/tests/unit/dtdb_s
 ```
 
 ### Benchmarking
