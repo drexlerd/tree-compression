@@ -39,10 +39,10 @@ private:
     static_assert(((InitialCapacity + 1) & InitialCapacity) == 0, "InitialCapacity must be 2^{InitialCapacity}-1.");
     static_assert(InitialCapacity >= 127, "InitialCapacity must be greater than 127.");
 
-    sdsl::int_vector<> m_slots;
-    std::vector<absl::container_internal::ctrl_t> m_controls;
     size_t m_size;
     size_t m_capacity;
+    sdsl::int_vector<> m_slots;
+    std::vector<absl::container_internal::ctrl_t> m_controls;
 
     Hash m_hash;
     EqualTo m_equal_to;
@@ -114,22 +114,17 @@ private:
 
 public:
     succinct_flat_hash_set(size_t capacity, uint8_t bit_width, Hash hash, EqualTo equal_to) :
-        m_slots(capacity, 0, bit_width),
-        m_controls(),
         m_size(0),
-        m_capacity(capacity),
+        m_capacity(std::max(size_t(127), capacity)),                    ///< capacity must be at least 127 for deadlock free probing
+        m_slots(this->capacity(), 0, std::max(uint8_t(1), bit_width)),  ///< bit width must be at least one, else it is set to 64
+        m_controls(),
         m_hash(hash),
         m_equal_to(equal_to)
     {
-        if (!absl::container_internal::IsValidCapacity(capacity) || capacity < 127)
-            throw std::logic_error("Invalid value for capacity specified. The capacity must be 2^n-1 for integer n > 0 and greater or equal to 127.");
-        if (bit_width < 1)
-            throw std::logic_error("Invalid value for bit_width specified. The bit_width has to be nonzero.");
-
         // Sentinel-padded rolling buffer
-        m_controls.reserve(capacity + absl::container_internal::Group::kWidth);
-        m_controls.resize(capacity, absl::container_internal::ctrl_t::kEmpty);
-        m_controls.resize(capacity + absl::container_internal::Group::kWidth, absl::container_internal::ctrl_t::kSentinel);
+        m_controls.reserve(this->capacity() + absl::container_internal::Group::kWidth);
+        m_controls.resize(this->capacity(), absl::container_internal::ctrl_t::kEmpty);
+        m_controls.resize(this->capacity() + absl::container_internal::Group::kWidth, absl::container_internal::ctrl_t::kSentinel);
     }
 
     succinct_flat_hash_set(Hash hash, EqualTo equal_to) : succinct_flat_hash_set(InitialCapacity, 1, hash, equal_to) {}
