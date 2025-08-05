@@ -42,7 +42,7 @@ namespace valla
  */
 
 template<std::input_iterator Iterator, IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2, std::iter_value_t<Iterator>>
+    requires AreGeneralCaseHashSets<Set1, Set2, std::iter_value_t<Iterator>>
 inline auto insert_recursively(Iterator it, Iterator end, typename Set1::index_type size, Set1& table, Set2& leaf_table)
 {
     using I = typename Set1::index_type;
@@ -70,7 +70,7 @@ inline auto insert_recursively(Iterator it, Iterator end, typename Set1::index_t
 }
 
 template<std::ranges::input_range Range, IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2, std::ranges::range_value_t<Range>>
+    requires AreGeneralCaseHashSets<Set1, Set2, std::ranges::range_value_t<Range>>
 inline auto insert(const Range& state, Set1& table, Set2& leaf_table)
 {
     using I = typename Set1::index_type;
@@ -89,7 +89,7 @@ inline auto insert(const Range& state, Set1& table, Set2& leaf_table)
  */
 
 template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2>
+    requires AreGeneralCaseHashSets<Set1, Set2>
 inline void read_state_recursively(typename Set1::index_type index,
                                    typename Set1::index_type size,
                                    const Set1& table,
@@ -122,7 +122,7 @@ inline void read_state_recursively(typename Set1::index_type index,
 }
 
 template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2>
+    requires AreGeneralCaseHashSets<Set1, Set2>
 inline void read_state(typename Set1::index_type tree_index,
                        typename Set1::index_type size,
                        const Set1& table,
@@ -138,7 +138,7 @@ inline void read_state(typename Set1::index_type tree_index,
 }
 
 template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2>
+    requires AreGeneralCaseHashSets<Set1, Set2>
 inline void
 read_state(const Slot<typename Set1::index_type>& root_slot, const Set1& table, const Set2& leaf_table, std::vector<typename Set2::value_type>& out_state)
 {
@@ -151,7 +151,7 @@ read_state(const Slot<typename Set1::index_type>& root_slot, const Set1& table, 
  */
 
 template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2>
+    requires AreGeneralCaseHashSets<Set1, Set2>
 class const_iterator_general
 {
 public:
@@ -304,21 +304,21 @@ public:
 };
 
 template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2>
+    requires AreGeneralCaseHashSets<Set1, Set2>
 inline auto begin(Slot<typename Set1::index_type> root, const Set1& table, const Set2& leaf_table)
 {
     return const_iterator_general<Set1, Set2>(table, leaf_table, root, true);
 }
 
 template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2>
+    requires AreGeneralCaseHashSets<Set1, Set2>
 inline auto end(const Set1&, const Set2&)
 {
     return const_iterator_general<Set1, Set2>();
 }
 
 template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2>
+    requires AreGeneralCaseHashSets<Set1, Set2>
 inline auto range(Slot<typename Set1::index_type> root, const Set1& table, const Set2& leaf_table)
 {
     return std::ranges::subrange(begin(root, table, leaf_table), end(table, leaf_table));
@@ -333,8 +333,7 @@ inline auto range(Slot<typename Set1::index_type> root, const Set1& table, const
  */
 
 template<std::input_iterator Iterator, IsStableIndexedHashSet Set>
-    requires std::same_as<std::iter_value_t<Iterator>, typename Set::index_type>  //
-             && std::same_as<typename Set::value_type, Slot<typename Set::index_type>>
+    requires IsSpecialCaseHashSet<Set, std::iter_value_t<Iterator>>
 inline auto insert_recursively(Iterator it, Iterator end, typename Set::index_type size, Set& table)
 {
     using I = Set::index_type;
@@ -358,8 +357,7 @@ inline auto insert_recursively(Iterator it, Iterator end, typename Set::index_ty
 }
 
 template<std::ranges::input_range Range, IsStableIndexedHashSet Set>
-    requires std::same_as<std::ranges::range_value_t<Range>, typename Set::index_type>  //
-             && std::same_as<typename Set::value_type, Slot<typename Set::index_type>>
+    requires IsSpecialCaseHashSet<Set, std::ranges::range_value_t<Range>>
 inline auto insert(const Range& state, Set& table)
 {
     using I = Set::index_type;

@@ -42,7 +42,7 @@ namespace valla
  */
 
 template<std::ranges::input_range Range, IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2, std::ranges::range_value_t<Range>>
+    requires AreGeneralCaseHashSets<Set1, Set2, std::ranges::range_value_t<Range>>
 inline auto insert(const Range& state, Set1& table, Set2& leaf_table);
 
 /**
@@ -50,7 +50,7 @@ inline auto insert(const Range& state, Set1& table, Set2& leaf_table);
  */
 
 template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2>
+    requires AreGeneralCaseHashSets<Set1, Set2>
 inline void
 read_state(const Slot<typename Set1::index_type>& root_slot, const Set1& table, const Set2& leaf_table, std::vector<typename Set2::value_type>& out_state);
 
@@ -59,15 +59,15 @@ read_state(const Slot<typename Set1::index_type>& root_slot, const Set1& table, 
  */
 
 template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2>
+    requires AreGeneralCaseHashSets<Set1, Set2>
 inline auto begin(Slot<typename Set1::index_type> root, const Set1& table, const Set2& leaf_table);
 
 template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2>
+    requires AreGeneralCaseHashSets<Set1, Set2>
 inline auto end(const Set1&, const Set2&);
 
 template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2>
+    requires AreGeneralCaseHashSets<Set1, Set2>
 inline auto range(Slot<typename Set1::index_type> root, const Set1& table, const Set2& leaf_table);
 
 ///////////////////////////////////////////
@@ -79,8 +79,7 @@ inline auto range(Slot<typename Set1::index_type> root, const Set1& table, const
  */
 
 template<std::ranges::input_range Range, IsStableIndexedHashSet Set>
-    requires std::same_as<std::ranges::range_value_t<Range>, typename Set::index_type>  //
-             && std::same_as<typename Set::value_type, Slot<typename Set::index_type>>
+    requires IsSpecialCaseHashSet<Set, std::ranges::range_value_t<Range>>
 inline auto insert(const Range& state, Set& table);
 
 /**

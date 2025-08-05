@@ -43,7 +43,7 @@ namespace valla
  */
 
 template<std::ranges::input_range Range, IsUnstableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2, std::ranges::range_value_t<Range>>
+    requires AreGeneralCaseHashSets<Set1, Set2, std::ranges::range_value_t<Range>>
 auto insert(const Range& state, Set1& inner_table, Set2& leaf_table);
 
 /**
@@ -51,7 +51,7 @@ auto insert(const Range& state, Set1& inner_table, Set2& leaf_table);
  */
 
 template<IsUnstableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2>
+    requires AreGeneralCaseHashSets<Set1, Set2>
 inline void read_state(typename Set1::index_type root_index, const Set1& tree_table, const Set2& leaf_table, std::vector<typename Set2::value_type>& out_state);
 
 /**
@@ -59,15 +59,15 @@ inline void read_state(typename Set1::index_type root_index, const Set1& tree_ta
  */
 
 template<IsUnstableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2>
+    requires AreGeneralCaseHashSets<Set1, Set2>
 inline auto begin(typename Set1::index_type root, const Set1& inner_table, const Set2& leaf_table);
 
 template<IsUnstableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2>
+    requires AreGeneralCaseHashSets<Set1, Set2>
 inline auto end(const Set1&, const Set2&);
 
 template<IsUnstableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2>
+    requires AreGeneralCaseHashSets<Set1, Set2>
 inline auto range(typename Set1::index_type root, const Set1& inner_table, const Set2& leaf_table);
 
 ///////////////////////////////////////////
@@ -79,8 +79,7 @@ inline auto range(typename Set1::index_type root, const Set1& inner_table, const
  */
 
 template<std::ranges::input_range Range, IsUnstableIndexedHashSet Set>
-    requires std::same_as<std::ranges::range_value_t<Range>, typename Set::index_type>  //
-             && std::same_as<typename Set::value_type, Slot<typename Set::index_type>>
+    requires IsSpecialCaseHashSet<Set, std::ranges::range_value_t<Range>>
 auto insert(const Range& state, Set& table);
 
 /**
