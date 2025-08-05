@@ -70,7 +70,6 @@ protected:
 
     HashSetStatistics m_statistics;
 
-public:
     HashIDMap() : m_slots(), m_controls(), m_size(0), m_capacity(InitialCapacity), m_hash(), m_equal_to()
     {
         m_slots.resize(InitialCapacity);
@@ -80,8 +79,6 @@ public:
         m_controls.resize(InitialCapacity, absl::container_internal::ctrl_t::kEmpty);
         m_controls.resize(InitialCapacity + absl::container_internal::Group::kWidth, absl::container_internal::ctrl_t::kSentinel);
     }
-
-    bool has_capacity_for(size_t amount) const { return (static_cast<double>(size() + amount) / capacity()) <= MAX_LOAD_FACTOR; }
 
     I insert(const Key& slot)
     {
@@ -136,6 +133,7 @@ public:
     size_t capacity() const { return m_capacity; }
     double load_factor() const { return static_cast<double>(size()) / capacity(); }
     constexpr double max_load_factor() const { return MAX_LOAD_FACTOR; }
+    bool has_capacity_for(size_t amount) const { return (static_cast<double>(size() + amount) / capacity()) <= MAX_LOAD_FACTOR; }
     const HashSetStatistics& statistics() const { return m_statistics; }
 };
 
@@ -296,6 +294,12 @@ private:
     friend Base;
 
 public:
+    using Base::capacity;
+    using Base::has_capacity_for;
+    using Base::load_factor;
+    using Base::size;
+    using Base::statistics;
+
     explicit TreeHashIDMap() : Base(), m_roots()
     {
         this->m_roots.insert(get_empty_slot<I>());  // root representing empty sequence
@@ -329,7 +333,7 @@ public:
 
     I insert_internal(const Slot<I>& slot) { return Base::insert(slot); }
 
-    const Slot<I>& lookup_root(I pos) const { return m_roots[pos]; }
+    const Slot<I>& lookup_root(I pos) const { return m_roots.lookup(pos); }
 
     const Slot<I>& lookup_internal(I pos) const { return this->m_slots[pos]; }
 

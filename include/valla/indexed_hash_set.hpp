@@ -91,7 +91,7 @@ public:
         return *result.first;
     }
 
-    const T& operator[](I index) const
+    const T& lookup(I index) const
     {
         assert(index < m_slots.size() && "Index out of bounds");
 
@@ -116,7 +116,7 @@ private:
     friend class TreeHashIDMap;
 };
 
-static_assert(IsIndexedHashSet<IndexedHashSet<Slot<uint32_t>, uint32_t>>);
+static_assert(IsStableIndexedHashSet<IndexedHashSet<Slot<uint32_t>, uint32_t>>);
 
 }
 

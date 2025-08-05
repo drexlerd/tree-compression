@@ -15,27 +15,30 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef VALLA_INCLUDE_DECLARATIONS_HPP_
-#define VALLA_INCLUDE_DECLARATIONS_HPP_
+#ifndef VALLA_INCLUDE_ITERATOR_HPP_
+#define VALLA_INCLUDE_ITERATOR_HPP_
 
-#include "valla/config.hpp"
-//
-#include <absl/container/flat_hash_map.h>
-#include <absl/container/flat_hash_set.h>
-#include <absl/container/node_hash_map.h>
-#include <absl/container/node_hash_set.h>
-//
-#include "valla/concepts.hpp"
-#include "valla/equal_to.hpp"
-#include "valla/hash.hpp"
-#include "valla/iterator.hpp"
-#include "valla/slot.hpp"
-#include "valla/statistics.hpp"
-#include "valla/uint64tcoder.hpp"
-#include "valla/utils.hpp"
+#include <concepts>
+#include <vector>
 
 namespace valla
 {
+
+template<std::unsigned_integral I>
+struct Entry
+{
+    I m_index;
+    I m_size;
+
+    Entry(I index, I size) : m_index(index), m_size(size) {}
+};
+
+template<typename T>
+inline void copy_object(const std::vector<T>& src, std::vector<T>& dst)
+{
+    dst.clear();
+    dst.insert(dst.end(), src.begin(), src.end());
+}
 
 }
 

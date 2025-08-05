@@ -14,5 +14,5 @@ endfunction()
 # Add each test source file as a separate test executable
 add_gtest(succinct_indexed_hash_set     "succinct_indexed_hash_set.cpp")
 
-add_gtest(plain_hash_id_map             "plain/hash_id_map.cpp")
-add_gtest(plain_swiss                   "plain/swiss.cpp")
+add_gtest(dtdb_h                        "dtdb_h.cpp")
+add_gtest(dtdb_s                        "dtdb_s.cpp")

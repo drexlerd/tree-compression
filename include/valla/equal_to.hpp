@@ -15,27 +15,27 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef VALLA_INCLUDE_DECLARATIONS_HPP_
-#define VALLA_INCLUDE_DECLARATIONS_HPP_
+#ifndef VALLA_INCLUDE_EQUAL_TO_HPP_
+#define VALLA_INCLUDE_EQUAL_TO_HPP_
 
-#include "valla/config.hpp"
-//
-#include <absl/container/flat_hash_map.h>
-#include <absl/container/flat_hash_set.h>
-#include <absl/container/node_hash_map.h>
-#include <absl/container/node_hash_set.h>
-//
-#include "valla/concepts.hpp"
-#include "valla/equal_to.hpp"
-#include "valla/hash.hpp"
-#include "valla/iterator.hpp"
-#include "valla/slot.hpp"
-#include "valla/statistics.hpp"
 #include "valla/uint64tcoder.hpp"
-#include "valla/utils.hpp"
+
+#include <cstdint>
 
 namespace valla
 {
+
+template<typename T>
+struct EqualTo
+{
+    bool operator()(const T& lhs, const T& rhs) const { return lhs == rhs; }
+
+    template<IsUint64tCodable U = T>
+    bool operator()(uint64_t lhs, uint64_t rhs) const
+    {
+        return lhs == rhs;
+    }
+};
 
 }
 

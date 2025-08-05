@@ -15,27 +15,34 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef VALLA_INCLUDE_DECLARATIONS_HPP_
-#define VALLA_INCLUDE_DECLARATIONS_HPP_
+#ifndef VALLA_INCLUDE_HASH_HPP_
+#define VALLA_INCLUDE_HASH_HPP_
 
-#include "valla/config.hpp"
-//
-#include <absl/container/flat_hash_map.h>
-#include <absl/container/flat_hash_set.h>
-#include <absl/container/node_hash_map.h>
-#include <absl/container/node_hash_set.h>
-//
-#include "valla/concepts.hpp"
-#include "valla/equal_to.hpp"
-#include "valla/hash.hpp"
-#include "valla/iterator.hpp"
 #include "valla/slot.hpp"
-#include "valla/statistics.hpp"
 #include "valla/uint64tcoder.hpp"
-#include "valla/utils.hpp"
+
+#include <concepts>
+#include <utility>
 
 namespace valla
 {
+template<typename T>
+struct Hash
+{
+    size_t operator()(const T& el) const { return std::hash<T> {}(el); }
+};
+
+template<std::unsigned_integral I>
+struct Hash<Slot<I>>
+{
+    size_t operator()(const Slot<I>& el) const { return absl::HashOf(el.i1, el.i2); }
+
+    template<IsUint64tCodable U = Slot<I>>
+    bool operator()(uint64_t el) const
+    {
+        return Hash<uint64_t> {}(el);
+    }
+};
 
 }
 

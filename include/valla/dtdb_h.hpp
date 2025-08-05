@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef VALLA_INCLUDE_PLAIN_HASH_ID_MAP_HPP_
-#define VALLA_INCLUDE_PLAIN_HASH_ID_MAP_HPP_
+#ifndef VALLA_INCLUDE_DTDB_H_HPP_
+#define VALLA_INCLUDE_DTDS_H_HPP_
 
 #include "valla/declarations.hpp"
 #include "valla/hash_id_map.hpp"
@@ -31,7 +31,7 @@
 #include <ranges>
 #include <stack>
 
-namespace valla::plain::hash_id_map
+namespace valla
 {
 
 ///////////////////////////////////////////
@@ -99,15 +99,15 @@ inline void read_state_recursively(I index,
     /* Base cases */
     if (size == 1)
     {
-        ref_state.push_back(leaf_table[index]);
+        ref_state.push_back(leaf_table.lookup(index));
         return;
     }
 
     if (size == 2)
     {
         const auto& slot = inner_table.lookup_internal(index);
-        ref_state.push_back(leaf_table[slot.i1]);
-        ref_state.push_back(leaf_table[slot.i2]);
+        ref_state.push_back(leaf_table.lookup(slot.i1));
+        ref_state.push_back(leaf_table.lookup(slot.i2));
         return;
     }
 
@@ -190,14 +190,14 @@ private:
 
                     if (entry.m_size == 1)
                     {
-                        m_leaf_stack->emplace_back(this->leaf_table()[entry.m_index]);
+                        m_leaf_stack->emplace_back(this->leaf_table().lookup(entry.m_index));
                         break;
                     }
                     else if (entry.m_size == 2)
                     {
                         const auto& slot = this->inner_table().lookup_internal(entry.m_index);
-                        m_leaf_stack->emplace_back(this->leaf_table()[slot.i2]);
-                        m_leaf_stack->emplace_back(this->leaf_table()[slot.i1]);
+                        m_leaf_stack->emplace_back(this->leaf_table().lookup(slot.i2));
+                        m_leaf_stack->emplace_back(this->leaf_table().lookup(slot.i1));
                         break;
                     }
 
@@ -270,13 +270,13 @@ public:
             {
                 if (root_slot.i2 == 1)
                 {
-                    m_leaf_stack->emplace_back(this->leaf_table()[root_slot.i1]);
+                    m_leaf_stack->emplace_back(this->leaf_table().lookup(root_slot.i1));
                 }
                 else if (root_slot.i2 == 2)
                 {
                     const auto& slot = this->inner_table().lookup_internal(root_slot.i1);
-                    m_leaf_stack->emplace_back(this->leaf_table()[slot.i2]);
-                    m_leaf_stack->emplace_back(this->leaf_table()[slot.i1]);
+                    m_leaf_stack->emplace_back(this->leaf_table().lookup(slot.i2));
+                    m_leaf_stack->emplace_back(this->leaf_table().lookup(slot.i1));
                 }
                 else if (root_slot.i2 > 2)
                 {
@@ -452,7 +452,7 @@ private:
                 return;
             }
 
-            const auto slot = table()[entry.m_index];
+            const auto slot = table().lookup_internal(entry.m_index);
 
             const auto mid = std::bit_floor(entry.m_size - 1);
 

@@ -15,8 +15,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef VALLA_INCLUDE_PLAIN_SWISS_HPP_
-#define VALLA_INCLUDE_PLAIN_SWISS_HPP_
+#ifndef VALLA_INCLUDE_DTDB_S_HPP_
+#define VALLA_INCLUDE_DTDB_S_HPP_
 
 #include "valla/declarations.hpp"
 #include "valla/indexed_hash_set.hpp"
@@ -30,7 +30,7 @@
 #include <iostream>
 #include <stack>
 
-namespace valla::plain::swiss
+namespace valla
 {
 
 ///////////////////////////////////////////
@@ -41,8 +41,8 @@ namespace valla::plain::swiss
  * Insert recursively
  */
 
-template<std::input_iterator Iterator, IsIndexedHashSet Set1, IsIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2, std::iter_value_t<Iterator>> && IsStable<Set1> && IsStable<Set2>
+template<std::input_iterator Iterator, IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2, std::iter_value_t<Iterator>>
 inline auto insert_recursively(Iterator it, Iterator end, typename Set1::index_type size, Set1& table, Set2& leaf_table)
 {
     using I = typename Set1::index_type;
@@ -69,8 +69,8 @@ inline auto insert_recursively(Iterator it, Iterator end, typename Set1::index_t
     return table.insert(Slot<I>(i1, i2));
 }
 
-template<std::ranges::input_range Range, IsIndexedHashSet Set1, IsIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2, std::ranges::range_value_t<Range>> && IsStable<Set1> && IsStable<Set2>
+template<std::ranges::input_range Range, IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2, std::ranges::range_value_t<Range>>
 inline auto insert(const Range& state, Set1& table, Set2& leaf_table)
 {
     using I = typename Set1::index_type;
@@ -88,8 +88,8 @@ inline auto insert(const Range& state, Set1& table, Set2& leaf_table)
  * Read recursively
  */
 
-template<IsIndexedHashSet Set1, IsIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
+template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2>
 inline void read_state_recursively(typename Set1::index_type index,
                                    typename Set1::index_type size,
                                    const Set1& table,
@@ -99,17 +99,17 @@ inline void read_state_recursively(typename Set1::index_type index,
     /* Base case */
     if (size == 1)
     {
-        ref_state.push_back(leaf_table[index]);
+        ref_state.push_back(leaf_table.lookup(index));
         return;
     }
 
-    const auto& slot = table[index];
+    const auto& slot = table.lookup(index);
 
     /* Base case */
     if (size == 2)
     {
-        ref_state.push_back(leaf_table[slot.i1]);
-        ref_state.push_back(leaf_table[slot.i2]);
+        ref_state.push_back(leaf_table.lookup(slot.i1));
+        ref_state.push_back(leaf_table.lookup(slot.i2));
         return;
     }
 
@@ -121,8 +121,8 @@ inline void read_state_recursively(typename Set1::index_type index,
     read_state_recursively(slot.i2, size - mid, table, leaf_table, ref_state);
 }
 
-template<IsIndexedHashSet Set1, IsIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
+template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2>
 inline void read_state(typename Set1::index_type tree_index,
                        typename Set1::index_type size,
                        const Set1& table,
@@ -137,8 +137,8 @@ inline void read_state(typename Set1::index_type tree_index,
     read_state_recursively(tree_index, size, table, leaf_table, out_state);
 }
 
-template<IsIndexedHashSet Set1, IsIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
+template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2>
 inline void
 read_state(const Slot<typename Set1::index_type>& root_slot, const Set1& table, const Set2& leaf_table, std::vector<typename Set2::value_type>& out_state)
 {
@@ -150,8 +150,8 @@ read_state(const Slot<typename Set1::index_type>& root_slot, const Set1& table, 
  * ConstIterator
  */
 
-template<IsIndexedHashSet Set1, IsIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
+template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2>
 class const_iterator
 {
 public:
@@ -202,20 +202,20 @@ private:
 
                     if (entry.m_size == 1)
                     {
-                        m_leaf_stack->emplace_back(this->leaf_table()[entry.m_index]);
+                        m_leaf_stack->emplace_back(this->leaf_table().lookup(entry.m_index));
                         break;
                     }
                     else if (entry.m_size == 2)
                     {
-                        const auto& slot = this->inner_table()[entry.m_index];
-                        m_leaf_stack->emplace_back(this->leaf_table()[slot.i2]);
-                        m_leaf_stack->emplace_back(this->leaf_table()[slot.i1]);
+                        const auto& slot = this->inner_table().lookup(entry.m_index);
+                        m_leaf_stack->emplace_back(this->leaf_table().lookup(slot.i2));
+                        m_leaf_stack->emplace_back(this->leaf_table().lookup(slot.i1));
                         break;
                     }
 
                     assert(entry.m_size > 2);
 
-                    const auto& slot = this->inner_table()[entry.m_index];
+                    const auto& slot = this->inner_table().lookup(entry.m_index);
 
                     const auto mid = std::bit_floor(entry.m_size - 1);
 
@@ -271,13 +271,13 @@ public:
 
             if (root_slot.i2 == 1)
             {
-                m_leaf_stack->emplace_back(this->leaf_table()[root_slot.i1]);
+                m_leaf_stack->emplace_back(this->leaf_table().lookup(root_slot.i1));
             }
             else if (root_slot.i2 == 2)
             {
-                const auto& slot = this->inner_table()[root_slot.i1];
-                m_leaf_stack->emplace_back(this->leaf_table()[slot.i2]);
-                m_leaf_stack->emplace_back(this->leaf_table()[slot.i1]);
+                const auto& slot = this->inner_table().lookup(root_slot.i1);
+                m_leaf_stack->emplace_back(this->leaf_table().lookup(slot.i2));
+                m_leaf_stack->emplace_back(this->leaf_table().lookup(slot.i1));
             }
             else if (root_slot.i2 > 2)
             {
@@ -303,22 +303,22 @@ public:
     bool operator!=(const const_iterator& other) const { return !(*this == other); }
 };
 
-template<IsIndexedHashSet Set1, IsIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
+template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2>
 inline auto begin(Slot<typename Set1::index_type> root, const Set1& table, const Set2& leaf_table)
 {
     return const_iterator<Set1, Set2>(table, leaf_table, root, true);
 }
 
-template<IsIndexedHashSet Set1, IsIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
+template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2>
 inline auto end(const Set1&, const Set2&)
 {
     return const_iterator<Set1, Set2>();
 }
 
-template<IsIndexedHashSet Set1, IsIndexedHashSet Set2>
-    requires AreCompatibleIndexedHashSets<Set1, Set2> && IsStable<Set1> && IsStable<Set2>
+template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
+    requires AreCompatibleIndexedHashSets<Set1, Set2>
 inline auto range(Slot<typename Set1::index_type> root, const Set1& table, const Set2& leaf_table)
 {
     return std::ranges::subrange(begin(root, table, leaf_table), end(table, leaf_table));
@@ -332,10 +332,9 @@ inline auto range(Slot<typename Set1::index_type> root, const Set1& table, const
  * Insert recursively
  */
 
-template<std::input_iterator Iterator, IsIndexedHashSet Set>
-    requires std::same_as<std::iter_value_t<Iterator>, typename Set::index_type>        //
-             && std::same_as<typename Set::value_type, Slot<typename Set::index_type>>  //
-             && IsStable<Set>
+template<std::input_iterator Iterator, IsStableIndexedHashSet Set>
+    requires std::same_as<std::iter_value_t<Iterator>, typename Set::index_type>  //
+             && std::same_as<typename Set::value_type, Slot<typename Set::index_type>>
 inline auto insert_recursively(Iterator it, Iterator end, typename Set::index_type size, Set& table)
 {
     using I = Set::index_type;
@@ -358,10 +357,9 @@ inline auto insert_recursively(Iterator it, Iterator end, typename Set::index_ty
     return table.insert(Slot<I>(i1, i2));
 }
 
-template<std::ranges::input_range Range, IsIndexedHashSet Set>
+template<std::ranges::input_range Range, IsStableIndexedHashSet Set>
     requires std::same_as<std::ranges::range_value_t<Range>, typename Set::index_type>  //
-             && std::same_as<typename Set::value_type, Slot<typename Set::index_type>>  //
-             && IsStable<Set>
+             && std::same_as<typename Set::value_type, Slot<typename Set::index_type>>
 inline auto insert(const Range& state, Set& table)
 {
     using I = Set::index_type;
@@ -379,8 +377,7 @@ inline auto insert(const Range& state, Set& table)
  * Read recursively
  */
 
-template<IsIndexedHashSet Set>
-    requires IsStable<Set>
+template<IsStableIndexedHashSet Set>
 inline void
 read_state_recursively(typename Set::index_type index, typename Set::index_type size, const Set& table, std::vector<typename Set::index_type>& ref_state)
 {
@@ -391,7 +388,7 @@ read_state_recursively(typename Set::index_type index, typename Set::index_type 
         return;
     }
 
-    const auto slot = table[index];
+    const auto slot = table.lookup(index);
 
     /* Base case */
     if (size == 2)
@@ -409,8 +406,7 @@ read_state_recursively(typename Set::index_type index, typename Set::index_type 
     read_state_recursively(slot.i2, size - mid, table, ref_state);
 }
 
-template<IsIndexedHashSet Set>
-    requires IsStable<Set>
+template<IsStableIndexedHashSet Set>
 inline void read_state(typename Set::index_type tree_index, typename Set::index_type size, const Set& table, std::vector<typename Set::index_type>& out_state)
 {
     out_state.clear();
@@ -421,8 +417,7 @@ inline void read_state(typename Set::index_type tree_index, typename Set::index_
     read_state_recursively(tree_index, size, table, out_state);
 }
 
-template<IsIndexedHashSet Set>
-    requires IsStable<Set>
+template<IsStableIndexedHashSet Set>
 inline void read_state(const Slot<typename Set::index_type>& root_slot, const Set& table, std::vector<typename Set::index_type>& out_state)
 {
     /* Observe: a root slot wraps the root tree_index together with the length that defines the tree structure! */
@@ -433,8 +428,7 @@ inline void read_state(const Slot<typename Set::index_type>& root_slot, const Se
  * ConstIterator
  */
 
-template<IsIndexedHashSet Set1>
-    requires IsStable<Set1>
+template<IsStableIndexedHashSet Set1>
 class const_iterator<Set1, Set1>
 {
 public:
@@ -471,7 +465,7 @@ private:
                 return;
             }
 
-            const auto slot = table()[entry.m_index];
+            const auto slot = table().lookup(entry.m_index);
 
             const auto mid = std::bit_floor(entry.m_size - 1);
 
@@ -530,22 +524,19 @@ public:
     bool operator!=(const const_iterator& other) const { return !(*this == other); }
 };
 
-template<IsIndexedHashSet Set1>
-    requires IsStable<Set1>
+template<IsStableIndexedHashSet Set1>
 inline auto begin(Slot<typename Set1::index_type> root, const Set1& table)
 {
     return const_iterator<Set1, Set1>(table, root, true);
 }
 
-template<IsIndexedHashSet Set1>
-    requires IsStable<Set1>
+template<IsStableIndexedHashSet Set1>
 inline auto end(const Set1&)
 {
     return const_iterator<Set1, Set1>();
 }
 
-template<IsIndexedHashSet Set1>
-    requires IsStable<Set1>
+template<IsStableIndexedHashSet Set1>
 inline auto range(Slot<typename Set1::index_type> root, const Set1& table)
 {
     return std::ranges::subrange(begin(root, table), end(table));

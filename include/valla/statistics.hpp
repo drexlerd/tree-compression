@@ -15,27 +15,31 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef VALLA_INCLUDE_DECLARATIONS_HPP_
-#define VALLA_INCLUDE_DECLARATIONS_HPP_
+#ifndef VALLA_INCLUDE_STATISTICS_HPP_
+#define VALLA_INCLUDE_STATISTICS_HPP_
 
-#include "valla/config.hpp"
-//
-#include <absl/container/flat_hash_map.h>
-#include <absl/container/flat_hash_set.h>
-#include <absl/container/node_hash_map.h>
-#include <absl/container/node_hash_set.h>
-//
-#include "valla/concepts.hpp"
-#include "valla/equal_to.hpp"
-#include "valla/hash.hpp"
-#include "valla/iterator.hpp"
-#include "valla/slot.hpp"
-#include "valla/statistics.hpp"
-#include "valla/uint64tcoder.hpp"
-#include "valla/utils.hpp"
+#include <chrono>
+#include <cstddef>
 
 namespace valla
 {
+
+struct HashSetStatistics
+{
+    size_t m_num_rehashes = 0;
+    std::chrono::milliseconds m_total_rehash_time = std::chrono::milliseconds::zero();
+    size_t m_num_probes = 0;
+    size_t m_sum_probe_lengths = 0;
+
+    HashSetStatistics& operator+=(const HashSetStatistics& rhs)
+    {
+        m_num_rehashes += rhs.m_num_rehashes;
+        m_total_rehash_time += rhs.m_total_rehash_time;
+        m_num_probes += rhs.m_num_probes;
+        m_sum_probe_lengths += rhs.m_sum_probe_lengths;
+        return *this;
+    }
+};
 
 }
 

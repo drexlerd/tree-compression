@@ -127,7 +127,7 @@ public:
         return *result.first;
     }
 
-    T operator[](I index) const
+    T lookup(I index) const
     {
         assert(index < m_slots.size() && "Index out of bounds");
 
@@ -155,7 +155,7 @@ private:
     succinct_flat_hash_set<I, I, IndexReferencedHash, IndexReferencedEqualTo> m_uniqueness;  // TODO: change to succinct_flat_hash_set
 };
 
-static_assert(IsIndexedHashSet<SuccinctIndexedHashSet<Slot<uint32_t>, uint32_t>>);
+static_assert(IsStableIndexedHashSet<SuccinctIndexedHashSet<Slot<uint32_t>, uint32_t>>);
 }
 
 #endif

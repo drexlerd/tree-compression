@@ -15,27 +15,44 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef VALLA_INCLUDE_DECLARATIONS_HPP_
-#define VALLA_INCLUDE_DECLARATIONS_HPP_
+#ifndef VALLA_INCLUDE_OSTREAM_HPP_
+#define VALLA_INCLUDE_OSTREAM_HPP_
 
-#include "valla/config.hpp"
-//
-#include <absl/container/flat_hash_map.h>
-#include <absl/container/flat_hash_set.h>
-#include <absl/container/node_hash_map.h>
-#include <absl/container/node_hash_set.h>
-//
-#include "valla/concepts.hpp"
-#include "valla/equal_to.hpp"
-#include "valla/hash.hpp"
-#include "valla/iterator.hpp"
-#include "valla/slot.hpp"
-#include "valla/statistics.hpp"
-#include "valla/uint64tcoder.hpp"
-#include "valla/utils.hpp"
+#include <cstdint>
+#include <ostream>
+#include <vector>
 
 namespace valla
 {
+
+/**
+ * Printing
+ */
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& out, const std::vector<T>& vec)
+{
+    out << "[";
+    for (const auto x : vec)
+    {
+        out << x << ", ";
+    }
+    out << "]";
+
+    return out;
+}
+
+inline std::ostream& operator<<(std::ostream& out, const std::vector<uint8_t>& vec)
+{
+    out << "[";
+    for (const auto x : vec)
+    {
+        out << static_cast<uint32_t>(x) << ", ";
+    }
+    out << "]";
+
+    return out;
+}
 
 }
 

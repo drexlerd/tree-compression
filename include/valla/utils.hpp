@@ -15,27 +15,19 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef VALLA_INCLUDE_DECLARATIONS_HPP_
-#define VALLA_INCLUDE_DECLARATIONS_HPP_
+#ifndef VALLA_INCLUDE_UTILS_HPP_
+#define VALLA_INCLUDE_UTILS_HPP_
 
-#include "valla/config.hpp"
-//
-#include <absl/container/flat_hash_map.h>
-#include <absl/container/flat_hash_set.h>
-#include <absl/container/node_hash_map.h>
-#include <absl/container/node_hash_set.h>
-//
-#include "valla/concepts.hpp"
-#include "valla/equal_to.hpp"
-#include "valla/hash.hpp"
-#include "valla/iterator.hpp"
-#include "valla/slot.hpp"
-#include "valla/statistics.hpp"
-#include "valla/uint64tcoder.hpp"
-#include "valla/utils.hpp"
+#include <cstddef>
 
 namespace valla
 {
+
+template<typename Container>
+inline bool is_within_bounds(const Container& container, size_t index)
+{
+    return index < container.size();
+}
 
 }
 

@@ -15,27 +15,38 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef VALLA_INCLUDE_DECLARATIONS_HPP_
-#define VALLA_INCLUDE_DECLARATIONS_HPP_
+#ifndef VALLA_INCLUDE_SLOT_HPP_
+#define VALLA_INCLUDE_SLOT_HPP_
 
-#include "valla/config.hpp"
-//
-#include <absl/container/flat_hash_map.h>
-#include <absl/container/flat_hash_set.h>
-#include <absl/container/node_hash_map.h>
-#include <absl/container/node_hash_set.h>
-//
-#include "valla/concepts.hpp"
-#include "valla/equal_to.hpp"
-#include "valla/hash.hpp"
-#include "valla/iterator.hpp"
-#include "valla/slot.hpp"
-#include "valla/statistics.hpp"
-#include "valla/uint64tcoder.hpp"
-#include "valla/utils.hpp"
+#include <concepts>
+#include <ostream>
 
 namespace valla
 {
+
+template<std::unsigned_integral I>
+struct Slot
+{
+    I i1;
+    I i2;
+
+    constexpr Slot() : i1(0), i2(0) {}
+    constexpr Slot(I i1, I i2) : i1(i1), i2(i2) {}
+
+    constexpr friend bool operator==(const Slot& lhs, const Slot& rhs) { return lhs.i1 == rhs.i1 && lhs.i2 == rhs.i2; }
+
+    friend std::ostream& operator<<(std::ostream& os, const Slot& slot)
+    {
+        os << "<" << slot.i1 << ", " << slot.i2 << ">";
+        return os;
+    }
+};
+
+template<std::unsigned_integral I>
+constexpr inline Slot<I> get_empty_slot()
+{
+    return Slot<I>();
+}
 
 }
 
