@@ -221,8 +221,12 @@ public:
         bool operator!=(const const_iterator& other) const { return !(*this == other); }
     };
 
+    const_iterator begin() const { return const_iterator(*this, true); }
+    const_iterator end() const { return const_iterator(*this, false); }
+
     const GrowthInfo& growth_info() const { return m_growth_info; }
     const sdsl::int_vector<>& slots() const { return m_slots; }
+    const std::vector<absl::container_internal::ctrl_t>& controls() const { return m_controls; }
     size_t size() const { return m_growth_info.size(); }
     size_t capacity() const { return m_growth_info.capacity(); }
     uint8_t bit_width() const { return m_slots.width(); }
