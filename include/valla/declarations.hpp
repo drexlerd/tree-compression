@@ -27,6 +27,7 @@
 //
 #include "valla/concepts.hpp"
 #include "valla/equal_to.hpp"
+#include "valla/growthinfo.hpp"
 #include "valla/hash.hpp"
 #include "valla/iterator.hpp"
 #include "valla/slot.hpp"

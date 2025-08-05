@@ -55,6 +55,8 @@ private:
         assert(size() < capacity() && "Insert failed. Rehashing to higher capacity is required.");
         assert(Uint64tCoder<T>::bit_width(key) <= m_slots.width() && "Insert failed. Slot width is insufficient to store the key.");
 
+        m_statistics.increment_num_probes();
+
         size_t h = m_hash(key);
         absl::container_internal::h2_t h2 = absl::container_internal::H2(h);
         assert(static_cast<int>(h2) >= 0);
@@ -67,7 +69,7 @@ private:
 
             for (const auto i : group.Match(h2))
             {
-                m_statistics.m_sum_probe_lengths += i;
+                m_statistics.increase_total_probe_length(i);
 
                 size_t offset = probe.offset(i);
                 assert(is_within_bounds(m_slots, offset));
@@ -81,6 +83,8 @@ private:
             {
                 int i = mask_empty.LowestBitSet();
 
+                m_statistics.increase_total_probe_length(i);
+
                 size_t offset = probe.offset() + i;
 
                 assert(is_within_bounds(m_slots, offset));
@@ -90,14 +94,12 @@ private:
                 m_controls[offset] = static_cast<absl::container_internal::ctrl_t>(h2);
                 ++m_size;
 
-                ++m_statistics.m_num_probes;
-                m_statistics.m_sum_probe_lengths += i;
-
                 return { const_iterator(*this, offset), true };
             }
 
+            m_statistics.increase_total_probe_length(absl::container_internal::Group::kWidth);
+
             probe.next();
-            m_statistics.m_sum_probe_lengths += absl::container_internal::Group::kWidth;
         }
     }
 

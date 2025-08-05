@@ -29,14 +29,26 @@ struct HashSetStatistics
     size_t m_num_rehashes = 0;
     std::chrono::milliseconds m_total_rehash_time = std::chrono::milliseconds::zero();
     size_t m_num_probes = 0;
-    size_t m_sum_probe_lengths = 0;
+    size_t m_total_probe_length = 0;
+
+    void increment_num_rehashes() { ++m_num_rehashes; }
+
+    template<typename Rep, typename Period>
+    void increase_total_rehash_time(std::chrono::duration<Rep, Period> delta)
+    {
+        m_total_rehash_time += delta;
+    }
+
+    void increment_num_probes() { ++m_num_probes; }
+
+    void increase_total_probe_length(size_t length) { m_total_probe_length += length; }
 
     HashSetStatistics& operator+=(const HashSetStatistics& rhs)
     {
         m_num_rehashes += rhs.m_num_rehashes;
         m_total_rehash_time += rhs.m_total_rehash_time;
         m_num_probes += rhs.m_num_probes;
-        m_sum_probe_lengths += rhs.m_sum_probe_lengths;
+        m_total_probe_length += rhs.m_total_probe_length;
         return *this;
     }
 };

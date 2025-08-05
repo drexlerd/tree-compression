@@ -54,23 +54,14 @@ protected:
     std::vector<Key> m_slots;
     std::vector<absl::container_internal::ctrl_t> m_controls;
 
-    size_t m_size;
-    size_t m_capacity;
+    GrowthInfo m_growth_info;
 
     Hash m_hash;
     EqualTo m_equal_to;
 
-    struct HashSetStatistics
-    {
-        size_t m_num_rehashes = 0;
-        std::chrono::milliseconds m_total_rehash_time = std::chrono::milliseconds::zero();
-        size_t m_num_probes = 0;
-        size_t m_sum_probe_lengths = 0;
-    };
-
     HashSetStatistics m_statistics;
 
-    HashIDMap() : m_slots(), m_controls(), m_size(0), m_capacity(InitialCapacity), m_hash(), m_equal_to()
+    HashIDMap() : m_slots(), m_controls(), m_growth_info(InitialCapacity), m_hash(), m_equal_to()
     {
         m_slots.resize(InitialCapacity);
 
@@ -84,6 +75,8 @@ protected:
     {
         assert(size() < capacity() && "Insert failed. Rehashing to higher capacity is required.");
 
+        m_statistics.increment_num_probes();
+
         size_t h = m_hash(slot);
         absl::container_internal::h2_t h2 = absl::container_internal::H2(h);
 
@@ -95,7 +88,7 @@ protected:
 
             for (const auto i : group.Match(h2))
             {
-                m_statistics.m_sum_probe_lengths += i;
+                m_statistics.increase_total_probe_length(i);
 
                 size_t offset = probe.offset(i);
                 assert(is_within_bounds(m_slots, offset));
@@ -109,28 +102,28 @@ protected:
             {
                 int i = mask_empty.LowestBitSet();
 
+                m_statistics.increase_total_probe_length(i);
+
                 size_t offset = probe.offset() + i;
                 assert(is_within_bounds(m_slots, offset));
 
                 m_slots[offset] = slot;
                 m_controls[offset] = static_cast<absl::container_internal::ctrl_t>(h2);
-                ++m_size;
-
-                ++m_statistics.m_num_probes;
-                m_statistics.m_sum_probe_lengths += i;
+                m_growth_info.increment_size();
 
                 return offset;
             }
 
+            m_statistics.increase_total_probe_length(absl::container_internal::Group::kWidth);
+
             probe.next();
-            m_statistics.m_sum_probe_lengths += absl::container_internal::Group::kWidth;
         }
     }
 
     const Key& operator[](I pos) const { return m_slots[pos]; }
 
-    size_t size() const { return m_size; }
-    size_t capacity() const { return m_capacity; }
+    size_t size() const { return m_growth_info.size(); }
+    size_t capacity() const { return m_growth_info.capacity(); }
     double load_factor() const { return static_cast<double>(size()) / capacity(); }
     constexpr double max_load_factor() const { return MAX_LOAD_FACTOR; }
     bool has_capacity_for(size_t amount) const { return (static_cast<double>(size() + amount) / capacity()) <= MAX_LOAD_FACTOR; }
@@ -155,28 +148,27 @@ private:
     {
         std::vector<Slot<I>> slots;
         std::vector<absl::container_internal::ctrl_t> controls;
-        size_t size;
-        size_t capacity;
+        GrowthInfo growth_info;
 
-        explicit RehashData(size_t capacity) : slots(capacity), controls(), size(0), capacity(capacity)
+        explicit RehashData(size_t capacity) : slots(capacity), controls(), growth_info(capacity)
         {
             // Sentinel-padded rolling buffer
             controls.reserve(capacity + absl::container_internal::Group::kWidth);
             controls.resize(capacity, absl::container_internal::ctrl_t::kEmpty);
             controls.resize(capacity + absl::container_internal::Group::kWidth, absl::container_internal::ctrl_t::kSentinel);
         }
-
-        bool has_capacity_for(size_t amount) const { return (static_cast<double>(size + amount) / capacity) <= MAX_LOAD_FACTOR; }
     };
 
     I insert(const Slot<I>& slot, RehashData& tmp)
     {
         assert(tmp.size < tmp.capacity && "Insert failed. Rehashing to higher capacity is required.");
 
+        this->m_statistics.increment_num_probes();
+
         size_t h = this->m_hash(slot);
         absl::container_internal::h2_t h2 = absl::container_internal::H2(h);
 
-        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, tmp.capacity);
+        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, tmp.growth_info.capacity());
 
         while (true)
         {
@@ -184,7 +176,7 @@ private:
 
             for (const auto i : group.Match(h2))
             {
-                this->m_statistics.m_sum_probe_lengths += i;
+                this->m_statistics.increase_total_probe_length(i);
 
                 size_t offset = probe.offset(i);
                 assert(is_within_bounds(tmp.slots, offset));
@@ -198,21 +190,21 @@ private:
             {
                 int i = mask_empty.LowestBitSet();
 
+                this->m_statistics.increase_total_probe_length(i);
+
                 size_t offset = probe.offset() + i;
                 assert(is_within_bounds(tmp.slots, offset));
 
                 tmp.slots[offset] = slot;
                 tmp.controls[offset] = static_cast<absl::container_internal::ctrl_t>(h2);
-                ++tmp.size;
-
-                ++this->m_statistics.m_num_probes;
-                this->m_statistics.m_sum_probe_lengths += i;
+                tmp.growth_info.increment_size();
 
                 return offset;
             }
 
+            this->m_statistics.increase_total_probe_length(absl::container_internal::Group::kWidth);
+
             probe.next();
-            this->m_statistics.m_sum_probe_lengths += absl::container_internal::Group::kWidth;
         }
     }
 
@@ -257,18 +249,16 @@ private:
 
             backup_unstable_indices.push_back(root.i1);
 
-            if (!tmp.has_capacity_for(root.i2))
+            if (tmp.growth_info.growth_left() < 2 * root.i2)
             {
                 /* Rollback rehash */
+                m_roots.m_uniqueness.clear();
                 for (I stable_index_2 = 1; stable_index_2 < backup_unstable_indices.size(); ++stable_index_2)
                 {
                     this->m_roots.m_slots[stable_index].i1 = backup_unstable_indices[stable_index_2];
-                }
-                m_roots.m_uniqueness.clear();
-                for (I stable_index_2 = 1; stable_index_2 < this->m_roots.size(); ++stable_index_2)
-                {
                     this->m_roots.m_uniqueness.emplace(stable_index);
                 }
+
                 return false;
             }
 
@@ -278,13 +268,9 @@ private:
             this->m_roots.m_uniqueness.emplace(stable_index);
         }
 
-        if (tmp.size > new_capacity)
-            throw std::runtime_error("Encountered insufficient capacity during rehash due to changed structural sharing.");
-
         std::swap(this->m_slots, tmp.slots);
         std::swap(this->m_controls, tmp.controls);
-        this->m_size = tmp.size;
-        this->m_capacity = tmp.capacity;
+        std::swap(this->m_growth_info, tmp.growth_info);
 
         return true;
     }
@@ -312,7 +298,7 @@ public:
 
         auto start = clock::now();  // Start timing
 
-        ++this->m_statistics.m_num_rehashes;
+        this->m_statistics.increment_num_rehashes();
 
         size_t new_capacity = this->capacity();
 
@@ -325,8 +311,7 @@ public:
                 break;
         }
 
-        auto end = clock::now();
-        this->m_statistics.m_total_rehash_time += std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        this->m_statistics.increase_total_rehash_time(std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - start));
     }
 
     I insert_root(const Slot<I>& slot) { return m_roots.insert(slot); }
