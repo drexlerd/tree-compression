@@ -121,8 +121,6 @@ public:
         m_hash(hash),
         m_equal_to(equal_to)
     {
-        assert(absl::container_internal::IsValidCapacity(m_capacity));
-
         // Sentinel-padded rolling buffer
         m_controls.reserve(this->capacity() + absl::container_internal::Group::kWidth);
         m_controls.resize(this->capacity(), absl::container_internal::ctrl_t::kEmpty);

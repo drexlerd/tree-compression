@@ -340,7 +340,7 @@ inline auto insert_recursively(Iterator it, Iterator end, typename Set::index_ty
 
     /* Base cases */
     if (size == 1)
-        return *it;  ///< Skip node creation
+        return I(*it);  ///< Skip node creation
 
     if (size == 2)
         return table.insert(Slot<I>(*it, *(it + 1)));
