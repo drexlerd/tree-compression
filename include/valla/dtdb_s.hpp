@@ -152,7 +152,7 @@ read_state(const Slot<typename Set1::index_type>& root_slot, const Set1& table, 
 
 template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
     requires AreCompatibleIndexedHashSets<Set1, Set2>
-class const_iterator
+class const_iterator_general
 {
 public:
     using difference_type = std::ptrdiff_t;
@@ -230,8 +230,8 @@ private:
     }
 
 public:
-    const_iterator() : m_inner_table(nullptr), m_leaf_table(nullptr), m_inner_stack(), m_leaf_stack(), m_value(std::nullopt) {}
-    const_iterator(const const_iterator& other) :
+    const_iterator_general() : m_inner_table(nullptr), m_leaf_table(nullptr), m_inner_stack(), m_leaf_stack(), m_value(std::nullopt) {}
+    const_iterator_general(const const_iterator_general& other) :
         m_inner_table(other.m_inner_table),
         m_leaf_table(other.m_leaf_table),
         m_inner_stack(other.m_inner_stack.clone()),
@@ -239,7 +239,7 @@ public:
         m_value(other.m_value)
     {
     }
-    const_iterator& operator=(const const_iterator& other)
+    const_iterator_general& operator=(const const_iterator_general& other)
     {
         if (*this != other)
         {
@@ -251,9 +251,9 @@ public:
         }
         return *this;
     }
-    const_iterator(const_iterator&& other) = default;
-    const_iterator& operator=(const_iterator&& other) = default;
-    const_iterator(const Set1& inner_table, const Set2& leaf_table, const Slot<index_type>& root_slot, bool begin) :
+    const_iterator_general(const_iterator_general&& other) = default;
+    const_iterator_general& operator=(const_iterator_general&& other) = default;
+    const_iterator_general(const Set1& inner_table, const Set2& leaf_table, const Slot<index_type>& root_slot, bool begin) :
         m_inner_table(&inner_table),
         m_leaf_table(&leaf_table),
         m_inner_stack(),
@@ -288,33 +288,33 @@ public:
         }
     }
     value_type operator*() const { return *m_value; }
-    const_iterator& operator++()
+    const_iterator_general& operator++()
     {
         advance();
         return *this;
     }
-    const_iterator operator++(int)
+    const_iterator_general operator++(int)
     {
         auto it = *this;
         ++it;
         return it;
     }
-    bool operator==(const const_iterator& other) const { return m_value == other.m_value; }
-    bool operator!=(const const_iterator& other) const { return !(*this == other); }
+    bool operator==(const const_iterator_general& other) const { return m_value == other.m_value; }
+    bool operator!=(const const_iterator_general& other) const { return !(*this == other); }
 };
 
 template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
     requires AreCompatibleIndexedHashSets<Set1, Set2>
 inline auto begin(Slot<typename Set1::index_type> root, const Set1& table, const Set2& leaf_table)
 {
-    return const_iterator<Set1, Set2>(table, leaf_table, root, true);
+    return const_iterator_general<Set1, Set2>(table, leaf_table, root, true);
 }
 
 template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
     requires AreCompatibleIndexedHashSets<Set1, Set2>
 inline auto end(const Set1&, const Set2&)
 {
-    return const_iterator<Set1, Set2>();
+    return const_iterator_general<Set1, Set2>();
 }
 
 template<IsStableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
@@ -428,25 +428,25 @@ inline void read_state(const Slot<typename Set::index_type>& root_slot, const Se
  * ConstIterator
  */
 
-template<IsStableIndexedHashSet Set1>
-class const_iterator<Set1, Set1>
+template<IsStableIndexedHashSet Set>
+class const_iterator_uint
 {
 public:
     using difference_type = std::ptrdiff_t;
-    using value_type = typename Set1::index_type;
+    using value_type = typename Set::index_type;
     using pointer = value_type*;
     using reference = value_type;
     using iterator_category = std::input_iterator_tag;
     using iterator_concept = std::input_iterator_tag;
 
 private:
-    const Set1* m_table;
+    const Set* m_table;
     UniqueObjectPoolPtr<std::vector<Entry<value_type>>> m_stack;
     value_type m_value;
 
     static constexpr const value_type END_POS = std::numeric_limits<value_type>::max();
 
-    const Set1& table() const
+    const Set& table() const
     {
         assert(m_table);
         return *m_table;
@@ -478,9 +478,9 @@ private:
     }
 
 public:
-    const_iterator() : m_table(nullptr), m_stack(), m_value(END_POS) {}
-    const_iterator(const const_iterator& other) : m_table(other.m_table), m_stack(other.m_stack.clone()), m_value(other.m_value) {}
-    const_iterator& operator=(const const_iterator& other)
+    const_iterator_uint() : m_table(nullptr), m_stack(), m_value(END_POS) {}
+    const_iterator_uint(const const_iterator_uint& other) : m_table(other.m_table), m_stack(other.m_stack.clone()), m_value(other.m_value) {}
+    const_iterator_uint& operator=(const const_iterator_uint& other)
     {
         if (*this != other)
         {
@@ -490,9 +490,9 @@ public:
         }
         return *this;
     }
-    const_iterator(const_iterator&& other) = default;
-    const_iterator& operator=(const_iterator&& other) = default;
-    const_iterator(const Set1& table, Slot<value_type> root, bool begin) : m_table(&table), m_stack(), m_value(END_POS)
+    const_iterator_uint(const_iterator_uint&& other) = default;
+    const_iterator_uint& operator=(const_iterator_uint&& other) = default;
+    const_iterator_uint(const Set& table, Slot<value_type> root, bool begin) : m_table(&table), m_stack(), m_value(END_POS)
     {
         assert(m_table);
 
@@ -509,35 +509,35 @@ public:
         }
     }
     value_type operator*() const { return m_value; }
-    const_iterator& operator++()
+    const_iterator_uint& operator++()
     {
         advance();
         return *this;
     }
-    const_iterator operator++(int)
+    const_iterator_uint operator++(int)
     {
         auto it = *this;
         ++it;
         return it;
     }
-    bool operator==(const const_iterator& other) const { return m_value == other.m_value; }
-    bool operator!=(const const_iterator& other) const { return !(*this == other); }
+    bool operator==(const const_iterator_uint& other) const { return m_value == other.m_value; }
+    bool operator!=(const const_iterator_uint& other) const { return !(*this == other); }
 };
 
-template<IsStableIndexedHashSet Set1>
-inline auto begin(Slot<typename Set1::index_type> root, const Set1& table)
+template<IsStableIndexedHashSet Set>
+inline auto begin(Slot<typename Set::index_type> root, const Set& table)
 {
-    return const_iterator<Set1, Set1>(table, root, true);
+    return const_iterator_uint<Set>(table, root, true);
 }
 
-template<IsStableIndexedHashSet Set1>
-inline auto end(const Set1&)
+template<IsStableIndexedHashSet Set>
+inline auto end(const Set&)
 {
-    return const_iterator<Set1, Set1>();
+    return const_iterator_uint<Set>();
 }
 
-template<IsStableIndexedHashSet Set1>
-inline auto range(Slot<typename Set1::index_type> root, const Set1& table)
+template<IsStableIndexedHashSet Set>
+inline auto range(Slot<typename Set::index_type> root, const Set& table)
 {
     return std::ranges::subrange(begin(root, table), end(table));
 }
