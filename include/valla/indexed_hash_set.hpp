@@ -28,6 +28,7 @@
 
 namespace valla
 {
+
 template<typename T, std::unsigned_integral I, typename Hash = Hash<T>, typename EqualTo = EqualTo<T>>
 class IndexedHashSet
 {
@@ -112,7 +113,8 @@ private:
     std::vector<T> m_slots;
     absl::flat_hash_set<I, IndexReferencedHash, IndexReferencedEqualTo> m_uniqueness;
 
-    template<std::unsigned_integral I_, typename Hash_, typename EqualTo_, size_t InitialCapacity_>
+    template<std::unsigned_integral I_, typename Hash_, typename EqualTo_, IsStableIndexedHashSet RootSet_, size_t InitialCapacity_>
+        requires std::same_as<typename RootSet_::value_type, Slot<I_>> && std::same_as<typename RootSet_::index_type, I_>
     friend class TreeHashIDMap;
 };
 

@@ -129,8 +129,13 @@ protected:
 };
 
 /// @brief `TreeHashIDMap` implements a HashIDMap for chains of perfectly balanced binary trees with DFS style rehash policy.
-template<std::unsigned_integral I, typename Hash = Hash<Slot<I>>, typename EqualTo = std::equal_to<Slot<I>>, size_t InitialCapacity = 127>
-class TreeHashIDMap : public HashIDMap<TreeHashIDMap<I, Hash, EqualTo, InitialCapacity>, Slot<I>, I, Hash, EqualTo, InitialCapacity>
+template<std::unsigned_integral I,
+         typename Hash = Hash<Slot<I>>,
+         typename EqualTo = std::equal_to<Slot<I>>,
+         IsStableIndexedHashSet RootSet = IndexedHashSet<Slot<I>, I, Hash, EqualTo>,
+         size_t InitialCapacity = 127>
+    requires std::same_as<typename RootSet::value_type, Slot<I>> && std::same_as<typename RootSet::index_type, I>
+class TreeHashIDMap : public HashIDMap<TreeHashIDMap<I, Hash, EqualTo, RootSet, InitialCapacity>, Slot<I>, I, Hash, EqualTo, InitialCapacity>
 {
 public:
     using value_type = Slot<I>;
@@ -139,7 +144,8 @@ public:
     static constexpr bool is_stable = false;
 
 private:
-    IndexedHashSet<Slot<I>, I> m_roots;  ///< Dynamic hash ID maps require stable mapping for root nodes.
+    RootSet m_roots;  ///< Dynamic hash ID maps require stable mapping for root nodes.
+
     std::vector<bool> m_stable_leaves;
 
     struct RehashData
@@ -273,7 +279,7 @@ private:
         return true;
     }
 
-    using Base = HashIDMap<TreeHashIDMap<I, Hash, EqualTo, InitialCapacity>, Slot<I>, I, Hash, EqualTo, InitialCapacity>;
+    using Base = HashIDMap<TreeHashIDMap<I, Hash, EqualTo, RootSet, InitialCapacity>, Slot<I>, I, Hash, EqualTo, InitialCapacity>;
 
     friend Base;
 
