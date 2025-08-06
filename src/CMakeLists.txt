@@ -1,8 +1,6 @@
 
 add_library(core STATIC
     "../include/valla/concepts.hpp"
-    "../include/valla/config.hpp"
-    "../include/valla/declarations.hpp"
     "../include/valla/dtdb_h_impl.hpp"
     "../include/valla/dtdb_h.hpp"
     "../include/valla/dtdb_s_impl.hpp"
