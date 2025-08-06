@@ -18,14 +18,15 @@
 #ifndef VALLA_INCLUDE_INDEXED_HASH_SET_HPP_
 #define VALLA_INCLUDE_INDEXED_HASH_SET_HPP_
 
-#include "valla/declarations.hpp"
+#include "valla/concepts.hpp"
+#include "valla/equal_to.hpp"
+#include "valla/hash.hpp"
 
-#include <algorithm>
-#include <cassert>
-#include <cmath>
-#include <iostream>
+#include <absl/container/flat_hash_set.h>
+#include <concepts>
+#include <cstddef>
 #include <memory>
-#include <stack>
+#include <vector>
 
 namespace valla
 {
@@ -37,8 +38,6 @@ public:
     using value_type = T;
     using index_type = I;
 
-    static constexpr bool is_stable = true;
-
 private:
     struct IndexReferencedHash
     {
@@ -49,7 +48,7 @@ private:
 
         size_t operator()(I el) const
         {
-            assert(el < vec->size());
+            assert(is_within_bounds(*vec, el));
             return hash(vec->operator[](el));
         }
     };
@@ -63,8 +62,8 @@ private:
 
         size_t operator()(I lhs, I rhs) const
         {
-            assert(lhs < vec->size());
-            assert(rhs < vec->size());
+            assert(is_within_bounds(*vec, lhs));
+            assert(is_within_bounds(*vec, rhs));
             return equal_to(vec->operator[](lhs), vec->operator[](rhs));
         }
     };

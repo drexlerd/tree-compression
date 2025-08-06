@@ -16,7 +16,7 @@
  */
 
 #include <gtest/gtest.h>
-#include <valla/succinct_indexed_hash_set.hpp>
+#include <valla/valla.hpp>
 
 namespace valla::tests
 {

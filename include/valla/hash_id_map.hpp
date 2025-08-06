@@ -18,10 +18,13 @@
 #ifndef VALLA_INCLUDE_HASH_ID_MAP_HPP_
 #define VALLA_INCLUDE_HASH_ID_MAP_HPP_
 
-#include "valla/declarations.hpp"
+#include "valla/concepts.hpp"
+#include "valla/equal_to.hpp"
+#include "valla/growthinfo.hpp"
+#include "valla/hash.hpp"
 #include "valla/indexed_hash_set.hpp"
+#include "valla/statistics.hpp"
 
-#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <vector>
@@ -152,8 +155,6 @@ class TreeHashIDMap : public HashIDMap<TreeHashIDMap<I, Hash, EqualTo, RootSet, 
 public:
     using value_type = Slot<I>;
     using index_type = I;
-
-    static constexpr bool is_stable = false;
 
 private:
     RootSet m_roots;

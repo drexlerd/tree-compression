@@ -18,7 +18,6 @@
 #ifndef VALLA_INCLUDE_SUCCINCT_INDEXED_HASH_SET_HPP_
 #define VALLA_INCLUDE_SUCCINCT_INDEXED_HASH_SET_HPP_
 
-#include "valla/declarations.hpp"
 #include "valla/succinct_flat_hash_set.hpp"
 
 #include <algorithm>
@@ -38,8 +37,6 @@ public:
     using value_type = T;
     using index_type = I;
 
-    static constexpr bool is_stable = true;
-
 private:
     struct IndexReferencedHash
     {
@@ -50,7 +47,7 @@ private:
 
         size_t operator()(I el) const
         {
-            assert(el < vec->size());
+            assert(is_within_bounds(*vec, el));
             /* We obtain a stronger hash by decoding the slot and passing it into the Slot hash. */
             return hash(Uint64tCoder<T>::from_uint64_t(vec->operator[](el), vec->width()));
         }
@@ -65,8 +62,8 @@ private:
 
         size_t operator()(I lhs, I rhs) const
         {
-            assert(lhs < vec->size());
-            assert(rhs < vec->size());
+            assert(is_within_bounds(*vec, lhs));
+            assert(is_within_bounds(*vec, rhs));
             return equal_to(vec->operator[](lhs), vec->operator[](rhs));
         }
     };

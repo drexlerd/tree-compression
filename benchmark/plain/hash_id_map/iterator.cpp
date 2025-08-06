@@ -16,7 +16,7 @@
  */
 
 #include <benchmark/benchmark.h>
-#include <valla/dtdb_h.hpp>
+#include <valla/valla.hpp>
 
 namespace valla::benchmarks
 {

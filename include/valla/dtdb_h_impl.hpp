@@ -18,18 +18,10 @@
 #ifndef VALLA_INCLUDE_DTDB_H_IMPL_HPP_
 #define VALLA_INCLUDE_DTDS_H_IMPL_HPP_
 
-#include "valla/declarations.hpp"
 #include "valla/hash_id_map.hpp"
 #include "valla/indexed_hash_set.hpp"
+#include "valla/iterator.hpp"
 #include "valla/unique_object_pool.hpp"
-
-#include <algorithm>
-#include <cassert>
-#include <cmath>
-#include <concepts>
-#include <iostream>
-#include <ranges>
-#include <stack>
 
 namespace valla
 {
@@ -157,7 +149,7 @@ inline void read_state(typename Set1::index_type root_index, const Set1& tree_ta
 
 template<IsUnstableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
     requires AreGeneralCaseHashSets<Set1, Set2>
-class const_iterator_general
+class const_iterator_unstable_general
 {
 public:
     using difference_type = std::ptrdiff_t;
@@ -235,8 +227,8 @@ private:
     }
 
 public:
-    const_iterator_general() : m_inner_table(nullptr), m_leaf_table(nullptr), m_inner_stack(), m_value(std::nullopt) {}
-    const_iterator_general(const const_iterator_general& other) :
+    const_iterator_unstable_general() : m_inner_table(nullptr), m_leaf_table(nullptr), m_inner_stack(), m_value(std::nullopt) {}
+    const_iterator_unstable_general(const const_iterator_unstable_general& other) :
         m_inner_table(other.m_inner_table),
         m_leaf_table(other.m_leaf_table),
         m_inner_stack(other.m_inner_stack.clone()),
@@ -244,7 +236,7 @@ public:
         m_value(other.m_value)
     {
     }
-    const_iterator_general& operator=(const const_iterator_general& other)
+    const_iterator_unstable_general& operator=(const const_iterator_unstable_general& other)
     {
         if (*this != other)
         {
@@ -256,9 +248,9 @@ public:
         }
         return *this;
     }
-    const_iterator_general(const_iterator_general&& other) = default;
-    const_iterator_general& operator=(const_iterator_general&& other) = default;
-    const_iterator_general(const Set1& inner_table, const Set2& leaf_table, index_type root, bool begin) :
+    const_iterator_unstable_general(const_iterator_unstable_general&& other) = default;
+    const_iterator_unstable_general& operator=(const_iterator_unstable_general&& other) = default;
+    const_iterator_unstable_general(const Set1& inner_table, const Set2& leaf_table, index_type root, bool begin) :
         m_inner_table(&inner_table),
         m_leaf_table(&leaf_table),
         m_inner_stack(),
@@ -298,33 +290,33 @@ public:
         }
     }
     value_type operator*() const { return *m_value; }
-    const_iterator_general& operator++()
+    const_iterator_unstable_general& operator++()
     {
         advance();
         return *this;
     }
-    const_iterator_general operator++(int)
+    const_iterator_unstable_general operator++(int)
     {
         auto it = *this;
         ++it;
         return it;
     }
-    bool operator==(const const_iterator_general& other) const { return m_value == other.m_value; }
-    bool operator!=(const const_iterator_general& other) const { return !(*this == other); }
+    bool operator==(const const_iterator_unstable_general& other) const { return m_value == other.m_value; }
+    bool operator!=(const const_iterator_unstable_general& other) const { return !(*this == other); }
 };
 
 template<IsUnstableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
     requires AreGeneralCaseHashSets<Set1, Set2>
 inline auto begin(typename Set1::index_type root, const Set1& inner_table, const Set2& leaf_table)
 {
-    return const_iterator_general<Set1, Set2>(inner_table, leaf_table, root, true);
+    return const_iterator_unstable_general<Set1, Set2>(inner_table, leaf_table, root, true);
 }
 
 template<IsUnstableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
     requires AreGeneralCaseHashSets<Set1, Set2>
 inline auto end(const Set1&, const Set2&)
 {
-    return const_iterator_general<Set1, Set2>();
+    return const_iterator_unstable_general<Set1, Set2>();
 }
 
 template<IsUnstableIndexedHashSet Set1, IsStableIndexedHashSet Set2>
@@ -442,7 +434,7 @@ inline void read_state(typename Set::index_type root_index, const Set& table, st
  */
 
 template<IsUnstableIndexedHashSet Set>
-class const_iterator_uint
+class const_iterator_unstable_uint
 {
 public:
     using difference_type = std::ptrdiff_t;
@@ -493,9 +485,9 @@ private:
     }
 
 public:
-    const_iterator_uint() : m_table(nullptr), m_stack(), m_value(END_POS) {}
-    const_iterator_uint(const const_iterator_uint& other) : m_table(other.m_table), m_stack(other.m_stack.clone()), m_value(other.m_value) {}
-    const_iterator_uint& operator=(const const_iterator_uint& other)
+    const_iterator_unstable_uint() : m_table(nullptr), m_stack(), m_value(END_POS) {}
+    const_iterator_unstable_uint(const const_iterator_unstable_uint& other) : m_table(other.m_table), m_stack(other.m_stack.clone()), m_value(other.m_value) {}
+    const_iterator_unstable_uint& operator=(const const_iterator_unstable_uint& other)
     {
         if (*this != other)
         {
@@ -505,9 +497,9 @@ public:
         }
         return *this;
     }
-    const_iterator_uint(const_iterator_uint&& other) = default;
-    const_iterator_uint& operator=(const_iterator_uint&& other) = default;
-    const_iterator_uint(const Set& table, index_type root, bool begin) : m_table(&table), m_stack(), m_value(END_POS)
+    const_iterator_unstable_uint(const_iterator_unstable_uint&& other) = default;
+    const_iterator_unstable_uint& operator=(const_iterator_unstable_uint&& other) = default;
+    const_iterator_unstable_uint(const Set& table, index_type root, bool begin) : m_table(&table), m_stack(), m_value(END_POS)
     {
         assert(m_table);
 
@@ -526,31 +518,31 @@ public:
         }
     }
     value_type operator*() const { return m_value; }
-    const_iterator_uint& operator++()
+    const_iterator_unstable_uint& operator++()
     {
         advance();
         return *this;
     }
-    const_iterator_uint operator++(int)
+    const_iterator_unstable_uint operator++(int)
     {
         auto it = *this;
         ++it;
         return it;
     }
-    bool operator==(const const_iterator_uint& other) const { return m_value == other.m_value; }
-    bool operator!=(const const_iterator_uint& other) const { return !(*this == other); }
+    bool operator==(const const_iterator_unstable_uint& other) const { return m_value == other.m_value; }
+    bool operator!=(const const_iterator_unstable_uint& other) const { return !(*this == other); }
 };
 
 template<IsUnstableIndexedHashSet Set>
 inline auto begin(typename Set::index_type root, const Set& table)
 {
-    return const_iterator_uint<Set>(table, root, true);
+    return const_iterator_unstable_uint<Set>(table, root, true);
 }
 
 template<IsUnstableIndexedHashSet Set>
 inline auto end(const Set&)
 {
-    return const_iterator_uint<Set>();
+    return const_iterator_unstable_uint<Set>();
 }
 
 template<IsUnstableIndexedHashSet Set>

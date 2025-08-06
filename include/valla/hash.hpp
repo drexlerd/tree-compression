@@ -21,6 +21,7 @@
 #include "valla/slot.hpp"
 #include "valla/uint64tcoder.hpp"
 
+#include <absl/hash/hash.h>
 #include <concepts>
 #include <utility>
 

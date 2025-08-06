@@ -18,17 +18,7 @@
 #ifndef VALLA_INCLUDE_DTDB_S_HPP_
 #define VALLA_INCLUDE_DTDB_S_HPP_
 
-#include "valla/declarations.hpp"
-#include "valla/indexed_hash_set.hpp"
-#include "valla/succinct_indexed_hash_set.hpp"
-#include "valla/unique_object_pool.hpp"
-
-#include <algorithm>
-#include <cassert>
-#include <cmath>
-#include <concepts>
-#include <iostream>
-#include <stack>
+#include "valla/concepts.hpp"
 
 namespace valla
 {

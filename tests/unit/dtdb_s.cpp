@@ -16,7 +16,7 @@
  */
 
 #include <gtest/gtest.h>
-#include <valla/dtdb_s.hpp>
+#include <valla/valla.hpp>
 
 namespace valla::tests
 {
