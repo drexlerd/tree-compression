@@ -6,7 +6,7 @@ This repository contains a C++ library for dynamic tree databases. Dynamic tree 
 
 ## API
 
-The following example illustrates 
+The following example illustrates the API of the library. First, it instantiates several indexed hash sets for deduplications. Second, it inserts a sequence over uint32_t that precisely matches the data type used for node pointers. Last, it inserts a sequence over double that requires the additional leaf table to internally map the sequence to a sequence over uint32_t.
 
 ```cpp
 #include <valla/valla.hpp>
@@ -22,7 +22,7 @@ auto leaf_table = IndexedHashSet<double, uint32_t>();
 /* Sequence of uint32_t (special case) */
 {
     // Create a sequence over uint32_t
-    const auto z = std::vector<uint32_t> { 0, 1, 3, 4, 7, 10 };
+    const auto z = std::vector<uint32_t> { 3, 1, 2, 4, 7, 10 };
     // Insert the sequence that satisfies the std::input_range concept
     const auto z_root = insert(z, inner_table);
     // Read the sequence from the given handle z_root.
@@ -35,7 +35,7 @@ auto leaf_table = IndexedHashSet<double, uint32_t>();
 /* Sequence of double (general case) */
 {
     // Create a sequence over double (requires the leaf table for deduplication at the leafs)
-    const auto z = std::vector<double> { 0, 1, 3, 4, 7, 10 };
+    const auto z = std::vector<double> { 4.2, 1.7, 3, 4, 7.7, 0.41 };
     // Insert the sequence that satisfies the std::input_range concept
     const auto z_root = insert(z, inner_table, leaf_table);
     // Read the sequence from the given handle z_root.
