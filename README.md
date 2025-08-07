@@ -9,6 +9,8 @@ This repository contains a C++ library for dynamic tree databases. Dynamic tree 
 The following example illustrates 
 
 ```cpp
+#include <valla/valla.hpp>
+
 /* Common setup */
 // Deduplicate root nodes, i.e., pair of uint32_t representing pointer to inner node and sequence length, by bijectively mapping it to uint32_t
 auto root_table = IndexedHashSet<Slot<uint32_t>, uint32_t>();
