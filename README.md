@@ -1,6 +1,48 @@
 # Dynamic Tree Databases
 
-This repository contains a C++ libary for Dynamic Swiss Tree Databases (DTDB-S) and Dynamic HashID Tree Databases (DTDB-H). 
+A Tree database is a data structure D for representing sequences of elements over a finite alphabet with two operations: 1) insert(z) inserts a sequence z of length k into D and returns a handle i, and 2) lookup(i) returns the sequence z corresponding to the handle i. Tree databases encode a sequence z = z1, z2, ..., zk as perfectly balanced binary trees, where subtrees may be shared among trees. The best-case compression approaches the information-theoretic lower bound of one word, assuming that one variable changes on average from one sequence to the next. Tree databases have successfully been applied to compressing the set of generated states during explicit search in model checking and automated planning. Tree databases were initially proposed as statically sized data structures, requiring the user to estimate the amount of memory needed.
+
+This repository contains a C++ library for dynamic tree databases. Dynamic tree databases allocate memory dynamically as needed. Therefore, they rely on user estimates of the required memory, but have the same desired properties. The available implementations are based on modern Swiss tables and fixed word sizes. However, more memory-efficient implementations based on succinct data structures and compact hashing are possible, but are also significantly more challenging to implement efficiently at runtime.
+
+## API
+
+The following example illustrates 
+
+```cpp
+/* Common setup */
+// Deduplicate root nodes, i.e., pair of uint32_t representing pointer to inner node and sequence length, by bijectively mapping it to uint32_t
+auto root_table = IndexedHashSet<Slot<uint32_t>, uint32_t>();
+// Deduplicate inner nodes, i.e., pair of uint32_t representing pointer to left and right child node, by bijectively mapping it to uint32_t
+auto inner_table = IndexedHashSet<Slot<uint32_t>, uint32_t>();
+// Deduplicate doubles by bijectively mapping it to uint32_t
+auto leaf_table = IndexedHashSet<double, uint32_t>();
+
+/* Sequence of uint32_t (special case) */
+{
+    // Create a sequence over uint32_t
+    const auto z = std::vector<uint32_t> { 0, 1, 3, 4, 7, 10 };
+    // Insert the sequence that satisfies the std::input_range concept
+    const auto z_root = insert(z, inner_table);
+    // Read the sequence from the given handle z_root.
+    auto z_out = std::vector<uint32_t>{};
+    read_state(z_root, inner_table, z_out);
+    // Iterate over the sequence from the given handle z_root.
+    for (const auto element : range(z_root, inner_table)) { }
+}
+
+/* Sequence of double (general case) */
+{
+    // Create a sequence over double (requires the leaf table for deduplication at the leafs)
+    const auto z = std::vector<double> { 0, 1, 3, 4, 7, 10 };
+    // Insert the sequence that satisfies the std::input_range concept
+    const auto z_root = insert(z, inner_table, leaf_table);
+    // Read the sequence from the given handle z_root.
+    auto z_out = std::vector<double>{};
+    read_state(z_root, inner_table, leaf_table, z_out);
+    // Iterate over the sequence from the given handle z_root.
+    for (const auto element : range(z_root, inner_table, leaf_table)) { }
+}
+```
 
 ## Getting Started
 
