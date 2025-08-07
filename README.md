@@ -79,6 +79,19 @@ cmake --build build -j$(nproc)
 cmake --install build --prefix=<path/to/installation-directory>
 ```
 
+### Including the Project
+
+When the project is installed, it can easily be included in a cmake project using find_package, for example with the following code:
+
+```cmake
+find_package(valla CONFIG REQUIRED PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
+if(valla_FOUND)
+  message(STATUS "Found valla: ${valla_DIR} (found version ${valla_VERSION})")
+endif()
+```
+
+It is also possible to omit the CMAKE_PREFIX_PATH if the installation directory is visible to the compiler.
+
 ### Testing 
 
 The testing framework depends on GoogleTest and requires the additional compile flag `-DBUILD_TESTS=ON` to be set in the cmake configure step. The tests can be run by executing the following commands from the root.

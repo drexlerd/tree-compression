@@ -89,7 +89,7 @@ endif()
 ###########
 
 # Install header files
-install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/valla"
+install(DIRECTORY "${PROJECT_SOURCE_DIR}/include/valla" "${PROJECT_SOURCE_DIR}/include/sdsl"
     DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
 
 
