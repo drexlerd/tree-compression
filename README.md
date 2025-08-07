@@ -15,23 +15,23 @@ The following example illustrates the API of the library. First, it instantiates
 
 /* Common setup */
 // Deduplicate root nodes, i.e., pair of uint32_t representing pointer to inner node and sequence length, by bijectively mapping it to uint32_t
-auto root_table = IndexedHashSet<Slot<uint32_t>, uint32_t>();
+auto root_table = valla::IndexedHashSet<valla::Slot<uint32_t>, uint32_t>();
 // Deduplicate inner nodes, i.e., pair of uint32_t representing pointer to left and right child node, by bijectively mapping it to uint32_t
-auto inner_table = IndexedHashSet<Slot<uint32_t>, uint32_t>();
+auto inner_table = valla::IndexedHashSet<valla::Slot<uint32_t>, uint32_t>();
 // Deduplicate doubles by bijectively mapping it to uint32_t
-auto leaf_table = IndexedHashSet<double, uint32_t>();
+auto leaf_table = valla::IndexedHashSet<double, uint32_t>();
 
 /* Sequence of uint32_t (special case) */
 {
     // Create a sequence over uint32_t
     const auto z = std::vector<uint32_t> { 3, 1, 2, 4, 7, 10 };
     // Insert the sequence that satisfies the std::input_range concept
-    const auto z_root = insert(z, inner_table);
+    const auto z_root = valla::insert(z, inner_table);
     // Read the sequence from the given handle z_root.
     auto z_out = std::vector<uint32_t>{};
-    read_state(z_root, inner_table, z_out);
+    valla::read_state(z_root, inner_table, z_out);
     // Iterate over the sequence from the given handle z_root.
-    for (const auto element : range(z_root, inner_table)) { }
+    for (const auto element : valla::range(z_root, inner_table)) { }
 }
 
 /* Sequence of double (general case) */
@@ -39,12 +39,12 @@ auto leaf_table = IndexedHashSet<double, uint32_t>();
     // Create a sequence over double (requires the leaf table for deduplication of elements from the alphabet)
     const auto z = std::vector<double> { 4.2, 1.7, 3, 4, 7.7, 0.41 };
     // Insert the sequence that satisfies the std::input_range concept
-    const auto z_root = insert(z, inner_table, leaf_table);
+    const auto z_root = valla::insert(z, inner_table, leaf_table);
     // Read the sequence from the given handle z_root.
     auto z_out = std::vector<double>{};
-    read_state(z_root, inner_table, leaf_table, z_out);
+    valla::read_state(z_root, inner_table, leaf_table, z_out);
     // Iterate over the sequence from the given handle z_root.
-    for (const auto element : range(z_root, inner_table, leaf_table)) { }
+    for (const auto element : valla::range(z_root, inner_table, leaf_table)) { }
 }
 ```
 
