@@ -23,6 +23,7 @@
 #include "valla/growthinfo.hpp"
 #include "valla/hash.hpp"
 #include "valla/statistics.hpp"
+#include "valla/utils.hpp"
 
 #include <absl/container/internal/raw_hash_set.h>
 #include <cstddef>
@@ -32,7 +33,7 @@
 
 namespace valla
 {
-template<IsUint64tCodable T, std::unsigned_integral I, typename Hash = Hash<T>, typename EqualTo = EqualTo<T>, size_t InitialCapacity = 127>
+template<IsUint64tCodable T, std::unsigned_integral I, typename Hash = Hash<T>, typename EqualTo = EqualTo<T>, size_t InitialCapacity = 128>
 class succinct_flat_hash_set
 {
 public:
@@ -43,8 +44,8 @@ public:
     using const_iterator_type = const_iterator;
 
 private:
-    static_assert(((InitialCapacity + 1) & InitialCapacity) == 0, "InitialCapacity must be 2^{InitialCapacity}-1.");
-    static_assert(InitialCapacity >= 127, "InitialCapacity must be greater than 127.");
+    static_assert(is_power_of_two(InitialCapacity) && "InitialCapacity must be a power of two.");
+    static_assert(InitialCapacity >= 128, "InitialCapacity must be greater than 128.");
 
     GrowthInfo m_growth_info;
     sdsl::int_vector<> m_slots;
@@ -67,7 +68,7 @@ private:
         absl::container_internal::h2_t h2 = absl::container_internal::H2(h);
         assert(static_cast<int>(h2) >= 0);
 
-        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, capacity());
+        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, m_growth_info.mask());
 
         while (true)
         {
@@ -122,16 +123,17 @@ private:
 
 public:
     succinct_flat_hash_set(size_t capacity, uint8_t bit_width, Hash hash, EqualTo equal_to) :
-        m_growth_info(std::max(size_t(127), capacity)),                 ///< capacity must be at least 127 for deadlock free probing
+        m_growth_info(std::max(size_t(128), capacity)),                 ///< capacity must be at least 128 for deadlock free probing
         m_slots(this->capacity(), 0, std::max(uint8_t(1), bit_width)),  ///< bit width must be at least one, else it is set to 64
-        m_controls(),
+        m_controls(this->capacity() + absl::container_internal::Group::kWidth - 1),
         m_hash(hash),
         m_equal_to(equal_to)
     {
         // Sentinel-padded rolling buffer
-        m_controls.reserve(this->capacity() + absl::container_internal::Group::kWidth);
-        m_controls.resize(this->capacity(), absl::container_internal::ctrl_t::kEmpty);
-        m_controls.resize(this->capacity() + absl::container_internal::Group::kWidth, absl::container_internal::ctrl_t::kSentinel);
+        std::fill(m_controls.begin(), m_controls.begin() + capacity, absl::container_internal::ctrl_t::kEmpty);
+        std::fill(m_controls.begin() + capacity,
+                  m_controls.begin() + capacity + absl::container_internal::Group::kWidth,
+                  absl::container_internal::ctrl_t::kSentinel);
     }
 
     succinct_flat_hash_set(Hash hash, EqualTo equal_to) : succinct_flat_hash_set(InitialCapacity, 1, hash, equal_to) {}
@@ -154,7 +156,7 @@ public:
 
     void rehash()
     {
-        auto tmp = succinct_flat_hash_set((capacity() << 1) | 1, slots().width(), m_hash, m_equal_to);
+        auto tmp = succinct_flat_hash_set(2 * capacity(), slots().width(), m_hash, m_equal_to);
 
         for (size_t i = 0; i < capacity(); ++i)
         {
