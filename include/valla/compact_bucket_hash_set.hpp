@@ -18,6 +18,7 @@
 #ifndef VALLA_INCLUDE_COMPACT_BUCKET_HASH_SET_HPP_
 #define VALLA_INCLUDE_COMPACT_BUCKET_HASH_SET_HPP_
 
+#include "valla/compact_hash.hpp"
 #include "valla/equal_to.hpp"
 #include "valla/growthinfo.hpp"
 #include "valla/hash.hpp"
@@ -29,7 +30,7 @@
 
 namespace valla
 {
-template<IsUint64tCodable T, std::unsigned_integral I, typename Hash = Hash<T>, typename EqualTo = EqualTo<T>, size_t InitialCapacity = 128>
+template<IsUint64tCodable T, std::unsigned_integral I, typename Hash = CompactHash<T>, typename EqualTo = EqualTo<T>, size_t InitialCapacity = 128>
 class compact_bucket_hash_set
 {
 public:
