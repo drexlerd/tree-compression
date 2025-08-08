@@ -1,5 +1,6 @@
 
 add_library(core STATIC
+    "../include/valla/compact_bucket_hash_set.hpp"
     "../include/valla/concepts.hpp"
     "../include/valla/dtdb_h_impl.hpp"
     "../include/valla/dtdb_h.hpp"
