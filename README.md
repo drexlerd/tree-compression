@@ -26,12 +26,10 @@ auto leaf_table = valla::IndexedHashSet<double, uint32_t>();
     // Create a sequence over uint32_t
     const auto z = std::vector<uint32_t> { 3, 1, 2, 4, 7, 10 };
     // Insert the sequence that satisfies the std::input_range concept
-    const auto z_root = valla::insert(z, inner_table);
+    const auto z_root = valla::insert_sequence(z, inner_table);
     // Read the sequence from the given handle z_root.
     auto z_out = std::vector<uint32_t>{};
-    valla::read_sequence(z_root, inner_table, z_out);
-    // Iterate over the sequence from the given handle z_root.
-    for (const auto element : valla::range(z_root, inner_table)) { }
+    valla::read_sequence(z_root, inner_table, std::back_inserter(z_out));
 }
 
 /* Sequence of double (general case) */
@@ -39,12 +37,10 @@ auto leaf_table = valla::IndexedHashSet<double, uint32_t>();
     // Create a sequence over double (requires the leaf table for deduplication of elements from the alphabet)
     const auto z = std::vector<double> { 4.2, 1.7, 3, 4, 7.7, 0.41 };
     // Insert the sequence that satisfies the std::input_range concept
-    const auto z_root = valla::insert(z, inner_table, leaf_table);
+    const auto z_root = valla::insert_sequence(z, inner_table, leaf_table);
     // Read the sequence from the given handle z_root.
     auto z_out = std::vector<double>{};
-    valla::read_sequence(z_root, inner_table, leaf_table, z_out);
-    // Iterate over the sequence from the given handle z_root.
-    for (const auto element : valla::range(z_root, inner_table, leaf_table)) { }
+    valla::read_sequence(z_root, inner_table, leaf_table, std::back_inserter(z_out));
 }
 ```
 
