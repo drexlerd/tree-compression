@@ -32,53 +32,57 @@ TEST(VallaTests, PlainUintHashIDMapTest)
     /* uint32_t */
     {
         const auto s0 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
-        const auto s0_idx = insert(s0, table);
+        const auto s0_idx = insert_sequence(s0, table);
 
         EXPECT_EQ(table.size(), 15);
 
         // Created new state!
         EXPECT_EQ(s0_idx, 1);
 
-        read_state(s0_idx, table, index_list);
+        index_list.clear();
+        read_sequence(s0_idx, table, std::back_inserter(index_list));
         EXPECT_EQ(index_list, s0);
     }
 
     {
         const auto s1 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-        const auto s1_idx = insert(s1, table);
+        const auto s1_idx = insert_sequence(s1, table);
 
         EXPECT_EQ(table.size(), 16);
 
         // Created new state!
         EXPECT_EQ(s1_idx, 2);
 
-        read_state(s1_idx, table, index_list);
+        index_list.clear();
+        read_sequence(s1_idx, table, std::back_inserter(index_list));
         EXPECT_EQ(index_list, s1);
     }
 
     {
         const auto s2 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
-        const auto s2_idx = insert(s2, table);
+        const auto s2_idx = insert_sequence(s2, table);
 
         EXPECT_EQ(table.size(), 18);
 
         // Created new state!
         EXPECT_EQ(s2_idx, 3);
 
-        read_state(s2_idx, table, index_list);
+        index_list.clear();
+        read_sequence(s2_idx, table, std::back_inserter(index_list));
         EXPECT_EQ(index_list, s2);
     }
 
     {
         const auto s3 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
-        const auto s3_idx = insert(s3, table);
+        const auto s3_idx = insert_sequence(s3, table);
 
         EXPECT_EQ(table.size(), 18);
 
         // std::vector<uint32_t> already exists!
         EXPECT_EQ(s3_idx, 3);
 
-        read_state(s3_idx, table, index_list);
+        index_list.clear();
+        read_sequence(s3_idx, table, std::back_inserter(index_list));
         EXPECT_EQ(index_list, s3);
     }
 
@@ -86,7 +90,7 @@ TEST(VallaTests, PlainUintHashIDMapTest)
 
     {
         const auto s0 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15. };
-        const auto s0_idx = insert(s0, table, leaf_table);
+        const auto s0_idx = insert_sequence(s0, table, leaf_table);
 
         EXPECT_EQ(table.size(), 18);
         EXPECT_EQ(leaf_table.size(), 16);
@@ -94,13 +98,14 @@ TEST(VallaTests, PlainUintHashIDMapTest)
         // Created new state!
         EXPECT_EQ(s0_idx, 1);
 
-        read_state(s0_idx, table, leaf_table, double_list);
+        double_list.clear();
+        read_sequence(s0_idx, table, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s0);
     }
 
     {
         const auto s1 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16. };
-        const auto s1_idx = insert(s1, table, leaf_table);
+        const auto s1_idx = insert_sequence(s1, table, leaf_table);
 
         EXPECT_EQ(table.size(), 18);
         EXPECT_EQ(leaf_table.size(), 17);
@@ -108,13 +113,14 @@ TEST(VallaTests, PlainUintHashIDMapTest)
         // Created new state!
         EXPECT_EQ(s1_idx, 2);
 
-        read_state(s1_idx, table, leaf_table, double_list);
+        double_list.clear();
+        read_sequence(s1_idx, table, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s1);
     }
 
     {
         const auto s2 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
-        const auto s2_idx = insert(s2, table, leaf_table);
+        const auto s2_idx = insert_sequence(s2, table, leaf_table);
 
         EXPECT_EQ(table.size(), 18);
         EXPECT_EQ(leaf_table.size(), 18);
@@ -122,13 +128,14 @@ TEST(VallaTests, PlainUintHashIDMapTest)
         // Created new state!
         EXPECT_EQ(s2_idx, 3);
 
-        read_state(s2_idx, table, leaf_table, double_list);
+        double_list.clear();
+        read_sequence(s2_idx, table, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s2);
     }
 
     {
         const auto s3 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
-        const auto s3_idx = insert(s3, table, leaf_table);
+        const auto s3_idx = insert_sequence(s3, table, leaf_table);
 
         EXPECT_EQ(table.size(), 18);
         EXPECT_EQ(leaf_table.size(), 18);
@@ -136,7 +143,8 @@ TEST(VallaTests, PlainUintHashIDMapTest)
         // std::vector<double> already exists!
         EXPECT_EQ(s3_idx, 3);
 
-        read_state(s3_idx, table, leaf_table, double_list);
+        double_list.clear();
+        read_sequence(s3_idx, table, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s3);
     }
 }
@@ -151,33 +159,35 @@ TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
 
     {
         const auto s0 = std::vector<uint32_t> {};
-        const auto s0_idx = insert(s0, table);
+        const auto s0_idx = insert_sequence(s0, table);
 
         EXPECT_EQ(table.size(), 0);
 
         // Created new state!
         EXPECT_EQ(s0_idx, 0);
 
-        read_state(s0_idx, table, index_list);
+        index_list.clear();
+        read_sequence(s0_idx, table, std::back_inserter(index_list));
         EXPECT_EQ(index_list, s0);
     }
 
     {
         const auto s1 = std::vector<uint32_t> { 0 };
-        const auto s1_idx = insert(s1, table);
+        const auto s1_idx = insert_sequence(s1, table);
 
         EXPECT_EQ(table.size(), 0);
 
         // Created new state!
         EXPECT_EQ(s1_idx, 1);
 
-        read_state(s1_idx, table, index_list);
+        index_list.clear();
+        read_sequence(s1_idx, table, std::back_inserter(index_list));
         EXPECT_EQ(index_list, s1);
     }
 
     {
         const auto s0 = std::vector<double> {};
-        const auto s0_idx = insert(s0, table, leaf_table);
+        const auto s0_idx = insert_sequence(s0, table, leaf_table);
 
         EXPECT_EQ(table.size(), 0);
         EXPECT_EQ(leaf_table.size(), 0);
@@ -185,13 +195,14 @@ TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
         // Created new state!
         EXPECT_EQ(s0_idx, 0);
 
-        read_state(s0_idx, table, leaf_table, double_list);
+        index_list.clear();
+        read_sequence(s0_idx, table, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s0);
     }
 
     {
         const auto s1 = std::vector<double> { 0 };
-        const auto s1_idx = insert(s1, table, leaf_table);
+        const auto s1_idx = insert_sequence(s1, table, leaf_table);
 
         EXPECT_EQ(table.size(), 0);
         EXPECT_EQ(leaf_table.size(), 1);
@@ -199,41 +210,9 @@ TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
         // Created new state!
         EXPECT_EQ(s1_idx, 1);
 
-        read_state(s1_idx, table, leaf_table, double_list);
+        index_list.clear();
+        read_sequence(s1_idx, table, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s1);
-    }
-}
-
-TEST(VallaTests, PlainUintHashIDMapIteratorTest)
-{
-    auto table = TreeHashIDMap<uint32_t>();
-    auto leaf_table = IndexedHashSet<double, uint32_t>();
-
-    auto index_list = std::vector<uint32_t>();
-    auto double_list = std::vector<double>();
-
-    {
-        const auto s0 = std::vector<uint32_t> { 1, 2, 4, 5, 6 };
-        const auto s0_idx = insert(s0, table);
-
-        EXPECT_EQ(s0, std::vector<uint32_t>(begin(s0_idx, table), end(table)));
-    }
-
-    {
-        const auto s0 = std::vector<uint32_t> {};
-        EXPECT_EQ(s0, std::vector<uint32_t>(begin(uint32_t(0), table), end(table)));
-    }
-
-    {
-        const auto s0 = std::vector<double> { 1, 2, 4, 5, 6 };
-        const auto s0_idx = insert(s0, table, leaf_table);
-
-        EXPECT_EQ(s0, std::vector<double>(begin(s0_idx, table, leaf_table), end(table, leaf_table)));
-    }
-
-    {
-        const auto s0 = std::vector<double> {};
-        EXPECT_EQ(s0, std::vector<double>(begin(uint32_t(0), table, leaf_table), end(table, leaf_table)));
     }
 }
 
@@ -295,36 +274,20 @@ TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
         const auto& il = ils[i];
         const auto& dl = dls[i];
 
-        auto ir = insert(il, table);
-        auto dr = insert(dl, table, leaf_table);
+        auto ir = insert_sequence(il, table);
+        auto dr = insert_sequence(dl, table, leaf_table);
 
         irs.push_back(ir);
         drs.push_back(dr);
 
         /* Ensure newly inserted index sequence is readable*/
-        read_state(ir, table, out_il);
-        EXPECT_EQ(il, out_il);
-
         out_il.clear();
-        out_il.insert(out_il.end(), begin(ir, table), end(table));
-        EXPECT_EQ(il, out_il);
-
-        out_il.clear();
-        for (const auto x : range(ir, table))
-            out_il.push_back(x);
+        read_sequence(ir, table, std::back_inserter(out_il));
         EXPECT_EQ(il, out_il);
 
         /* Ensure newly inserted double sequence is readable*/
-        read_state(dr, table, leaf_table, out_dl);
-        EXPECT_EQ(dl, out_dl);
-
         out_dl.clear();
-        out_dl.insert(out_dl.end(), begin(dr, table, leaf_table), end(table, leaf_table));
-        EXPECT_EQ(dl, out_dl);
-
-        out_dl.clear();
-        for (const auto x : range(dr, table, leaf_table))
-            out_dl.push_back(x);
+        read_sequence(dr, table, leaf_table, std::back_inserter(out_dl));
         EXPECT_EQ(dl, out_dl);
 
         /* Ensure that all index sequences are readable after rehash. */
@@ -333,16 +296,8 @@ TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
             const auto& il_2 = ils[j];
             const auto& ir_2 = irs[j];
 
-            read_state(ir_2, table, out_il);
-            EXPECT_EQ(il_2, out_il);
-
             out_il.clear();
-            out_il.insert(out_il.end(), begin(ir_2, table), end(table));
-            EXPECT_EQ(il_2, out_il);
-
-            out_il.clear();
-            for (const auto x : range(ir_2, table))
-                out_il.push_back(x);
+            read_sequence(ir_2, table, std::back_inserter(out_il));
             EXPECT_EQ(il_2, out_il);
         }
 
@@ -352,16 +307,8 @@ TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
             const auto& dl_2 = dls[j];
             const auto& dr_2 = drs[j];
 
-            read_state(dr_2, table, leaf_table, out_dl);
-            EXPECT_EQ(dl_2, out_dl);
-
             out_dl.clear();
-            out_dl.insert(out_dl.end(), begin(dr_2, table, leaf_table), end(table, leaf_table));
-            EXPECT_EQ(dl_2, out_dl);
-
-            out_dl.clear();
-            for (const auto x : range(dr_2, table, leaf_table))
-                out_dl.push_back(x);
+            read_sequence(dr_2, table, leaf_table, std::back_inserter(out_dl));
             EXPECT_EQ(dl_2, out_dl);
         }
     }

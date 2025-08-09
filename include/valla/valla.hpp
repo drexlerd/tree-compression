@@ -34,7 +34,6 @@
 #include "valla/succinct_flat_hash_set.hpp"
 #include "valla/succinct_indexed_hash_set.hpp"
 #include "valla/uint64tcoder.hpp"
-#include "valla/unique_object_pool.hpp"
 #include "valla/utils.hpp"
 
 #endif

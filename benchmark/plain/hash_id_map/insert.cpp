@@ -53,7 +53,7 @@ static void BM_PlainUintHashIDMapInsert(benchmark::State& state)
         {
             for (const auto& s : all_states)
             {
-                benchmark::DoNotOptimize(insert(s, table));
+                benchmark::DoNotOptimize(insert_sequence(s, table));
             }
         }
 

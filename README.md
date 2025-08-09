@@ -29,7 +29,7 @@ auto leaf_table = valla::IndexedHashSet<double, uint32_t>();
     const auto z_root = valla::insert(z, inner_table);
     // Read the sequence from the given handle z_root.
     auto z_out = std::vector<uint32_t>{};
-    valla::read_state(z_root, inner_table, z_out);
+    valla::read_sequence(z_root, inner_table, z_out);
     // Iterate over the sequence from the given handle z_root.
     for (const auto element : valla::range(z_root, inner_table)) { }
 }
@@ -42,7 +42,7 @@ auto leaf_table = valla::IndexedHashSet<double, uint32_t>();
     const auto z_root = valla::insert(z, inner_table, leaf_table);
     // Read the sequence from the given handle z_root.
     auto z_out = std::vector<double>{};
-    valla::read_state(z_root, inner_table, leaf_table, z_out);
+    valla::read_sequence(z_root, inner_table, leaf_table, z_out);
     // Iterate over the sequence from the given handle z_root.
     for (const auto element : valla::range(z_root, inner_table, leaf_table)) { }
 }

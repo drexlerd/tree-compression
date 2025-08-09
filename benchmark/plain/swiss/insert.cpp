@@ -53,7 +53,7 @@ static void BM_PlainUintSwissInsert(benchmark::State& state)
         for (size_t rep = 0; rep < repetitions; ++rep)
         {
             for (const auto& s : all_states)
-                benchmark::DoNotOptimize(root_table.insert(insert(s, tree_table)));
+                benchmark::DoNotOptimize(root_table.insert(insert_sequence(s, tree_table)));
         }
 
         benchmark::ClobberMemory();

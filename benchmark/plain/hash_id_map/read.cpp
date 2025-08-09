@@ -53,7 +53,7 @@ static void BM_PlainUintSwissRead(benchmark::State& state)
     {
         for (const auto& s : all_states)
         {
-            all_roots.push_back(insert(s, table));
+            all_roots.push_back(insert_sequence(s, table));
         }
     }
 
@@ -65,7 +65,8 @@ static void BM_PlainUintSwissRead(benchmark::State& state)
         {
             for (const auto& r : all_roots)
             {
-                read_state(r, table, state);
+                state.clear();
+                read_sequence(r, table, std::back_inserter(state));
                 benchmark::DoNotOptimize(state);
             }
         }

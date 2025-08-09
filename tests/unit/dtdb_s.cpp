@@ -37,7 +37,7 @@ TEST(VallaTests, PlainUintSwissTest)
     /* uint32_t */
     {
         const auto s0 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
-        const auto s0_slot = insert(s0, inner_table);
+        const auto s0_slot = insert_sequence(s0, inner_table);
         const auto s0_root = root_table.insert(s0_slot);
 
         EXPECT_EQ(inner_table.size(), 8);
@@ -45,13 +45,14 @@ TEST(VallaTests, PlainUintSwissTest)
         // Created new state!
         EXPECT_EQ(s0_root, 0);
 
-        read_state(s0_slot, inner_table, index_list);
+        index_list.clear();
+        read_sequence(s0_slot, inner_table, std::back_inserter(index_list));
         EXPECT_EQ(index_list, s0);
     }
 
     {
         const auto s1 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-        const auto s1_slot = insert(s1, inner_table);
+        const auto s1_slot = insert_sequence(s1, inner_table);
         const auto s1_root = root_table.insert(s1_slot);
 
         EXPECT_EQ(inner_table.size(), 9);
@@ -59,13 +60,14 @@ TEST(VallaTests, PlainUintSwissTest)
         // Created new state!
         EXPECT_EQ(s1_root, 1);
 
-        read_state(s1_slot, inner_table, index_list);
+        index_list.clear();
+        read_sequence(s1_slot, inner_table, std::back_inserter(index_list));
         EXPECT_EQ(index_list, s1);
     }
 
     {
         const auto s2 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
-        const auto s2_slot = insert(s2, inner_table);
+        const auto s2_slot = insert_sequence(s2, inner_table);
         const auto s2_root = root_table.insert(s2_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
@@ -73,13 +75,14 @@ TEST(VallaTests, PlainUintSwissTest)
         // Created new state!
         EXPECT_EQ(s2_root, 2);
 
-        read_state(s2_slot, inner_table, index_list);
+        index_list.clear();
+        read_sequence(s2_slot, inner_table, std::back_inserter(index_list));
         EXPECT_EQ(index_list, s2);
     }
 
     {
         const auto s3 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
-        const auto s3_slot = insert(s3, inner_table);
+        const auto s3_slot = insert_sequence(s3, inner_table);
         const auto s3_root = root_table.insert(s3_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
@@ -87,7 +90,8 @@ TEST(VallaTests, PlainUintSwissTest)
         // std::vector<uint32_t> already exists!
         EXPECT_EQ(s3_root, 2);
 
-        read_state(s3_slot, inner_table, index_list);
+        index_list.clear();
+        read_sequence(s3_slot, inner_table, std::back_inserter(index_list));
         EXPECT_EQ(index_list, s3);
     }
 
@@ -95,7 +99,7 @@ TEST(VallaTests, PlainUintSwissTest)
 
     {
         const auto s0 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15. };
-        const auto s0_slot = insert(s0, inner_table, leaf_table);
+        const auto s0_slot = insert_sequence(s0, inner_table, leaf_table);
         const auto s0_root = root_table.insert(s0_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
@@ -104,13 +108,14 @@ TEST(VallaTests, PlainUintSwissTest)
         // Created new state!
         EXPECT_EQ(s0_root, 0);
 
-        read_state(s0_slot, inner_table, leaf_table, double_list);
+        double_list.clear();
+        read_sequence(s0_slot, inner_table, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s0);
     }
 
     {
         const auto s1 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16. };
-        const auto s1_slot = insert(s1, inner_table, leaf_table);
+        const auto s1_slot = insert_sequence(s1, inner_table, leaf_table);
         const auto s1_root = root_table.insert(s1_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
@@ -119,13 +124,14 @@ TEST(VallaTests, PlainUintSwissTest)
         // Created new state!
         EXPECT_EQ(s1_root, 1);
 
-        read_state(s1_slot, inner_table, leaf_table, double_list);
+        double_list.clear();
+        read_sequence(s1_slot, inner_table, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s1);
     }
 
     {
         const auto s2 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
-        const auto s2_slot = insert(s2, inner_table, leaf_table);
+        const auto s2_slot = insert_sequence(s2, inner_table, leaf_table);
         const auto s2_root = root_table.insert(s2_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
@@ -134,13 +140,14 @@ TEST(VallaTests, PlainUintSwissTest)
         // Created new state!
         EXPECT_EQ(s2_root, 2);
 
-        read_state(s2_slot, inner_table, leaf_table, double_list);
+        double_list.clear();
+        read_sequence(s2_slot, inner_table, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s2);
     }
 
     {
         const auto s3 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
-        const auto s3_slot = insert(s3, inner_table, leaf_table);
+        const auto s3_slot = insert_sequence(s3, inner_table, leaf_table);
         const auto s3_root = root_table.insert(s3_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
@@ -149,7 +156,8 @@ TEST(VallaTests, PlainUintSwissTest)
         // std::vector<double> already exists!
         EXPECT_EQ(s3_root, 2);
 
-        read_state(s3_slot, inner_table, leaf_table, double_list);
+        double_list.clear();
+        read_sequence(s3_slot, inner_table, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s3);
     }
 }
@@ -165,7 +173,7 @@ TEST(VallaTests, PlainUintSwissEdgeCasesTest)
 
     {
         const auto s0 = std::vector<uint32_t> {};
-        const auto s0_slot = insert(s0, inner_table);
+        const auto s0_slot = insert_sequence(s0, inner_table);
         const auto s0_root = root_table.insert(s0_slot);
 
         EXPECT_EQ(inner_table.size(), 0);
@@ -173,13 +181,14 @@ TEST(VallaTests, PlainUintSwissEdgeCasesTest)
         // Created new state!
         EXPECT_EQ(s0_root, 0);
 
-        read_state(s0_slot, inner_table, index_list);
+        index_list.clear();
+        read_sequence(s0_slot, inner_table, std::back_inserter(index_list));
         EXPECT_EQ(index_list, s0);
     }
 
     {
         const auto s1 = std::vector<uint32_t> { 0 };
-        const auto s1_slot = insert(s1, inner_table);
+        const auto s1_slot = insert_sequence(s1, inner_table);
         const auto s1_root = root_table.insert(s1_slot);
 
         EXPECT_EQ(inner_table.size(), 0);
@@ -187,13 +196,14 @@ TEST(VallaTests, PlainUintSwissEdgeCasesTest)
         // Created new state!
         EXPECT_EQ(s1_root, 1);
 
-        read_state(s1_slot, inner_table, index_list);
+        index_list.clear();
+        read_sequence(s1_slot, inner_table, std::back_inserter(index_list));
         EXPECT_EQ(index_list, s1);
     }
 
     {
         const auto s0 = std::vector<double> {};
-        const auto s0_slot = insert(s0, inner_table, leaf_table);
+        const auto s0_slot = insert_sequence(s0, inner_table, leaf_table);
         const auto s0_root = root_table.insert(s0_slot);
 
         EXPECT_EQ(inner_table.size(), 0);
@@ -202,13 +212,14 @@ TEST(VallaTests, PlainUintSwissEdgeCasesTest)
         // Created new state!
         EXPECT_EQ(s0_root, 0);
 
-        read_state(s0_slot, inner_table, leaf_table, double_list);
+        double_list.clear();
+        read_sequence(s0_slot, inner_table, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s0);
     }
 
     {
         const auto s1 = std::vector<double> { 0 };
-        const auto s1_slot = insert(s1, inner_table, leaf_table);
+        const auto s1_slot = insert_sequence(s1, inner_table, leaf_table);
         const auto s1_root = root_table.insert(s1_slot);
 
         EXPECT_EQ(inner_table.size(), 0);
@@ -217,41 +228,9 @@ TEST(VallaTests, PlainUintSwissEdgeCasesTest)
         // Created new state!
         EXPECT_EQ(s1_root, 1);
 
-        read_state(s1_slot, inner_table, leaf_table, double_list);
+        double_list.clear();
+        read_sequence(s1_slot, inner_table, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s1);
-    }
-}
-
-TEST(VallaTests, PlainUintSwissIteratorTest)
-{
-    auto inner_table = IndexedHashSet<Slot<uint32_t>, uint32_t>();
-    auto leaf_table = IndexedHashSet<double, uint32_t>();
-
-    auto index_list = std::vector<uint32_t>();
-    auto double_list = std::vector<double>();
-
-    {
-        const auto s0 = std::vector<uint32_t> { 1, 2, 4, 5, 6 };
-        const auto s0_idx = insert(s0, inner_table);
-
-        EXPECT_EQ(s0, std::vector<uint32_t>(begin(s0_idx, inner_table), end(inner_table)));
-    }
-
-    {
-        const auto s0 = std::vector<uint32_t> {};
-        EXPECT_EQ(s0, std::vector<uint32_t>(begin(get_empty_slot<uint32_t>(), inner_table), end(inner_table)));
-    }
-
-    {
-        const auto s0 = std::vector<double> { 1, 2, 4, 5, 6 };
-        const auto s0_idx = insert(s0, inner_table, leaf_table);
-
-        EXPECT_EQ(s0, std::vector<double>(begin(s0_idx, inner_table, leaf_table), end(inner_table, leaf_table)));
-    }
-
-    {
-        const auto s0 = std::vector<double> {};
-        EXPECT_EQ(s0, std::vector<double>(begin(get_empty_slot<uint32_t>(), inner_table, leaf_table), end(inner_table, leaf_table)));
     }
 }
 
@@ -313,36 +292,20 @@ TEST(VallaTests, PlainUintSwissExhaustiveTest)
         const auto& il = ils[i];
         const auto& dl = dls[i];
 
-        auto ir = insert(il, inner_table);
-        auto dr = insert(dl, inner_table, leaf_table);
+        auto ir = insert_sequence(il, inner_table);
+        auto dr = insert_sequence(dl, inner_table, leaf_table);
 
         irs.push_back(ir);
         drs.push_back(dr);
 
         /* Ensure newly inserted index sequence is readable*/
-        read_state(ir, inner_table, out_il);
-        EXPECT_EQ(il, out_il);
-
         out_il.clear();
-        out_il.insert(out_il.end(), begin(ir, inner_table), end(inner_table));
-        EXPECT_EQ(il, out_il);
-
-        out_il.clear();
-        for (const auto x : range(ir, inner_table))
-            out_il.push_back(x);
+        read_sequence(ir, inner_table, std::back_inserter(out_il));
         EXPECT_EQ(il, out_il);
 
         /* Ensure newly inserted double sequence is readable*/
-        read_state(dr, inner_table, leaf_table, out_dl);
-        EXPECT_EQ(dl, out_dl);
-
         out_dl.clear();
-        out_dl.insert(out_dl.end(), begin(dr, inner_table, leaf_table), end(inner_table, leaf_table));
-        EXPECT_EQ(dl, out_dl);
-
-        out_dl.clear();
-        for (const auto x : range(dr, inner_table, leaf_table))
-            out_dl.push_back(x);
+        read_sequence(dr, inner_table, leaf_table, std::back_inserter(out_dl));
         EXPECT_EQ(dl, out_dl);
 
         /* Ensure that all index sequences are readable after rehash. */
@@ -351,16 +314,8 @@ TEST(VallaTests, PlainUintSwissExhaustiveTest)
             const auto& il_2 = ils[j];
             const auto& ir_2 = irs[j];
 
-            read_state(ir_2, inner_table, out_il);
-            EXPECT_EQ(il_2, out_il);
-
             out_il.clear();
-            out_il.insert(out_il.end(), begin(ir_2, inner_table), end(inner_table));
-            EXPECT_EQ(il_2, out_il);
-
-            out_il.clear();
-            for (const auto x : range(ir_2, inner_table))
-                out_il.push_back(x);
+            read_sequence(ir_2, inner_table, std::back_inserter(out_il));
             EXPECT_EQ(il_2, out_il);
         }
 
@@ -370,16 +325,8 @@ TEST(VallaTests, PlainUintSwissExhaustiveTest)
             const auto& dl_2 = dls[j];
             const auto& dr_2 = drs[j];
 
-            read_state(dr_2, inner_table, leaf_table, out_dl);
-            EXPECT_EQ(dl_2, out_dl);
-
             out_dl.clear();
-            out_dl.insert(out_dl.end(), begin(dr_2, inner_table, leaf_table), end(inner_table, leaf_table));
-            EXPECT_EQ(dl_2, out_dl);
-
-            out_dl.clear();
-            for (const auto x : range(dr_2, inner_table, leaf_table))
-                out_dl.push_back(x);
+            read_sequence(dr_2, inner_table, leaf_table, std::back_inserter(out_dl));
             EXPECT_EQ(dl_2, out_dl);
         }
     }
@@ -402,7 +349,7 @@ TEST(VallaTests, SuccinctUintSwissTest)
     /* uint32_t */
     {
         const auto s0 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
-        const auto s0_slot = insert(s0, inner_table);
+        const auto s0_slot = insert_sequence(s0, inner_table);
         const auto s0_root = index_root_table.insert(s0_slot);
 
         EXPECT_EQ(inner_table.size(), 8);
@@ -410,13 +357,14 @@ TEST(VallaTests, SuccinctUintSwissTest)
         // Created new state!
         EXPECT_EQ(s0_root, 0);
 
-        read_state(s0_slot, inner_table, index_list);
+        index_list.clear();
+        read_sequence(s0_slot, inner_table, std::back_inserter(index_list));
         EXPECT_EQ(index_list, s0);
     }
 
     {
         const auto s1 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-        const auto s1_slot = insert(s1, inner_table);
+        const auto s1_slot = insert_sequence(s1, inner_table);
         const auto s1_root = index_root_table.insert(s1_slot);
 
         EXPECT_EQ(inner_table.size(), 9);
@@ -424,13 +372,14 @@ TEST(VallaTests, SuccinctUintSwissTest)
         // Created new state!
         EXPECT_EQ(s1_root, 1);
 
-        read_state(s1_slot, inner_table, index_list);
+        index_list.clear();
+        read_sequence(s1_slot, inner_table, std::back_inserter(index_list));
         EXPECT_EQ(index_list, s1);
     }
 
     {
         const auto s2 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
-        const auto s2_slot = insert(s2, inner_table);
+        const auto s2_slot = insert_sequence(s2, inner_table);
         const auto s2_root = index_root_table.insert(s2_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
@@ -438,13 +387,14 @@ TEST(VallaTests, SuccinctUintSwissTest)
         // Created new state!
         EXPECT_EQ(s2_root, 2);
 
-        read_state(s2_slot, inner_table, index_list);
+        index_list.clear();
+        read_sequence(s2_slot, inner_table, std::back_inserter(index_list));
         EXPECT_EQ(index_list, s2);
     }
 
     {
         const auto s3 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
-        const auto s3_slot = insert(s3, inner_table);
+        const auto s3_slot = insert_sequence(s3, inner_table);
         const auto s3_root = index_root_table.insert(s3_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
@@ -452,7 +402,8 @@ TEST(VallaTests, SuccinctUintSwissTest)
         // std::vector<uint32_t> already exists!
         EXPECT_EQ(s3_root, 2);
 
-        read_state(s3_slot, inner_table, index_list);
+        index_list.clear();
+        read_sequence(s3_slot, inner_table, std::back_inserter(index_list));
         EXPECT_EQ(index_list, s3);
     }
 
@@ -460,7 +411,7 @@ TEST(VallaTests, SuccinctUintSwissTest)
 
     {
         const auto s0 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15. };
-        const auto s0_slot = insert(s0, inner_table, leaf_table);
+        const auto s0_slot = insert_sequence(s0, inner_table, leaf_table);
         const auto s0_root = double_root_table.insert(s0_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
@@ -469,13 +420,14 @@ TEST(VallaTests, SuccinctUintSwissTest)
         // Created new state!
         EXPECT_EQ(s0_root, 0);
 
-        read_state(s0_slot, inner_table, leaf_table, double_list);
+        double_list.clear();
+        read_sequence(s0_slot, inner_table, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s0);
     }
 
     {
         const auto s1 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16. };
-        const auto s1_slot = insert(s1, inner_table, leaf_table);
+        const auto s1_slot = insert_sequence(s1, inner_table, leaf_table);
         const auto s1_root = double_root_table.insert(s1_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
@@ -484,13 +436,14 @@ TEST(VallaTests, SuccinctUintSwissTest)
         // Created new state!
         EXPECT_EQ(s1_root, 1);
 
-        read_state(s1_slot, inner_table, leaf_table, double_list);
+        double_list.clear();
+        read_sequence(s1_slot, inner_table, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s1);
     }
 
     {
         const auto s2 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
-        const auto s2_slot = insert(s2, inner_table, leaf_table);
+        const auto s2_slot = insert_sequence(s2, inner_table, leaf_table);
         const auto s2_root = double_root_table.insert(s2_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
@@ -499,13 +452,14 @@ TEST(VallaTests, SuccinctUintSwissTest)
         // Created new state!
         EXPECT_EQ(s2_root, 2);
 
-        read_state(s2_slot, inner_table, leaf_table, double_list);
+        double_list.clear();
+        read_sequence(s2_slot, inner_table, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s2);
     }
 
     {
         const auto s3 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
-        const auto s3_slot = insert(s3, inner_table, leaf_table);
+        const auto s3_slot = insert_sequence(s3, inner_table, leaf_table);
         const auto s3_root = double_root_table.insert(s3_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
@@ -514,7 +468,8 @@ TEST(VallaTests, SuccinctUintSwissTest)
         // std::vector<double> already exists!
         EXPECT_EQ(s3_root, 2);
 
-        read_state(s3_slot, inner_table, leaf_table, double_list);
+        double_list.clear();
+        read_sequence(s3_slot, inner_table, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s3);
     }
 }
@@ -578,36 +533,20 @@ TEST(VallaTests, SuccinctUintSwissExhaustiveTest)
         const auto& il = ils[i];
         const auto& dl = dls[i];
 
-        auto ir = insert(il, inner_table);
-        auto dr = insert(dl, inner_table, leaf_table);
+        auto ir = insert_sequence(il, inner_table);
+        auto dr = insert_sequence(dl, inner_table, leaf_table);
 
         irs.push_back(ir);
         drs.push_back(dr);
 
         /* Ensure newly inserted index sequence is readable*/
-        read_state(ir, inner_table, out_il);
-        EXPECT_EQ(il, out_il);
-
         out_il.clear();
-        out_il.insert(out_il.end(), begin(ir, inner_table), end(inner_table));
-        EXPECT_EQ(il, out_il);
-
-        out_il.clear();
-        for (const auto x : range(ir, inner_table))
-            out_il.push_back(x);
+        read_sequence(ir, inner_table, std::back_inserter(out_il));
         EXPECT_EQ(il, out_il);
 
         /* Ensure newly inserted double sequence is readable*/
-        read_state(dr, inner_table, leaf_table, out_dl);
-        EXPECT_EQ(dl, out_dl);
-
         out_dl.clear();
-        out_dl.insert(out_dl.end(), begin(dr, inner_table, leaf_table), end(inner_table, leaf_table));
-        EXPECT_EQ(dl, out_dl);
-
-        out_dl.clear();
-        for (const auto x : range(dr, inner_table, leaf_table))
-            out_dl.push_back(x);
+        read_sequence(dr, inner_table, leaf_table, std::back_inserter(out_dl));
         EXPECT_EQ(dl, out_dl);
 
         /* Ensure that all index sequences are readable after rehash. */
@@ -616,16 +555,8 @@ TEST(VallaTests, SuccinctUintSwissExhaustiveTest)
             const auto& il_2 = ils[j];
             const auto& ir_2 = irs[j];
 
-            read_state(ir_2, inner_table, out_il);
-            EXPECT_EQ(il_2, out_il);
-
             out_il.clear();
-            out_il.insert(out_il.end(), begin(ir_2, inner_table), end(inner_table));
-            EXPECT_EQ(il_2, out_il);
-
-            out_il.clear();
-            for (const auto x : range(ir_2, inner_table))
-                out_il.push_back(x);
+            read_sequence(ir_2, inner_table, std::back_inserter(out_il));
             EXPECT_EQ(il_2, out_il);
         }
 
@@ -635,16 +566,8 @@ TEST(VallaTests, SuccinctUintSwissExhaustiveTest)
             const auto& dl_2 = dls[j];
             const auto& dr_2 = drs[j];
 
-            read_state(dr_2, inner_table, leaf_table, out_dl);
-            EXPECT_EQ(dl_2, out_dl);
-
             out_dl.clear();
-            out_dl.insert(out_dl.end(), begin(dr_2, inner_table, leaf_table), end(inner_table, leaf_table));
-            EXPECT_EQ(dl_2, out_dl);
-
-            out_dl.clear();
-            for (const auto x : range(dr_2, inner_table, leaf_table))
-                out_dl.push_back(x);
+            read_sequence(dr_2, inner_table, leaf_table, std::back_inserter(out_dl));
             EXPECT_EQ(dl_2, out_dl);
         }
     }
