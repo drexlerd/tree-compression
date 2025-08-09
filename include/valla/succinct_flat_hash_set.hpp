@@ -96,8 +96,8 @@ private:
 
                 m_slots[offset] = Uint64tCoder<T>::to_uint64_t(key, m_slots.width());
                 m_controls[offset] = static_cast<absl::container_internal::ctrl_t>(h2);
-                m_controls[((offset - absl::container_internal::NumClonedBytes()) & m_growth_info.mask()) + absl::container_internal::NumClonedBytes()] =
-                    static_cast<absl::container_internal::ctrl_t>(h2);
+                if (offset < absl::container_internal::NumClonedBytes())
+                    m_controls[capacity() + offset] = static_cast<absl::container_internal::ctrl_t>(h2);
 
                 m_growth_info.increment_size();
 
@@ -115,8 +115,11 @@ private:
         auto slots = sdsl::int_vector<>(capacity(), 0, new_width);
 
         if (size() > 0)
+        {
             for (I i = 0; i < capacity(); ++i)
-                slots[i] = Uint64tCoder<T>::to_uint64_t(Uint64tCoder<T>::from_uint64_t(m_slots[i], old_width), new_width);
+                if (static_cast<int>(m_controls[i]) >= 0)
+                    slots[i] = Uint64tCoder<T>::to_uint64_t(Uint64tCoder<T>::from_uint64_t(m_slots.get_int(i, old_width), old_width), new_width);
+        }
 
         std::swap(m_slots, slots);
     }
@@ -153,13 +156,13 @@ public:
 
     void rehash()
     {
-        auto tmp = succinct_flat_hash_set(2 * capacity(), slots().width(), m_hash, m_equal_to);
+        auto tmp = succinct_flat_hash_set(2 * capacity(), m_slots.width(), m_hash, m_equal_to);
 
         for (size_t i = 0; i < capacity(); ++i)
-        {
+
             if (static_cast<int>(m_controls[i]) >= 0)
                 tmp.insert(m_slots[i]);
-        }
+
         tmp.m_statistics += m_statistics;
 
         std::swap(*this, tmp);
@@ -196,7 +199,7 @@ public:
 
         const_iterator() : m_set(nullptr), m_pos(-1) {}
 
-        const_iterator(const succinct_flat_hash_set& set, bool begin) : m_set(set), m_pos(begin ? -1 : set.capacity())
+        const_iterator(const succinct_flat_hash_set& set, bool begin) : m_set(&set), m_pos(begin ? -1 : set.capacity())
         {
             if (begin)
                 advance();

@@ -34,15 +34,17 @@ struct Uint64tCoder
 template<std::unsigned_integral I>
 struct Uint64tCoder<Slot<I>>
 {
-    constexpr static uint8_t bit_width(const Slot<I>& el) { return std::max(1, 2 * std::max(std::bit_width(el.i1), std::bit_width(el.i2))); }
+    static_assert(std::numeric_limits<I>::digits <= 32, "Slot<I> packing with equal halves requires I <= 32 bits.");
 
-    constexpr static uint64_t to_uint64_t(const Slot<I>& el, uint8_t bit_width)
+    constexpr static uint8_t bit_width(const Slot<I>& el) noexcept { return std::max(2, 2 * std::max(std::bit_width(el.i1), std::bit_width(el.i2))); }
+
+    constexpr static uint64_t to_uint64_t(const Slot<I>& el, uint8_t bit_width) noexcept
     {
         uint8_t half = bit_width / 2;
         return (uint64_t(el.i1) << half) | el.i2;
     }
 
-    constexpr static Slot<I> from_uint64_t(uint64_t packed, uint8_t bit_width)
+    constexpr static Slot<I> from_uint64_t(uint64_t packed, uint8_t bit_width) noexcept
     {
         uint8_t half = bit_width / 2;
         uint64_t mask = (uint64_t(1) << half) - 1;

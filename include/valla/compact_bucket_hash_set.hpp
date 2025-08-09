@@ -76,15 +76,9 @@ private:
     }
 
 public:
-    compact_bucket_hash_set(size_t capacity = absl::container_internal::Group::kWidth,
-                            uint8_t bit_width = 1,
-                            Hash hash = Hash {},
-                            EqualTo equal_to = EqualTo {}) :
+    compact_bucket_hash_set(size_t num_buckets = 1, uint8_t bit_width = 1, Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) :
         m_growth_info(capacity),
-        m_slots(this->capacity(), 0, bit_width),
-        m_v(this->capacity()),
-        m_c(this->capacity()),
-        m_a(this->capacity()),
+        m_buckets(1),
         m_hash(hash),
         m_equal_to(equal_to)
     {

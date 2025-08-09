@@ -107,8 +107,8 @@ protected:
 
                 m_slots[offset] = slot;
                 m_controls[offset] = static_cast<absl::container_internal::ctrl_t>(h2);
-                m_controls[((offset - absl::container_internal::NumClonedBytes()) & m_growth_info.mask()) + absl::container_internal::NumClonedBytes()] =
-                    static_cast<absl::container_internal::ctrl_t>(h2);
+                if (offset < absl::container_internal::NumClonedBytes())
+                    m_controls[capacity() + offset] = static_cast<absl::container_internal::ctrl_t>(h2);
 
                 m_growth_info.increment_size();
 

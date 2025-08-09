@@ -507,18 +507,17 @@ TEST(VallaTests, SuccinctUintSwissExhaustiveTest)
     {
         size_t num_changes = changes_dist(rng);
 
-        std::vector<uint32_t> il = ils[i - 1];
+        std::vector<uint32_t> index_list = ils[i - 1];
         for (size_t j = 0; j < num_changes; ++j)
-            il[pos_dist(rng)] = index_dist(rng);
-        ils.push_back(std::move(il));
+            index_list[pos_dist(rng)] = index_dist(rng);
+        ils.push_back(std::move(index_list));
 
-        std::vector<double> dl = dls[i - 1];
+        std::vector<double> double_list = dls[i - 1];
         for (size_t j = 0; j < num_changes; ++j)
-            dl[pos_dist(rng)] = double_dist(rng);
-        dls.push_back(std::move(dl));
+            double_list[pos_dist(rng)] = double_dist(rng);
+        dls.push_back(std::move(double_list));
     }
 
-    auto root_table = SuccinctIndexedHashSet<Slot<uint32_t>, uint32_t>();
     auto inner_table = SuccinctIndexedHashSet<Slot<uint32_t>, uint32_t>();
     auto leaf_table = IndexedHashSet<double, uint32_t>();
 
