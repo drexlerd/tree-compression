@@ -173,7 +173,6 @@ public:
     private:
         const succinct_flat_hash_set* m_set;
         size_t m_pos;
-        I m_value;
 
         const succinct_flat_hash_set& set() const
         {

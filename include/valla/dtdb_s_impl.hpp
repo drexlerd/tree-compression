@@ -91,7 +91,7 @@ read_sequence_recursively(typename Set1::index_type index, typename Set1::index_
         return;
     }
 
-    const auto& slot = table.lookup(index);
+    const auto slot = table.lookup(index);
 
     /* Base case */
     if (size == 2)

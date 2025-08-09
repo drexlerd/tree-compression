@@ -97,7 +97,7 @@ read_sequence_recursively(typename Set1::index_type index, typename Set1::index_
 
     if (size == 2)
     {
-        const auto& slot = inner_table.lookup_internal(index);
+        const auto slot = inner_table.lookup_internal(index);
         *out++ = leaf_table.lookup(slot.i1);
         *out++ = leaf_table.lookup(slot.i2);
         return;
@@ -117,7 +117,7 @@ template<IsUnstableIndexedHashSet Set1, IsStableIndexedHashSet Set2, std::output
 inline void read_sequence(typename Set1::index_type root_index, const Set1& tree_table, const Set2& leaf_table, OutIterator out)
 {
     /* Observe: a root slot wraps the root tree_index together with the length that defines the tree structure! */
-    const auto& slot = tree_table.lookup_root(root_index);
+    const auto slot = tree_table.lookup_root(root_index);
 
     if (slot.i2 == 0)  ///< Special case for empty sequence.
         return;
@@ -192,7 +192,7 @@ inline void read_sequence_recursively(typename Set::index_type index, typename S
 
     if (size == 2)
     {
-        const auto& slot = table.lookup_internal(index);
+        const auto slot = table.lookup_internal(index);
         *out++ = slot.i1;
         *out++ = slot.i2;
         return;
@@ -211,7 +211,7 @@ template<IsUnstableIndexedHashSet Set, std::output_iterator<typename Set::index_
 inline void read_sequence(typename Set::index_type root_index, const Set& table, OutIterator out)
 {
     /* Observe: a root slot wraps the root tree_index together with the length that defines the tree structure! */
-    const auto& slot = table.lookup_root(root_index);
+    const auto slot = table.lookup_root(root_index);
 
     if (slot.i2 == 0)  ///< Special case for empty sequence.
         return;

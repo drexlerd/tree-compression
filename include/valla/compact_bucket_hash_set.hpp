@@ -44,11 +44,19 @@ public:
 private:
     static constexpr size_t MAX_BUCKET_SIZE = 256;
 
-    class Bucket
+    struct Bucket
     {
         // Split quotient into control byte (7 bits of hash) + overflow
-        std::vector<absl::container_internal::ctrl_t> m_controls;
-        sdsl::int_vector<> m_overflow;
+        std::vector<absl::container_internal::ctrl_t> controls;
+        sdsl::int_vector<> overflows;
+        size_t size;
+
+        Bucket(size_t capacity = absl::container_internal::Group::kWidth, uint8_t bit_width = 1) :
+            controls(capacity + absl::container_internal::NumClonedBytes(), absl::container_internal::ctrl_t::kEmpty),
+            overflows(capacity, 0, bit_width),
+            size(0)
+        {
+        }
     };
 
     static_assert(sizeof(Bucket) == 24);
@@ -58,6 +66,8 @@ private:
 
     Hash m_hash;
     EqualTo m_equal_to;
+
+    bool must_rehash;
 
     HashSetStatistics m_statistics;
 
@@ -77,10 +87,11 @@ private:
 
 public:
     compact_bucket_hash_set(size_t num_buckets = 1, uint8_t bit_width = 1, Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) :
-        m_growth_info(capacity),
+        m_growth_info(num_buckets * MAX_BUCKET_SIZE),
         m_buckets(1),
         m_hash(hash),
-        m_equal_to(equal_to)
+        m_equal_to(equal_to),
+        must_rehash(false)
     {
         assert(bit_width > 0 && bit_width <= 64 && "bit_width must be in range [1,64].");
     }
@@ -112,8 +123,8 @@ public:
     {
     private:
         const compact_bucket_hash_set* m_set;
+        size_t m_bucket;
         size_t m_pos;
-        I m_value;
 
         const compact_bucket_hash_set& set() const
         {
@@ -145,7 +156,10 @@ public:
                 advance();
         }
 
-        const_iterator(const compact_bucket_hash_set& set, size_t pos) : m_set(&set), m_pos(pos) { assert(static_cast<int>(set.m_controls[pos]) >= 0); }
+        const_iterator(const compact_bucket_hash_set& set, size_t bucket, size_t pos) : m_set(&set), m_bucket(bucket), m_pos(pos)
+        {
+            assert(static_cast<int>(set.m_controls[pos]) >= 0);
+        }
 
         value_type operator*() const { return Uint64tCoder<T>::from_uint64_t((set().m_slots)[m_pos], set().m_slots.width()); }
 
@@ -172,18 +186,24 @@ public:
     const_iterator end() const { return const_iterator(*this, false); }
 
     const GrowthInfo& growth_info() const { return m_growth_info; }
-    const sdsl::int_vector<>& slots() const { return m_slots; }
-    const sdsl::int_vector<1>& v() const { return m_v; }
-    const sdsl::int_vector<1>& c() const { return m_c; }
-    const sdsl::int_vector<4>& a() const { return m_a; }
+    const std::vector<Bucket>& buckets() const { return m_buckets; }
     size_t size() const { return m_growth_info.size(); }
     size_t capacity() const { return m_growth_info.capacity(); }
+    bool must_rehash() const { return must_rehash; }
 
     size_t mem_usage() const
     {
         size_t usage = 0;
-        usage += m_slots.capacity() / 8;
-        usage += m_controls.capacity() * sizeof(absl::container_internal::ctrl_t);
+
+        usage += sizeof(compact_bucket_hash_set);
+
+        for (const auto& bucket : m_buckets)
+        {
+            usage += sizeof(Bucket);
+            usage += bucket.controls.capacity() * sizeof(absl::container_internal::ctrl_t);
+            usage += bucket.overflows.capacity() / 8;
+        }
+
         return usage;
     }
 };
