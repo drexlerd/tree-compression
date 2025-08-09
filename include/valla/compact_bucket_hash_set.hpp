@@ -44,12 +44,16 @@ private:
     static_assert(is_power_of_two(InitialCapacity) && "InitialCapacity must be a power of two.");
     static_assert(InitialCapacity >= 128, "InitialCapacity must be greater than 128.");
 
-    static constexpr size_t MAX_BUCKET_SIZE = 128;
+    static constexpr size_t MAX_BUCKET_SIZE = 256;
 
     class Bucket
     {
-        sdsl::int_vector<> m_data;
+        // Split quotient into control byte (7 bits of hash) + overflow
+        std::vector<absl::container_internal::ctrl_t> m_controls;
+        sdsl::int_vector<> m_overflow;
     };
+
+    static_assert(sizeof(Bucket) == 24);
 
     GrowthInfo m_growth_info;
     sdsl::int_vector<> m_slots;

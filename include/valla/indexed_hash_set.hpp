@@ -95,7 +95,7 @@ public:
 
     const T& lookup(I index) const
     {
-        assert(index < m_slots.size() && "Index out of bounds");
+        assert(index < m_slots->size() && "Index out of bounds");
 
         return m_slots->operator[](index);
     }

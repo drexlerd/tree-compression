@@ -104,7 +104,10 @@ public:
 
         /* Resize on insufficient capacity. */
         if (m_size == m_capacity)
-            m_slots->resize(m_capacity <<= 1);
+        {
+            m_capacity *= 2;
+            m_slots->resize(m_capacity);
+        }
 
         const auto new_width = Uint64tCoder<T>::bit_width(slot);
         const auto old_width = m_slots->width();
@@ -127,7 +130,7 @@ public:
 
     T lookup(I index) const
     {
-        assert(index < m_slots.size() && "Index out of bounds");
+        assert(index < m_slots->size() && "Index out of bounds");
 
         return Uint64tCoder<T>::from_uint64_t(m_slots->operator[](index), m_slots->width());
     }

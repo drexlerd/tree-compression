@@ -391,18 +391,19 @@ TEST(VallaTests, PlainUintSwissExhaustiveTest)
 
 TEST(VallaTests, SuccinctUintSwissTest)
 {
-    auto root_table = SuccinctIndexedHashSet<Slot<uint32_t>, uint32_t>();
     auto inner_table = SuccinctIndexedHashSet<Slot<uint32_t>, uint32_t>();
     auto leaf_table = IndexedHashSet<double, uint32_t>();
 
+    auto index_root_table = SuccinctIndexedHashSet<Slot<uint32_t>, uint32_t>();
     auto index_list = std::vector<uint32_t>();
+    auto double_root_table = SuccinctIndexedHashSet<Slot<uint32_t>, uint32_t>();
     auto double_list = std::vector<double>();
 
     /* uint32_t */
     {
         const auto s0 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
         const auto s0_slot = insert(s0, inner_table);
-        const auto s0_root = root_table.insert(s0_slot);
+        const auto s0_root = index_root_table.insert(s0_slot);
 
         EXPECT_EQ(inner_table.size(), 8);
 
@@ -416,7 +417,7 @@ TEST(VallaTests, SuccinctUintSwissTest)
     {
         const auto s1 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
         const auto s1_slot = insert(s1, inner_table);
-        const auto s1_root = root_table.insert(s1_slot);
+        const auto s1_root = index_root_table.insert(s1_slot);
 
         EXPECT_EQ(inner_table.size(), 9);
 
@@ -430,7 +431,7 @@ TEST(VallaTests, SuccinctUintSwissTest)
     {
         const auto s2 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
         const auto s2_slot = insert(s2, inner_table);
-        const auto s2_root = root_table.insert(s2_slot);
+        const auto s2_root = index_root_table.insert(s2_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
 
@@ -444,7 +445,7 @@ TEST(VallaTests, SuccinctUintSwissTest)
     {
         const auto s3 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17 };
         const auto s3_slot = insert(s3, inner_table);
-        const auto s3_root = root_table.insert(s3_slot);
+        const auto s3_root = index_root_table.insert(s3_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
 
@@ -460,7 +461,7 @@ TEST(VallaTests, SuccinctUintSwissTest)
     {
         const auto s0 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15. };
         const auto s0_slot = insert(s0, inner_table, leaf_table);
-        const auto s0_root = root_table.insert(s0_slot);
+        const auto s0_root = double_root_table.insert(s0_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
         EXPECT_EQ(leaf_table.size(), 16);
@@ -475,7 +476,7 @@ TEST(VallaTests, SuccinctUintSwissTest)
     {
         const auto s1 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16. };
         const auto s1_slot = insert(s1, inner_table, leaf_table);
-        const auto s1_root = root_table.insert(s1_slot);
+        const auto s1_root = double_root_table.insert(s1_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
         EXPECT_EQ(leaf_table.size(), 17);
@@ -490,7 +491,7 @@ TEST(VallaTests, SuccinctUintSwissTest)
     {
         const auto s2 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
         const auto s2_slot = insert(s2, inner_table, leaf_table);
-        const auto s2_root = root_table.insert(s2_slot);
+        const auto s2_root = double_root_table.insert(s2_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
         EXPECT_EQ(leaf_table.size(), 18);
@@ -505,7 +506,7 @@ TEST(VallaTests, SuccinctUintSwissTest)
     {
         const auto s3 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
         const auto s3_slot = insert(s3, inner_table, leaf_table);
-        const auto s3_root = root_table.insert(s3_slot);
+        const auto s3_root = double_root_table.insert(s3_slot);
 
         EXPECT_EQ(inner_table.size(), 11);
         EXPECT_EQ(leaf_table.size(), 18);
