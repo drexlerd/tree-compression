@@ -35,7 +35,8 @@ public:
         m_max_size(m_capacity * MAX_LOAD_FACTOR),
         m_growth_left(m_max_size - m_size)
     {
-        assert(is_power_of_two(capacity));
+        assert(is_power_of_two(capacity) && capacity >= absl::container_internal::Group::kWidth
+               && "capacity must be a power of two and greater or equal to Group::kWidth for wrap around.");
     }
 
     void increment_size()

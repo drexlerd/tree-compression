@@ -42,12 +42,12 @@ template<typename Derived,
          std::unsigned_integral I,
          typename Hash = Hash<Key>,
          typename EqualTo = std::equal_to<Key>,
-         size_t InitialCapacity = 128>
+         size_t InitialCapacity = absl::container_internal::Group::kWidth>
 class HashIDMap
 {
 private:
-    static_assert(is_power_of_two(InitialCapacity) && "InitialCapacity must be a power of two.");
-    static_assert(InitialCapacity >= 128, "InitialCapacity must be greater than 128.");
+    static_assert(is_power_of_two(InitialCapacity) && InitialCapacity >= absl::container_internal::Group::kWidth
+                  && "InitialCapacity must be a power of two and greater or equal to Group::kWidth for wrap around.");
 
     /// @brief Helper to cast to Derived.
     constexpr const auto& self() const { return static_cast<const Derived&>(*this); }
@@ -66,14 +66,10 @@ protected:
     HashIDMap(size_t capacity, Hash hash, EqualTo equal_to) :
         m_growth_info(capacity),
         m_slots(capacity),
-        m_controls(capacity + absl::container_internal::Group::kWidth - 1),
+        m_controls(capacity + absl::container_internal::NumClonedBytes(), absl::container_internal::ctrl_t::kEmpty),
         m_hash(hash),
         m_equal_to(equal_to)
     {
-        std::fill(m_controls.begin(), m_controls.begin() + capacity, absl::container_internal::ctrl_t::kEmpty);
-        std::fill(m_controls.begin() + capacity,
-                  m_controls.begin() + capacity + absl::container_internal::Group::kWidth,
-                  absl::container_internal::ctrl_t::kSentinel);
     }
 
     explicit HashIDMap(size_t capacity) : HashIDMap(capacity, Hash {}, EqualTo {}) {}
@@ -119,11 +115,14 @@ protected:
 
                 m_statistics.increase_total_probe_length(i);
 
-                size_t offset = probe.offset() + i;
+                size_t offset = probe.offset(i);
                 assert(is_within_bounds(m_slots, offset));
 
                 m_slots[offset] = slot;
                 m_controls[offset] = static_cast<absl::container_internal::ctrl_t>(h2);
+                m_controls[((offset - absl::container_internal::NumClonedBytes()) & m_growth_info.mask()) + absl::container_internal::NumClonedBytes()] =
+                    static_cast<absl::container_internal::ctrl_t>(h2);
+
                 m_growth_info.increment_size();
 
                 return offset;
@@ -148,7 +147,7 @@ template<std::unsigned_integral I,
          typename Hash = Hash<Slot<I>>,
          typename EqualTo = std::equal_to<Slot<I>>,
          IsStableIndexedHashSet RootSet = IndexedHashSet<Slot<I>, I, Hash, EqualTo>,
-         size_t InitialCapacity = 128>
+         size_t InitialCapacity = absl::container_internal::Group::kWidth>
     requires std::same_as<typename RootSet::value_type, Slot<I>> && std::same_as<typename RootSet::index_type, I>
 class TreeHashIDMap : public HashIDMap<TreeHashIDMap<I, Hash, EqualTo, RootSet, InitialCapacity>, Slot<I>, I, Hash, EqualTo, InitialCapacity>
 {
@@ -241,7 +240,6 @@ public:
         while (true)
         {
             new_capacity *= 2;
-            assert(absl::container_internal::IsValidCapacity(new_capacity));
 
             if (rehash_impl(new_capacity))
                 break;

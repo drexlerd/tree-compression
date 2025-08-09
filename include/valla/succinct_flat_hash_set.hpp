@@ -48,8 +48,8 @@ public:
     using const_iterator_type = const_iterator;
 
 private:
-    static_assert(is_power_of_two(InitialCapacity) && "InitialCapacity must be a power of two.");
-    static_assert(InitialCapacity >= absl::container_internal::Group::kWidth && "InitialCapacity must be greater or equal to Group::kWidth for wrap around.");
+    static_assert(is_power_of_two(InitialCapacity) && InitialCapacity >= absl::container_internal::Group::kWidth
+                  && "InitialCapacity must be a power of two and greater or equal to Group::kWidth for wrap around.");
 
     GrowthInfo m_growth_info;
     sdsl::int_vector<> m_slots;
@@ -82,7 +82,7 @@ private:
             {
                 m_statistics.increase_total_probe_length(i);
 
-                size_t offset = probe.offset(i) & m_growth_info.mask();
+                size_t offset = probe.offset(i);
                 assert(is_within_bounds(m_slots, offset));
 
                 if (m_equal_to(m_slots[offset], key))
@@ -96,7 +96,7 @@ private:
 
                 m_statistics.increase_total_probe_length(i);
 
-                size_t offset = (probe.offset() + i) & m_growth_info.mask();
+                size_t offset = probe.offset(i);
 
                 assert(is_within_bounds(m_slots, offset));
                 assert(m_controls[offset] == absl::container_internal::ctrl_t::kEmpty);
