@@ -16,6 +16,9 @@ The following example illustrates the API of the library. First, it instantiates
 /* Common setup */
 // Deduplicate root nodes, i.e., pair of uint32_t representing pointer to inner node and sequence length, by bijectively mapping it to uint32_t
 auto root_table = valla::IndexedHashSet<valla::Slot<uint32_t>, uint32_t>();
+// Insert the root representing the empty sequence.
+const auto z_empty_index = root_table.insert(valla::Slot<uint32_t>());
+assert(z_empty_index == 0);
 // Deduplicate inner nodes, i.e., pair of uint32_t representing pointer to left and right child node, by bijectively mapping it to uint32_t
 auto inner_table = valla::IndexedHashSet<valla::Slot<uint32_t>, uint32_t>();
 // Deduplicate doubles by bijectively mapping it to uint32_t
@@ -30,6 +33,9 @@ auto leaf_table = valla::IndexedHashSet<double, uint32_t>();
     // Read the sequence from the given handle z_root.
     auto z_out = std::vector<uint32_t>{};
     valla::read_sequence(z_root, inner_table, std::back_inserter(z_out));
+    // Optional: deduplicate the sequence to obtain an indexing scheme
+    const auto z_index = root_table.insert(valla::Slot<uint32_t>(z_root, z.size()));
+    assert(z_index == 1);
 }
 
 /* Sequence of double (general case) */
@@ -41,6 +47,9 @@ auto leaf_table = valla::IndexedHashSet<double, uint32_t>();
     // Read the sequence from the given handle z_root.
     auto z_out = std::vector<double>{};
     valla::read_sequence(z_root, inner_table, leaf_table, std::back_inserter(z_out));
+    // Optional: deduplicate the sequence to obtain an indexing scheme
+    const auto z_index = root_table.insert(valla::Slot<uint32_t>(z_root, z.size()));
+    assert(z_index == 2);  // We could store roots for sequences over doubles and uint32_t separately as well.
 }
 ```
 
