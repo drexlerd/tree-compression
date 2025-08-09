@@ -36,19 +36,10 @@ namespace valla
 /// @tparam Key is the key.
 /// @tparam Hash is the hash functor for a key.
 /// @tparam EqualTo is the equality comparison functor for a key.
-/// @tparam InitialCapacity is the initial capacity.
-template<typename Derived,
-         typename Key,
-         std::unsigned_integral I,
-         typename Hash = Hash<Key>,
-         typename EqualTo = std::equal_to<Key>,
-         size_t InitialCapacity = absl::container_internal::Group::kWidth>
+template<typename Derived, typename Key, std::unsigned_integral I, typename Hash = Hash<Key>, typename EqualTo = std::equal_to<Key>>
 class HashIDMap
 {
 private:
-    static_assert(is_power_of_two(InitialCapacity) && InitialCapacity >= absl::container_internal::Group::kWidth
-                  && "InitialCapacity must be a power of two and greater or equal to Group::kWidth for wrap around.");
-
     /// @brief Helper to cast to Derived.
     constexpr const auto& self() const { return static_cast<const Derived&>(*this); }
     constexpr auto& self() { return static_cast<Derived&>(*this); }
@@ -63,7 +54,7 @@ protected:
 
     HashSetStatistics m_statistics;
 
-    HashIDMap(size_t capacity, Hash hash, EqualTo equal_to) :
+    HashIDMap(size_t capacity = absl::container_internal::Group::kWidth, Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) :
         m_growth_info(capacity),
         m_slots(capacity),
         m_controls(capacity + absl::container_internal::NumClonedBytes(), absl::container_internal::ctrl_t::kEmpty),
@@ -71,10 +62,6 @@ protected:
         m_equal_to(equal_to)
     {
     }
-
-    explicit HashIDMap(size_t capacity) : HashIDMap(capacity, Hash {}, EqualTo {}) {}
-
-    HashIDMap() : HashIDMap(InitialCapacity, Hash {}, EqualTo {}) {}
 
     // Moveable but not copieable
     HashIDMap(const HashIDMap&) = delete;
@@ -146,10 +133,9 @@ protected:
 template<std::unsigned_integral I,
          typename Hash = Hash<Slot<I>>,
          typename EqualTo = std::equal_to<Slot<I>>,
-         IsStableIndexedHashSet RootSet = IndexedHashSet<Slot<I>, I, Hash, EqualTo>,
-         size_t InitialCapacity = absl::container_internal::Group::kWidth>
+         IsStableIndexedHashSet RootSet = IndexedHashSet<Slot<I>, I, Hash, EqualTo>>
     requires std::same_as<typename RootSet::value_type, Slot<I>> && std::same_as<typename RootSet::index_type, I>
-class TreeHashIDMap : public HashIDMap<TreeHashIDMap<I, Hash, EqualTo, RootSet, InitialCapacity>, Slot<I>, I, Hash, EqualTo, InitialCapacity>
+class TreeHashIDMap : public HashIDMap<TreeHashIDMap<I, Hash, EqualTo, RootSet>, Slot<I>, I, Hash, EqualTo>
 {
 public:
     using value_type = Slot<I>;
@@ -184,7 +170,7 @@ private:
     /// @param new_capacity is the capacity after rehash.
     bool rehash_impl(size_t new_capacity)
     {
-        auto tmp = TreeHashIDMap<I, Hash, EqualTo, RootSet, InitialCapacity>(new_capacity);
+        auto tmp = TreeHashIDMap<I, Hash, EqualTo, RootSet>(new_capacity);
 
         /* Relocate trees */
         for (I stable_index = 1; stable_index < this->m_roots.size(); ++stable_index)  // root 0 was already created
@@ -202,7 +188,7 @@ private:
         return true;
     }
 
-    using Base = HashIDMap<TreeHashIDMap<I, Hash, EqualTo, RootSet, InitialCapacity>, Slot<I>, I, Hash, EqualTo, InitialCapacity>;
+    using Base = HashIDMap<TreeHashIDMap<I, Hash, EqualTo, RootSet>, Slot<I>, I, Hash, EqualTo>;
 
     friend Base;
 
@@ -212,14 +198,12 @@ public:
     using Base::size;
     using Base::statistics;
 
-    TreeHashIDMap(size_t capacity, Hash hash, EqualTo equal_to) : Base(capacity, hash, equal_to), m_roots()
+    TreeHashIDMap(size_t capacity = absl::container_internal::Group::kWidth, Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) :
+        Base(capacity, hash, equal_to),
+        m_roots()
     {
         this->m_roots.insert(get_empty_slot<I>());  // root representing empty sequence
     }
-
-    explicit TreeHashIDMap(size_t capacity) : TreeHashIDMap(capacity, Hash {}, EqualTo {}) {}
-
-    TreeHashIDMap() : TreeHashIDMap(InitialCapacity) {}
 
     // Moveable but not copieable
     TreeHashIDMap(const TreeHashIDMap&) = delete;

@@ -33,11 +33,7 @@
 
 namespace valla
 {
-template<IsUint64tCodable T,
-         std::unsigned_integral I,
-         typename Hash = Hash<T>,
-         typename EqualTo = EqualTo<T>,
-         size_t InitialCapacity = absl::container_internal::Group::kWidth>
+template<IsUint64tCodable T, std::unsigned_integral I, typename Hash = Hash<T>, typename EqualTo = EqualTo<T>>
 class succinct_flat_hash_set
 {
 public:
@@ -48,9 +44,6 @@ public:
     using const_iterator_type = const_iterator;
 
 private:
-    static_assert(is_power_of_two(InitialCapacity) && InitialCapacity >= absl::container_internal::Group::kWidth
-                  && "InitialCapacity must be a power of two and greater or equal to Group::kWidth for wrap around.");
-
     GrowthInfo m_growth_info;
     sdsl::int_vector<> m_slots;
     std::vector<absl::container_internal::ctrl_t> m_controls;
@@ -129,18 +122,20 @@ private:
     }
 
 public:
-    succinct_flat_hash_set(size_t capacity, uint8_t bit_width, Hash hash, EqualTo equal_to) :
+    succinct_flat_hash_set(size_t capacity = absl::container_internal::Group::kWidth,
+                           uint8_t bit_width = 1,
+                           Hash hash = Hash {},
+                           EqualTo equal_to = EqualTo {}) :
         m_growth_info(capacity),
-        m_slots(this->capacity(), 0, std::max(uint8_t(1), bit_width)),  ///< bit width must be at least one, else it is set to 64
+        m_slots(this->capacity(), 0, bit_width),  ///< bit width must be at least one, else it is set to 64
         m_controls(this->capacity() + absl::container_internal::NumClonedBytes(), absl::container_internal::ctrl_t::kEmpty),
         m_hash(hash),
         m_equal_to(equal_to)
     {
+        assert(bit_width > 0 && bit_width <= 64 && "bit_width must be in range [1,64].");
     }
 
-    succinct_flat_hash_set(Hash hash, EqualTo equal_to) : succinct_flat_hash_set(InitialCapacity, 1, hash, equal_to) {}
-
-    succinct_flat_hash_set() : succinct_flat_hash_set(Hash {}, EqualTo {}) {}
+    succinct_flat_hash_set(Hash hash, EqualTo equal_to) : succinct_flat_hash_set(absl::container_internal::Group::kWidth, 1, hash, equal_to) {}
 
     std::pair<const_iterator, bool> insert(const T& key)
     {

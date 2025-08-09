@@ -22,6 +22,7 @@
 #include "valla/equal_to.hpp"
 #include "valla/growthinfo.hpp"
 #include "valla/hash.hpp"
+#include "valla/statistics.hpp"
 #include "valla/uint64tcoder.hpp"
 #include "valla/utils.hpp"
 
@@ -30,7 +31,7 @@
 
 namespace valla
 {
-template<IsUint64tCodable T, std::unsigned_integral I, typename Hash = CompactHash<T>, typename EqualTo = EqualTo<T>, size_t InitialCapacity = 128>
+template<IsUint64tCodable T, std::unsigned_integral I, typename Hash = CompactHash<T>, typename EqualTo = EqualTo<T>>
 class compact_bucket_hash_set
 {
 public:
@@ -41,9 +42,6 @@ public:
     using const_iterator_type = const_iterator;
 
 private:
-    static_assert(is_power_of_two(InitialCapacity) && "InitialCapacity must be a power of two.");
-    static_assert(InitialCapacity >= 128, "InitialCapacity must be greater than 128.");
-
     static constexpr size_t MAX_BUCKET_SIZE = 256;
 
     class Bucket
@@ -56,10 +54,7 @@ private:
     static_assert(sizeof(Bucket) == 24);
 
     GrowthInfo m_growth_info;
-    sdsl::int_vector<> m_slots;
-    sdsl::int_vector<1> m_v;  ///< virgin bits
-    sdsl::int_vector<1> m_c;  ///< change bits
-    sdsl::int_vector<4> m_a;  ///< at-home array
+    std::vector<Bucket> m_buckets;
 
     Hash m_hash;
     EqualTo m_equal_to;
@@ -81,18 +76,25 @@ private:
     }
 
 public:
-    compact_bucket_hash_set(size_t capacity, uint8_t bit_width, Hash hash, EqualTo equal_to) :
-        m_growth_info(std::max(size_t(128), capacity)),
-        m_slots(this->capacity(), 0, std::max(uint8_t(1), bit_width)),
+    compact_bucket_hash_set(size_t capacity = absl::container_internal::Group::kWidth,
+                            uint8_t bit_width = 1,
+                            Hash hash = Hash {},
+                            EqualTo equal_to = EqualTo {}) :
+        m_growth_info(capacity),
+        m_slots(this->capacity(), 0, bit_width),
         m_v(this->capacity()),
         m_c(this->capacity()),
         m_a(this->capacity()),
         m_hash(hash),
         m_equal_to(equal_to)
     {
+        assert(bit_width > 0 && bit_width <= 64 && "bit_width must be in range [1,64].");
     }
 
-    compact_bucket_hash_set(Hash hash, EqualTo equal_to) : compact_bucket_hash_set(InitialCapacity, 1, hash, equal_to) {}
+    compact_bucket_hash_set(Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) :
+        compact_bucket_hash_set(absl::container_internal::Group::kWidth, 1, hash, equal_to)
+    {
+    }
 
     compact_bucket_hash_set() : compact_bucket_hash_set(Hash {}, EqualTo {}) {}
 
