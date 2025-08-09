@@ -20,7 +20,6 @@
 
 #include "valla/hash_id_map.hpp"
 #include "valla/indexed_hash_set.hpp"
-#include "valla/iterator.hpp"
 
 namespace valla
 {

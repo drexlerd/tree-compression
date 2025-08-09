@@ -27,7 +27,6 @@
 #include "valla/hash.hpp"
 #include "valla/hash_id_map.hpp"
 #include "valla/indexed_hash_set.hpp"
-#include "valla/iterator.hpp"
 #include "valla/ostream.hpp"
 #include "valla/slot.hpp"
 #include "valla/statistics.hpp"

@@ -21,6 +21,7 @@
 #include "valla/concepts.hpp"
 #include "valla/equal_to.hpp"
 #include "valla/hash.hpp"
+#include "valla/utils.hpp"
 
 #include <absl/container/flat_hash_set.h>
 #include <concepts>
@@ -105,7 +106,7 @@ public:
     size_t mem_usage() const
     {
         size_t usage = 0;
-        usage += m_slots.capacity() * sizeof(T);
+        usage += m_slots->capacity() * sizeof(T);
         usage += m_uniqueness.capacity() * (sizeof(I) + sizeof(absl::container_internal::ctrl_t));
         return usage;
     }

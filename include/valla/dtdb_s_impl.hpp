@@ -19,7 +19,6 @@
 #define VALLA_INCLUDE_DTDB_S_IMPL_HPP_
 
 #include "valla/indexed_hash_set.hpp"
-#include "valla/iterator.hpp"
 #include "valla/succinct_indexed_hash_set.hpp"
 
 namespace valla
