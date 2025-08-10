@@ -44,22 +44,14 @@ public:
 private:
     static constexpr size_t MAX_BUCKET_SIZE = 256;
 
-    struct Bucket
-    {
-        // Split quotient into control byte (7 bits of hash) + overflow
-        std::vector<absl::container_internal::ctrl_t> controls;
-        sdsl::int_vector<> overflows;
-        size_t size;
-
-        Bucket(size_t capacity = absl::container_internal::Group::kWidth, uint8_t bit_width = 1) :
-            controls(capacity + absl::container_internal::NumClonedBytes(), absl::container_internal::ctrl_t::kEmpty),
-            overflows(capacity, 0, bit_width),
-            size(0)
-        {
-        }
-    };
-
-    static_assert(sizeof(Bucket) == 24);
+    // Layout overhead per bucket: 8 + 8 + 1 = 17 byte
+    // Padded control overhead per bucket: 15 byte
+    // Total overhead per bucket: 32 byte
+    // For bucket size 64, thats 4 bits
+    absl::container_internal::ctrl_t** m_bucket_controls;
+    uint64_t** m_bucket_slots;
+    uint8_t* m_bucket_sizes;
+    size_t m_num_buckets;
 
     GrowthInfo m_growth_info;
     std::vector<Bucket> m_buckets;
