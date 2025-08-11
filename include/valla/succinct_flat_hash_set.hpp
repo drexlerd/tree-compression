@@ -159,7 +159,6 @@ public:
         auto tmp = succinct_flat_hash_set(2 * capacity(), m_slots.width(), m_hash, m_equal_to);
 
         for (size_t i = 0; i < capacity(); ++i)
-
             if (static_cast<int>(m_controls[i]) >= 0)
                 tmp.insert(m_slots[i]);
 

@@ -34,7 +34,7 @@
 
 namespace valla
 {
-template<IsUint64tCodable T, std::unsigned_integral I, typename Hash = CompactHash<T>, typename EqualTo = EqualTo<T>>
+template<IsUint64tCodable T, std::unsigned_integral I, typename Hash = CompactHash<uint64_t>, typename EqualTo = EqualTo<T>>
 class compact_flat_hash_set
 {
 public:
@@ -51,10 +51,13 @@ private:
     };
 
     GrowthInfo m_growth_info;
+
     sdsl::int_vector<> m_slots;
     std::vector<absl::container_internal::ctrl_t> m_controls;
     std::vector<disp_t> m_displacement;
     absl::flat_hash_map<uint32_t, int32_t> m_displacement_ext;
+
+    uint8_t m_width;
 
     Hash m_hash;
     EqualTo m_equal_to;
@@ -80,7 +83,7 @@ private:
 
         m_statistics.increment_num_probes();
 
-        const auto h = m_hash.hash(key);
+        const auto h = m_hash.hash(Uint64tCoder<T>::to_uint64_t(key, m_slots.width() + 7), m_slots.width() + 7);
 
         assert(std::bit_width(h) <= m_slots.width());
 
@@ -118,14 +121,14 @@ private:
                 assert(is_within_bounds(m_slots, offset));
                 assert(m_controls[offset] == absl::container_internal::ctrl_t::kEmpty);
 
-                m_slots[offset] = Uint64tCoder<T>::to_uint64_t(h1, m_slots.width());
+                m_slots[offset] = h1;
                 m_controls[offset] = static_cast<absl::container_internal::ctrl_t>(h2);
                 if (offset < absl::container_internal::NumClonedBytes())
                     m_controls[capacity() + offset] = static_cast<absl::container_internal::ctrl_t>(h2);
 
                 uint32_t d = (offset - initial_offset) & m_growth_info.mask();
                 if (d < static_cast<uint8_t>(disp_t::kOverflow))
-                    m_displacement[offset] = d;
+                    m_displacement[offset] = static_cast<disp_t>(d);
                 else
                 {
                     m_displacement[offset] = disp_t::kOverflow;
@@ -151,8 +154,16 @@ private:
         {
             for (I i = 0; i < capacity(); ++i)
                 if (static_cast<int>(m_controls[i]) >= 0)
-                    r[i] =
-                        m_hash.hash(Uint64tCoder<T>::to_uint64_t(Uint64tCoder<T>::from_uint64_t(decode_key(i), old_width), new_width)) & m_growth_info.mask();
+                {
+                    uint64_t h = m_hash.hash(Uint64tCoder<T>::to_uint64_t(Uint64tCoder<T>::from_uint64_t(decode_key(i), old_width), new_width), new_width);
+                    assert(std::bit_width(h) <= m_slots.width());
+
+                    const auto h1 = H1(h);
+                    const auto h2 = H2(h);
+
+                    m_slots[i] = h1;
+                    m_controls[i] = static_cast<absl::container_internal::ctrl_t>(h2);
+                }
         }
 
         std::swap(m_slots, slots);
@@ -166,7 +177,7 @@ public:
         m_growth_info(capacity),
         m_slots(this->capacity(), 0, bit_width),  ///< bit width must be at least one, else it is set to 64
         m_controls(this->capacity() + absl::container_internal::NumClonedBytes(), absl::container_internal::ctrl_t::kEmpty),
-        m_displacement(this->capacity(), 0),
+        m_displacement(this->capacity()),
         m_displacement_ext(),
         m_hash(hash),
         m_equal_to(equal_to)
@@ -195,9 +206,8 @@ public:
         auto tmp = compact_flat_hash_set(2 * capacity(), m_slots.width(), m_hash, m_equal_to);
 
         for (size_t i = 0; i < capacity(); ++i)
-
             if (static_cast<int>(m_controls[i]) >= 0)
-                tmp.insert(m_slots[i]);
+                tmp.insert(Uint64tCoder<T>::from_uint64_t(decode_key(i), m_slots.width() + 7));
 
         tmp.m_statistics += m_statistics;
 
@@ -242,7 +252,7 @@ public:
 
         const_iterator(const compact_flat_hash_set& set, size_t pos) : m_set(&set), m_pos(pos) { assert(static_cast<int>(set.m_controls[pos]) >= 0); }
 
-        value_type operator*() const { return Uint64tCoder<T>::from_uint64_t(set().decode_key(m_pos)); }
+        value_type operator*() const { return Uint64tCoder<T>::from_uint64_t(set().decode_key(m_pos), set().m_slots.width() + 7); }
 
         const_iterator& operator++()
         {
