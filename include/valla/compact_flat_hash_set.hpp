@@ -20,6 +20,7 @@
 
 #include "valla/compact_hash.hpp"
 #include "valla/concepts.hpp"
+#include "valla/debug.hpp"
 #include "valla/equal_to.hpp"
 #include "valla/growthinfo.hpp"
 #include "valla/statistics.hpp"
@@ -64,7 +65,7 @@ private:
 
     HashSetStatistics m_statistics;
 
-    inline uint64_t H(const T& key) const { return m_hash.hash(Uint64tCoder<T>(key, m_width), m_width); }
+    inline uint64_t H(const T& key, uint8_t width) const { return m_hash.hash(Uint64tCoder<T>::to_uint64_t(key, width), width); }
     inline uint64_t Q(uint64_t h) { return h / m_growth_info.capacity(); }
     inline uint64_t R(uint64_t h) { return h & m_growth_info.mask(); }
     static inline uint64_t Q1(uint64_t q) { return (q >> 7); }
@@ -75,39 +76,44 @@ private:
     inline uint32_t displacement(size_t i) const
     {
         assert(is_occupied(i));
-        return (m_displacement[i] == disp_t::kOverflow) ? m_displacement_ext[i] : static_cast<uint32_t>(m_displacement[i]);
+        return (m_displacement[i] == disp_t::kOverflow) ? m_displacement_ext.at(i) : static_cast<uint32_t>(m_displacement[i]);
     }
 
     inline uint64_t home(size_t i) const
     {
         assert(is_occupied(i));
-        return i - displacement(i) & m_growth_info.mask();
+        return (i - displacement(i)) & m_growth_info.mask();
     }
 
     inline uint64_t decode_hash(size_t i) const
     {
-        uint64_t h1 = m_slots[i];
-        uint64_t h2 = static_cast<uint64_t>(m_controls[i]);
-        uint64_t h = (h1 << 7) | h2;
-        return m_hash.invert_hash(h, m_slots.width() + 7);
+        uint64_t q1 = m_slots[1];
+        uint64_t q2 = static_cast<uint64_t>(m_controls[i]);
+        uint64_t q = (q1 << 7) | q2;
+        uint64_t r = home(i);
+        uint64_t h = q * m_growth_info.capacity() | r;
+        return m_hash.invert_hash(h, m_width);
     }
+
+    inline Slot<I> decode_key(size_t i) const { return Uint64tCoder<T>::from_uint64_t(decode_hash(i), m_width); }
 
 private:
     std::pair<const_iterator, bool> insert_impl(const T& key)
     {
         assert(size() < capacity() && "Insert failed. Rehashing to higher capacity is required.");
-        assert(Uint64tCoder<T>::bit_width(key) <= m_slots.width() && "Insert failed. Slot width is insufficient to store the key.");
+        assert(Uint64tCoder<T>::bit_width(key) <= m_width && "Insert failed. Slot width is insufficient to store the key.");
 
         m_statistics.increment_num_probes();
 
-        const auto h = H(key);
+        const auto h = H(key, m_width);
         const auto q = Q(h);
+        const auto r = R(h);
         const auto q1 = Q1(q);
         const auto q2 = Q2(q);
 
-        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, m_growth_info.mask());
+        DEBUG_LOG("key=" << key << " h=" << h << " q=" << q << " r=" << r << " q1=" << q1 << " q2=" << static_cast<int>(q2));
 
-        const auto initial_offset = probe.offset();
+        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, m_growth_info.mask());
 
         while (true)
         {
@@ -120,7 +126,7 @@ private:
                 size_t offset = probe.offset(i);
                 assert(is_within_bounds(m_slots, offset));
 
-                if (m_equal_to(m_slots[offset], q1))
+                if (home(offset) == r && m_equal_to(m_slots[offset], q1))  // matching home, q1, and q2 implies matching key
                     return { const_iterator(*this, offset), false };
             }
 
@@ -141,7 +147,8 @@ private:
                 if (offset < absl::container_internal::NumClonedBytes())
                     m_controls[capacity() + offset] = static_cast<absl::container_internal::ctrl_t>(q2);
 
-                uint32_t d = (offset - initial_offset) & m_growth_info.mask();
+                uint32_t d = (offset - r) & m_growth_info.mask();
+
                 if (d < static_cast<uint8_t>(disp_t::kOverflow))
                     m_displacement[offset] = static_cast<disp_t>(d);
                 else
@@ -161,27 +168,18 @@ private:
         }
     }
 
-    void resize_width(uint8_t old_width, uint8_t new_width)
+    void resize_width(uint8_t new_width)
     {
-        auto slots = sdsl::int_vector<>(capacity(), 0, new_width);
+        auto tmp = compact_flat_hash_set(capacity(), new_width);
 
         if (size() > 0)
-        {
             for (I i = 0; i < capacity(); ++i)
                 if (static_cast<int>(m_controls[i]) >= 0)
-                {
-                    uint64_t h = m_hash.hash(Uint64tCoder<T>::to_uint64_t(Uint64tCoder<T>::from_uint64_t(decode_key(i), old_width), new_width), new_width);
-                    assert(std::bit_width(h) <= m_slots.width());
+                    tmp.insert(decode_key(i));
 
-                    const auto h1 = H1(h);
-                    const auto h2 = H2(h);
+        tmp.m_statistics += m_statistics;
 
-                    m_slots[i] = h1;
-                    m_controls[i] = static_cast<absl::container_internal::ctrl_t>(h2);
-                }
-        }
-
-        std::swap(m_slots, slots);
+        std::swap(*this, tmp);
     }
 
 public:
@@ -190,10 +188,11 @@ public:
                           Hash hash = Hash {},
                           EqualTo equal_to = EqualTo {}) :
         m_growth_info(capacity),
-        m_slots(this->capacity(), 0, bit_width),  ///< bit width must be at least one, else it is set to 64
+        m_slots(this->capacity(), 0, std::max(1, static_cast<int>(bit_width) - 7)),  ///< bit width must be at least one, else it is set to 64
         m_controls(this->capacity() + absl::container_internal::NumClonedBytes(), absl::container_internal::ctrl_t::kEmpty),
         m_displacement(this->capacity()),
         m_displacement_ext(),
+        m_width(bit_width),
         m_hash(hash),
         m_equal_to(equal_to)
     {
@@ -207,7 +206,7 @@ public:
         const auto new_width = Uint64tCoder<T>::bit_width(key);
 
         if (new_width > m_width)
-            resize_width(m_width, new_width);
+            resize_width(new_width);
 
         if (m_growth_info.growth_left() == 0)
             rehash();
@@ -217,11 +216,11 @@ public:
 
     void rehash()
     {
-        auto tmp = compact_flat_hash_set(2 * capacity(), m_slots.width(), m_hash, m_equal_to);
+        auto tmp = compact_flat_hash_set(2 * capacity(), m_width, m_hash, m_equal_to);
 
         for (size_t i = 0; i < capacity(); ++i)
             if (static_cast<int>(m_controls[i]) >= 0)
-                tmp.insert(Uint64tCoder<T>::from_uint64_t(decode_key(i), m_slots.width() + 7));
+                tmp.insert(decode_key(i));
 
         tmp.m_statistics += m_statistics;
 
@@ -266,7 +265,7 @@ public:
 
         const_iterator(const compact_flat_hash_set& set, size_t pos) : m_set(&set), m_pos(pos) { assert(static_cast<int>(set.m_controls[pos]) >= 0); }
 
-        value_type operator*() const { return Uint64tCoder<T>::from_uint64_t(set().decode_key(m_pos), set().m_slots.width() + 7); }
+        value_type operator*() const { return set().decode_key(m_pos); }
 
         const_iterator& operator++()
         {
@@ -295,13 +294,15 @@ public:
     const std::vector<absl::container_internal::ctrl_t>& controls() const { return m_controls; }
     size_t size() const { return m_growth_info.size(); }
     size_t capacity() const { return m_growth_info.capacity(); }
-    uint8_t bit_width() const { return m_slots.width(); }
+    uint8_t bit_width() const { return m_width; }
 
     size_t mem_usage() const
     {
         size_t usage = 0;
         usage += m_slots.capacity() / 8;
-        usage += m_controls.capacity() * sizeof(absl::container_internal::ctrl_t);
+        usage += m_controls.capacity() * sizeof(decltype(m_controls)::value_type);
+        usage += m_displacement.capacity() * sizeof(decltype(m_displacement)::value_type);
+        usage += m_displacement_ext.capacity() * (sizeof(decltype(m_displacement_ext)::value_type));
         return usage;
     }
 };

@@ -43,6 +43,10 @@ else()
     message("Building tests disabled.")
 endif()
 
+if(VERBOSE)
+    add_compile_definitions(VERBOSE)
+endif()
+
 ##############################################################
 # Dependency Handling
 ##############################################################

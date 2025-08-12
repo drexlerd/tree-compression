@@ -5,6 +5,7 @@ add_library(core STATIC
     "../include/valla/compact_flat_hash_set.hpp"
     "../include/valla/compact_hash.hpp"
     "../include/valla/concepts.hpp"
+    "../include/valla/debug.hpp"
     "../include/valla/dtdb_h_impl.hpp"
     "../include/valla/dtdb_h.hpp"
     "../include/valla/dtdb_s_impl.hpp"

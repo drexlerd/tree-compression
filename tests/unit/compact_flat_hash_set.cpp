@@ -29,7 +29,7 @@ TEST(VallaTests, CompactFlatHashSetTest)
     EXPECT_EQ(*s0.first, Slot<uint32_t>(0, 1));
     EXPECT_EQ(set.size(), 1);
     EXPECT_EQ(set.bit_width(), 2);
-    EXPECT_EQ(set.slots().bit_size(), 2);
+    EXPECT_EQ(set.slots().bit_size(), 16);
     EXPECT_EQ(set.slots().capacity(), 64);
 
     // Insert s1 (bit resize from 2 to 6)
@@ -37,7 +37,7 @@ TEST(VallaTests, CompactFlatHashSetTest)
     EXPECT_EQ(*s1.first, Slot<uint32_t>(4, 5));
     EXPECT_EQ(set.size(), 2);
     EXPECT_EQ(set.bit_width(), 6);
-    EXPECT_EQ(set.slots().bit_size(), 12);
+    EXPECT_EQ(set.slots().bit_size(), 16);
     EXPECT_EQ(set.slots().capacity(), 64);
 
     // Insert s2 (same as s0)
@@ -45,7 +45,7 @@ TEST(VallaTests, CompactFlatHashSetTest)
     EXPECT_EQ(*s2.first, Slot<uint32_t>(0, 1));
     EXPECT_EQ(set.size(), 2);
     EXPECT_EQ(set.bit_width(), 6);
-    EXPECT_EQ(set.slots().bit_size(), 24);
+    EXPECT_EQ(set.slots().bit_size(), 16);
     EXPECT_EQ(set.slots().capacity(), 64);
 
     // Insert s3
@@ -53,7 +53,7 @@ TEST(VallaTests, CompactFlatHashSetTest)
     EXPECT_EQ(*s3.first, Slot<uint32_t>(3, 2));
     EXPECT_EQ(set.size(), 3);
     EXPECT_EQ(set.bit_width(), 6);
-    EXPECT_EQ(set.slots().bit_size(), 24);
+    EXPECT_EQ(set.slots().bit_size(), 16);
     EXPECT_EQ(set.slots().capacity(), 64);
 
     // Insert s4
@@ -61,7 +61,7 @@ TEST(VallaTests, CompactFlatHashSetTest)
     EXPECT_EQ(*s4.first, Slot<uint32_t>(1, 4));
     EXPECT_EQ(set.size(), 4);
     EXPECT_EQ(set.bit_width(), 6);
-    EXPECT_EQ(set.slots().bit_size(), 24);
+    EXPECT_EQ(set.slots().bit_size(), 16);
     EXPECT_EQ(set.slots().capacity(), 64);
 
     // Insert s5
@@ -69,7 +69,7 @@ TEST(VallaTests, CompactFlatHashSetTest)
     EXPECT_EQ(*s5.first, Slot<uint32_t>(5, 1));
     EXPECT_EQ(set.size(), 5);
     EXPECT_EQ(set.bit_width(), 6);
-    EXPECT_EQ(set.slots().bit_size(), 48);
+    EXPECT_EQ(set.slots().bit_size(), 16);
     EXPECT_EQ(set.slots().capacity(), 64);
 }
 }
