@@ -316,7 +316,7 @@ TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
 
 TEST(VallaTests, CompactUintHashIDMapTest)
 {
-    auto table = CompactTreeHashIDMap<uint32_t>();
+    auto table = CompactTreeHashIDMap<uint32_t, IndexedHashSet<Slot<uint32_t>, uint32_t>>();
     auto leaf_table = IndexedHashSet<double, uint32_t>();
 
     auto index_list = std::vector<uint32_t>();
@@ -382,7 +382,7 @@ TEST(VallaTests, CompactUintHashIDMapExhaustiveTest)
         dls.push_back(std::move(dl));
     }
 
-    auto table = CompactTreeHashIDMap<uint32_t>();
+    auto table = CompactTreeHashIDMap<uint32_t, IndexedHashSet<Slot<uint32_t>, uint32_t>>();
     auto leaf_table = IndexedHashSet<double, uint32_t>();
 
     auto out_il = std::vector<uint32_t> {};

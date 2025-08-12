@@ -22,7 +22,7 @@ namespace valla::tests
 {
 TEST(VallaTests, CompactFlatHashSetUint32Test)
 {
-    auto set = compact_flat_hash_set<uint32_t, uint32_t> {};
+    auto set = compact_flat_hash_set<uint32_t> {};
 
     // Insert s0
     const auto [s0, s0_success] = set.insert(uint32_t(0));
@@ -50,7 +50,7 @@ TEST(VallaTests, CompactFlatHashSetUint32Test)
 
 TEST(VallaTests, CompactFlatHashSetSlotTest)
 {
-    auto set = compact_flat_hash_set<Slot<uint32_t>, uint32_t> {};
+    auto set = compact_flat_hash_set<Slot<uint32_t>> {};
 
     // Insert s0
     const auto [s0, s0_success] = set.insert(Slot<uint32_t>(0, 1));
@@ -86,8 +86,5 @@ TEST(VallaTests, CompactFlatHashSetSlotTest)
     EXPECT_EQ(set[s5], Slot<uint32_t>(5, 1));
     EXPECT_EQ(set.size(), 5);
     EXPECT_EQ(set.width(), 6);
-
-    auto set2 = compact_flat_hash_set<Slot<uint32_t>, uint32_t> {};
-    std::swap(set, set2);
 }
 }

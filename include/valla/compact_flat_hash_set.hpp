@@ -35,7 +35,7 @@
 
 namespace valla
 {
-template<IsUint64tCodable T, std::unsigned_integral I, typename Hash = CompactHash<uint64_t>, typename EqualTo = EqualTo<T>>
+template<IsUint64tCodable T, typename Hash = CompactHash<uint64_t>, typename EqualTo = EqualTo<T>>
 class compact_flat_hash_set
 {
 public:
@@ -43,8 +43,6 @@ public:
     friend class const_iterator;
 
     using value_type = T;
-    using index_type = I;
-    using const_iterator_type = const_iterator;
 
 protected:
     enum class disp_t : uint8_t
@@ -111,7 +109,7 @@ protected:
         return Uint64tCoder<T>::from_uint64_t(inserse_h, m_width);
     }
 
-    std::pair<I, bool> insert_impl(const T& key)
+    std::pair<uint64_t, bool> insert_impl(const T& key)
     {
         assert(size() < capacity() && "Insert failed. Rehashing to higher capacity is required.");
         assert(Uint64tCoder<T>::width(key) <= m_width && "Insert failed. Slot width is insufficient to store the key.");
@@ -184,10 +182,11 @@ protected:
 
     void resize_width(uint8_t new_width)
     {
+        // TODO: width resize changes hash values -> changes positions -> hash id map must rebuild trees
         auto tmp = compact_flat_hash_set(capacity(), new_width, m_hash, m_equal_to);
 
         if (size() > 0)
-            for (I i = 0; i < capacity(); ++i)
+            for (uint64_t i = 0; i < capacity(); ++i)
                 if (static_cast<int>(m_controls[i]) >= 0)
                     tmp.insert(decode_key(i));
 
@@ -218,7 +217,7 @@ public:
     compact_flat_hash_set(compact_flat_hash_set&&) = default;
     compact_flat_hash_set& operator=(compact_flat_hash_set&&) = default;
 
-    std::pair<I, bool> insert(const T& key)
+    std::pair<uint64_t, bool> insert(const T& key)
     {
         const auto new_width = Uint64tCoder<T>::width(key);
 
@@ -231,7 +230,7 @@ public:
         return insert_impl(key);
     }
 
-    T operator[](I pos) const
+    T operator[](uint64_t pos) const
     {
         assert(is_occupied(pos));
         return decode_key(pos);

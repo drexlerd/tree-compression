@@ -20,7 +20,6 @@
 
 #include "valla/compact_flat_hash_set.hpp"
 #include "valla/compact_hash.hpp"
-#include "valla/compact_indexed_hash_set.hpp"
 #include "valla/concepts.hpp"
 #include "valla/equal_to.hpp"
 #include "valla/growthinfo.hpp"
@@ -35,19 +34,16 @@
 namespace valla
 {
 /// @brief `CompactTreeHashIDMap` implements a CompactHashIDMap for chains of perfectly balanced binary trees with DFS style rehash policy.
-template<std::unsigned_integral I,
-         typename Hash = CompactHash<uint64_t>,
-         typename EqualTo = EqualTo<Slot<I>>,
-         IsStableIndexedHashSet RootSet = CompactIndexedHashSet<Slot<I>, I, Hash, EqualTo>>
+template<std::unsigned_integral I, IsStableIndexedHashSet RootSet, typename Hash = CompactHash<uint64_t>, typename EqualTo = EqualTo<Slot<I>>>
     requires std::same_as<typename RootSet::value_type, Slot<I>> && std::same_as<typename RootSet::index_type, I>
-class CompactTreeHashIDMap : public compact_flat_hash_set<Slot<I>, I, Hash, EqualTo>
+class CompactTreeHashIDMap : public compact_flat_hash_set<Slot<I>, Hash, EqualTo>
 {
 private:
-    using Base = compact_flat_hash_set<Slot<I>, I, Hash, EqualTo>;
+    using Base = compact_flat_hash_set<Slot<I>, Hash, EqualTo>;
 
 public:
-    using value_type = typename Base::value_type;
-    using index_type = typename Base::index_type;
+    using value_type = Slot<I>;
+    using index_type = I;
 
 private:
     RootSet m_roots;
@@ -128,6 +124,8 @@ public:
         while (true)
         {
             new_capacity *= 2;
+
+            std::cout << "Rehash " << new_capacity << std::endl;
 
             if (rehash_impl(new_capacity))
                 break;

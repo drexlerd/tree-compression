@@ -22,7 +22,6 @@
 #include "valla/compact_flat_hash_set.hpp"
 #include "valla/compact_hash.hpp"
 #include "valla/compact_hash_id_map.hpp"
-#include "valla/compact_indexed_hash_set.hpp"
 #include "valla/concepts.hpp"
 #include "valla/dtdb_h.hpp"
 #include "valla/dtdb_s.hpp"
