@@ -124,7 +124,8 @@ protected:
         const auto q1 = Q1(q);
         const auto q2 = Q2(q);
 
-        DEBUG_LOG("key=" << key << " h=" << h << " q=" << q << " r=" << r << " q1=" << q1 << " q2=" << static_cast<int>(q2));
+        DEBUG_LOG("this=" << this << " key=" << key << " h=" << h << " q=" << q << " r=" << r << " q1=" << q1 << " q2=" << static_cast<int>(q2)
+                          << " width=" << static_cast<int>(m_width));
 
         absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, m_growth_info.mask());
 

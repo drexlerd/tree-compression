@@ -314,6 +314,30 @@ TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
     }
 }
 
+TEST(VallaTests, CompactUintHashIDMapTest)
+{
+    auto table = CompactTreeHashIDMap<uint32_t>();
+    auto leaf_table = IndexedHashSet<double, uint32_t>();
+
+    auto index_list = std::vector<uint32_t>();
+    auto double_list = std::vector<double>();
+
+    /* uint32_t */
+    {
+        const auto s0 = std::vector<uint32_t> { 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 };
+        const auto s0_idx = insert_sequence(s0, table);
+
+        EXPECT_EQ(table.size(), 15);
+
+        // Created new state!
+        EXPECT_EQ(s0_idx, 1);
+
+        index_list.clear();
+        read_sequence(s0_idx, table, std::back_inserter(index_list));
+        EXPECT_EQ(index_list, s0);
+    }
+}
+
 TEST(VallaTests, CompactUintHashIDMapExhaustiveTest)
 {
     const size_t num_sequences = static_cast<size_t>(1000);  // number of states

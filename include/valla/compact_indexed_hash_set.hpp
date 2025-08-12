@@ -56,9 +56,8 @@ private:
 
         uint64_t invert_hash(uint64_t el, uint8_t w) const
         {
-            assert(is_within_bounds(*vec, el));
             /* We obtain a stronger hash by decoding the slot and passing it into the Slot hash. */
-            return m_hash.invert_hash(vec->operator[](el), w);
+            return m_hash.invert_hash(el, w);
         }
     };
 
@@ -132,9 +131,16 @@ public:
         const auto result = m_uniqueness.insert(index);
 
         if (!result.second)
+        {
+            std::cout << "Old: " << slot << " " << m_uniqueness[result.first] << " " << m_size << std::endl;
             --m_size;
+        }
+        else
+        {
+            std::cout << "New: " << slot << " " << m_uniqueness[result.first] << " " << m_size << std::endl;
+        }
 
-        return result.first;
+        return m_uniqueness[result.first];
     }
 
     T lookup(I index) const

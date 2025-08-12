@@ -20,7 +20,35 @@
 
 namespace valla::tests
 {
-TEST(VallaTests, CompactFlatHashSetTest)
+TEST(VallaTests, CompactFlatHashSetUint32Test)
+{
+    auto set = compact_flat_hash_set<uint32_t, uint32_t> {};
+
+    // Insert s0
+    const auto [s0, s0_success] = set.insert(uint32_t(0));
+    EXPECT_EQ(set[s0], uint32_t(0));
+    EXPECT_EQ(set.size(), 1);
+    EXPECT_EQ(set.width(), 1);
+
+    // Insert s1 (bit resize from 2 to 6)
+    const auto [s1, s1_success] = set.insert(uint32_t(1));
+    EXPECT_EQ(set[s1], uint32_t(1));
+    EXPECT_EQ(set.size(), 2);
+    EXPECT_EQ(set.width(), 1);
+
+    // Insert s2 (same as s0)
+    const auto [s2, s2_success] = set.insert(uint32_t(0));
+    EXPECT_EQ(set[s2], uint32_t(0));
+    EXPECT_EQ(set.size(), 2);
+    EXPECT_EQ(set.width(), 1);
+    // Insert s3
+    const auto [s3, s3_success] = set.insert(uint32_t(2));
+    EXPECT_EQ(set[s3], uint32_t(2));
+    EXPECT_EQ(set.size(), 3);
+    EXPECT_EQ(set.width(), 2);
+}
+
+TEST(VallaTests, CompactFlatHashSetSlotTest)
 {
     auto set = compact_flat_hash_set<Slot<uint32_t>, uint32_t> {};
 
