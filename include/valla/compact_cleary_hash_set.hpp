@@ -35,6 +35,7 @@ namespace valla
 // - https://arxiv.org/pdf/2109.04548
 // - https://arxiv.org/pdf/cs/0512081
 // - https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=b7620871f53d759a15cf9e820584b89f984f74c1
+// - https://en.wikipedia.org/wiki/Quotient_filter
 template<IsUint64tCodable T, std::unsigned_integral I, typename Hash = CompactHash<T>, typename EqualTo = EqualTo<T>>
 class compact_cleary_hash_set
 {

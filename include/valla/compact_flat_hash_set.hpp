@@ -55,7 +55,7 @@ private:
     sdsl::int_vector<> m_slots;
     std::vector<absl::container_internal::ctrl_t> m_controls;
     std::vector<disp_t> m_displacement;
-    absl::flat_hash_map<uint32_t, int32_t> m_displacement_ext;
+    absl::flat_hash_map<uint32_t, uint32_t> m_displacement_ext;
 
     uint8_t m_width;
 
@@ -64,10 +64,27 @@ private:
 
     HashSetStatistics m_statistics;
 
-    static inline size_t H1(size_t hash) { return (hash >> 7); }
-    static inline absl::container_internal::h2_t H2(size_t hash) { return hash & 0x7F; }
+    inline uint64_t H(const T& key) const { return m_hash.hash(Uint64tCoder<T>(key, m_width), m_width); }
+    inline uint64_t Q(uint64_t h) { return h / m_growth_info.capacity(); }
+    inline uint64_t R(uint64_t h) { return h & m_growth_info.mask(); }
+    static inline uint64_t Q1(uint64_t q) { return (q >> 7); }
+    static inline absl::container_internal::h2_t Q2(uint64_t q) { return q & 0x7F; }
 
-    inline uint64_t decode_key(size_t i) const
+    inline bool is_occupied(size_t i) const { return static_cast<int>(m_controls[i]) >= 0; }
+
+    inline uint32_t displacement(size_t i) const
+    {
+        assert(is_occupied(i));
+        return (m_displacement[i] == disp_t::kOverflow) ? m_displacement_ext[i] : static_cast<uint32_t>(m_displacement[i]);
+    }
+
+    inline uint64_t home(size_t i) const
+    {
+        assert(is_occupied(i));
+        return i - displacement(i) & m_growth_info.mask();
+    }
+
+    inline uint64_t decode_hash(size_t i) const
     {
         uint64_t h1 = m_slots[i];
         uint64_t h2 = static_cast<uint64_t>(m_controls[i]);
@@ -83,12 +100,10 @@ private:
 
         m_statistics.increment_num_probes();
 
-        const auto h = m_hash.hash(Uint64tCoder<T>::to_uint64_t(key, m_slots.width() + 7), m_slots.width() + 7);
-
-        assert(std::bit_width(h) <= m_slots.width());
-
-        const auto h1 = H1(h);
-        const auto h2 = H2(h);
+        const auto h = H(key);
+        const auto q = Q(h);
+        const auto q1 = Q1(q);
+        const auto q2 = Q2(q);
 
         absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, m_growth_info.mask());
 
@@ -98,14 +113,14 @@ private:
         {
             absl::container_internal::Group group(&m_controls[probe.offset()]);
 
-            for (const auto i : group.Match(h2))
+            for (const auto i : group.Match(q2))
             {
                 m_statistics.increase_total_probe_length(i);
 
                 size_t offset = probe.offset(i);
                 assert(is_within_bounds(m_slots, offset));
 
-                if (m_equal_to(m_slots[offset], h1))
+                if (m_equal_to(m_slots[offset], q1))
                     return { const_iterator(*this, offset), false };
             }
 
@@ -121,10 +136,10 @@ private:
                 assert(is_within_bounds(m_slots, offset));
                 assert(m_controls[offset] == absl::container_internal::ctrl_t::kEmpty);
 
-                m_slots[offset] = h1;
-                m_controls[offset] = static_cast<absl::container_internal::ctrl_t>(h2);
+                m_slots[offset] = q1;
+                m_controls[offset] = static_cast<absl::container_internal::ctrl_t>(q2);
                 if (offset < absl::container_internal::NumClonedBytes())
-                    m_controls[capacity() + offset] = static_cast<absl::container_internal::ctrl_t>(h2);
+                    m_controls[capacity() + offset] = static_cast<absl::container_internal::ctrl_t>(q2);
 
                 uint32_t d = (offset - initial_offset) & m_growth_info.mask();
                 if (d < static_cast<uint8_t>(disp_t::kOverflow))
@@ -190,10 +205,9 @@ public:
     std::pair<const_iterator, bool> insert(const T& key)
     {
         const auto new_width = Uint64tCoder<T>::bit_width(key);
-        const auto old_width = m_slots.width();
 
-        if (new_width > old_width)
-            resize_width(old_width, new_width);
+        if (new_width > m_width)
+            resize_width(m_width, new_width);
 
         if (m_growth_info.growth_left() == 0)
             rehash();
