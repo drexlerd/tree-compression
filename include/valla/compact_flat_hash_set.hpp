@@ -43,9 +43,10 @@ public:
     friend class const_iterator;
 
     using value_type = T;
+    using index_type = I;
     using const_iterator_type = const_iterator;
 
-private:
+protected:
     enum class disp_t : uint8_t
     {
         kOverflow = 255,
@@ -99,7 +100,7 @@ private:
     /// @brief Decode the key stored at the given position.
     /// @param i
     /// @return
-    inline Slot<I> decode_key(size_t i) const
+    inline T decode_key(size_t i) const
     {
         uint64_t q1 = m_slots[1];
         uint64_t q2 = static_cast<uint64_t>(m_controls[i]);
@@ -110,11 +111,10 @@ private:
         return Uint64tCoder<T>::from_uint64_t(inserse_h, m_width);
     }
 
-private:
-    std::pair<const_iterator, bool> insert_impl(const T& key)
+    std::pair<I, bool> insert_impl(const T& key)
     {
         assert(size() < capacity() && "Insert failed. Rehashing to higher capacity is required.");
-        assert(Uint64tCoder<T>::bit_width(key) <= m_width && "Insert failed. Slot width is insufficient to store the key.");
+        assert(Uint64tCoder<T>::width(key) <= m_width && "Insert failed. Slot width is insufficient to store the key.");
 
         m_statistics.increment_num_probes();
 
@@ -140,7 +140,7 @@ private:
                 assert(is_within_bounds(m_slots, offset));
 
                 if (home(offset) == r && m_equal_to(m_slots[offset], q1))  // matching home, q1, and q2 implies matching key
-                    return { const_iterator(*this, offset), false };
+                    return { offset, false };
             }
 
             auto mask_empty = group.MaskEmpty();
@@ -172,7 +172,7 @@ private:
 
                 m_growth_info.increment_size();
 
-                return { const_iterator(*this, offset), true };
+                return { offset, true };
             }
 
             m_statistics.increase_total_probe_length(absl::container_internal::Group::kWidth);
@@ -183,7 +183,7 @@ private:
 
     void resize_width(uint8_t new_width)
     {
-        auto tmp = compact_flat_hash_set(capacity(), new_width);
+        auto tmp = compact_flat_hash_set(capacity(), new_width, m_hash, m_equal_to);
 
         if (size() > 0)
             for (I i = 0; i < capacity(); ++i)
@@ -196,27 +196,30 @@ private:
     }
 
 public:
-    compact_flat_hash_set(size_t capacity = absl::container_internal::Group::kWidth,
-                          uint8_t bit_width = 1,
-                          Hash hash = Hash {},
-                          EqualTo equal_to = EqualTo {}) :
+    compact_flat_hash_set(size_t capacity = absl::container_internal::Group::kWidth, uint8_t width = 1, Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) :
         m_growth_info(capacity),
-        m_slots(this->capacity(), 0, std::max(1, static_cast<int>(bit_width) - 7)),  ///< bit width must be at least one, else it is set to 64
+        m_slots(this->capacity(), 0, std::max(1, static_cast<int>(width) - 7)),  ///< bit width must be at least one, else it is set to 64
         m_controls(this->capacity() + absl::container_internal::NumClonedBytes(), absl::container_internal::ctrl_t::kEmpty),
         m_displacement(this->capacity()),
         m_displacement_ext(),
-        m_width(bit_width),
+        m_width(width),
         m_hash(hash),
         m_equal_to(equal_to)
     {
-        assert(bit_width > 0 && bit_width <= 64 && "bit_width must be in range [1,64].");
+        assert(width > 0 && width <= 64 && "width must be in range [1,64].");
     }
 
     compact_flat_hash_set(Hash hash, EqualTo equal_to) : compact_flat_hash_set(absl::container_internal::Group::kWidth, 1, hash, equal_to) {}
 
-    std::pair<const_iterator, bool> insert(const T& key)
+    // Moveable but not copieable
+    compact_flat_hash_set(const compact_flat_hash_set&) = delete;
+    compact_flat_hash_set& operator=(const compact_flat_hash_set&) = delete;
+    compact_flat_hash_set(compact_flat_hash_set&&) = default;
+    compact_flat_hash_set& operator=(compact_flat_hash_set&&) = default;
+
+    std::pair<I, bool> insert(const T& key)
     {
-        const auto new_width = Uint64tCoder<T>::bit_width(key);
+        const auto new_width = Uint64tCoder<T>::width(key);
 
         if (new_width > m_width)
             resize_width(new_width);
@@ -225,6 +228,12 @@ public:
             rehash();
 
         return insert_impl(key);
+    }
+
+    T operator[](I pos) const
+    {
+        assert(is_occupied(pos));
+        return decode_key(pos);
     }
 
     void rehash()
@@ -303,11 +312,10 @@ public:
     const_iterator end() const { return const_iterator(*this, false); }
 
     const GrowthInfo& growth_info() const { return m_growth_info; }
-    const sdsl::int_vector<>& slots() const { return m_slots; }
-    const std::vector<absl::container_internal::ctrl_t>& controls() const { return m_controls; }
     size_t size() const { return m_growth_info.size(); }
     size_t capacity() const { return m_growth_info.capacity(); }
-    uint8_t bit_width() const { return m_width; }
+    uint8_t width() const { return m_width; }
+    const HashSetStatistics& statistics() const { return m_statistics; }
 
     size_t mem_usage() const
     {

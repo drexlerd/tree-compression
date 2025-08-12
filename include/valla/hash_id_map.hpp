@@ -36,7 +36,7 @@ namespace valla
 /// @tparam Key is the key.
 /// @tparam Hash is the hash functor for a key.
 /// @tparam EqualTo is the equality comparison functor for a key.
-template<typename Derived, typename Key, std::unsigned_integral I, typename Hash = Hash<Key>, typename EqualTo = std::equal_to<Key>>
+template<typename Derived, typename Key, std::unsigned_integral I, typename Hash = Hash<Key>, typename EqualTo = EqualTo<Key>>
 class HashIDMap
 {
 private:
@@ -132,14 +132,22 @@ protected:
 /// @brief `TreeHashIDMap` implements a HashIDMap for chains of perfectly balanced binary trees with DFS style rehash policy.
 template<std::unsigned_integral I,
          typename Hash = Hash<Slot<I>>,
-         typename EqualTo = std::equal_to<Slot<I>>,
+         typename EqualTo = EqualTo<Slot<I>>,
          IsStableIndexedHashSet RootSet = IndexedHashSet<Slot<I>, I, Hash, EqualTo>>
     requires std::same_as<typename RootSet::value_type, Slot<I>> && std::same_as<typename RootSet::index_type, I>
 class TreeHashIDMap : public HashIDMap<TreeHashIDMap<I, Hash, EqualTo, RootSet>, Slot<I>, I, Hash, EqualTo>
 {
+private:
+    using Base = HashIDMap<TreeHashIDMap<I, Hash, EqualTo, RootSet>, Slot<I>, I, Hash, EqualTo>;
+
 public:
     using value_type = Slot<I>;
     using index_type = I;
+
+    using Base::capacity;
+    using Base::growth_info;
+    using Base::size;
+    using Base::statistics;
 
 private:
     RootSet m_roots;
@@ -188,16 +196,7 @@ private:
         return true;
     }
 
-    using Base = HashIDMap<TreeHashIDMap<I, Hash, EqualTo, RootSet>, Slot<I>, I, Hash, EqualTo>;
-
-    friend Base;
-
 public:
-    using Base::capacity;
-    using Base::growth_info;
-    using Base::size;
-    using Base::statistics;
-
     TreeHashIDMap(size_t capacity = absl::container_internal::Group::kWidth, Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) :
         Base(capacity, hash, equal_to),
         m_roots()

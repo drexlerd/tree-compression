@@ -25,51 +25,41 @@ TEST(VallaTests, CompactFlatHashSetTest)
     auto set = compact_flat_hash_set<Slot<uint32_t>, uint32_t> {};
 
     // Insert s0
-    const auto s0 = set.insert(Slot<uint32_t>(0, 1));
-    EXPECT_EQ(*s0.first, Slot<uint32_t>(0, 1));
+    const auto [s0, s0_success] = set.insert(Slot<uint32_t>(0, 1));
+    EXPECT_EQ(set[s0], Slot<uint32_t>(0, 1));
     EXPECT_EQ(set.size(), 1);
-    EXPECT_EQ(set.bit_width(), 2);
-    EXPECT_EQ(set.slots().bit_size(), 16);
-    EXPECT_EQ(set.slots().capacity(), 64);
+    EXPECT_EQ(set.width(), 2);
 
     // Insert s1 (bit resize from 2 to 6)
-    const auto s1 = set.insert(Slot<uint32_t>(4, 5));
-    EXPECT_EQ(*s1.first, Slot<uint32_t>(4, 5));
+    const auto [s1, s1_success] = set.insert(Slot<uint32_t>(4, 5));
+    EXPECT_EQ(set[s1], Slot<uint32_t>(4, 5));
     EXPECT_EQ(set.size(), 2);
-    EXPECT_EQ(set.bit_width(), 6);
-    EXPECT_EQ(set.slots().bit_size(), 16);
-    EXPECT_EQ(set.slots().capacity(), 64);
+    EXPECT_EQ(set.width(), 6);
 
     // Insert s2 (same as s0)
-    const auto s2 = set.insert(Slot<uint32_t>(0, 1));
-    EXPECT_EQ(*s2.first, Slot<uint32_t>(0, 1));
+    const auto [s2, s2_success] = set.insert(Slot<uint32_t>(0, 1));
+    EXPECT_EQ(set[s2], Slot<uint32_t>(0, 1));
     EXPECT_EQ(set.size(), 2);
-    EXPECT_EQ(set.bit_width(), 6);
-    EXPECT_EQ(set.slots().bit_size(), 16);
-    EXPECT_EQ(set.slots().capacity(), 64);
-
+    EXPECT_EQ(set.width(), 6);
     // Insert s3
-    const auto s3 = set.insert(Slot<uint32_t>(3, 2));
-    EXPECT_EQ(*s3.first, Slot<uint32_t>(3, 2));
+    const auto [s3, s3_success] = set.insert(Slot<uint32_t>(3, 2));
+    EXPECT_EQ(set[s3], Slot<uint32_t>(3, 2));
     EXPECT_EQ(set.size(), 3);
-    EXPECT_EQ(set.bit_width(), 6);
-    EXPECT_EQ(set.slots().bit_size(), 16);
-    EXPECT_EQ(set.slots().capacity(), 64);
+    EXPECT_EQ(set.width(), 6);
 
     // Insert s4
-    const auto s4 = set.insert(Slot<uint32_t>(1, 4));
-    EXPECT_EQ(*s4.first, Slot<uint32_t>(1, 4));
+    const auto [s4, s4_success] = set.insert(Slot<uint32_t>(1, 4));
+    EXPECT_EQ(set[s4], Slot<uint32_t>(1, 4));
     EXPECT_EQ(set.size(), 4);
-    EXPECT_EQ(set.bit_width(), 6);
-    EXPECT_EQ(set.slots().bit_size(), 16);
-    EXPECT_EQ(set.slots().capacity(), 64);
+    EXPECT_EQ(set.width(), 6);
 
     // Insert s5
-    const auto s5 = set.insert(Slot<uint32_t>(5, 1));
-    EXPECT_EQ(*s5.first, Slot<uint32_t>(5, 1));
+    const auto [s5, s5_success] = set.insert(Slot<uint32_t>(5, 1));
+    EXPECT_EQ(set[s5], Slot<uint32_t>(5, 1));
     EXPECT_EQ(set.size(), 5);
-    EXPECT_EQ(set.bit_width(), 6);
-    EXPECT_EQ(set.slots().bit_size(), 16);
-    EXPECT_EQ(set.slots().capacity(), 64);
+    EXPECT_EQ(set.width(), 6);
+
+    auto set2 = compact_flat_hash_set<Slot<uint32_t>, uint32_t> {};
+    std::swap(set, set2);
 }
 }

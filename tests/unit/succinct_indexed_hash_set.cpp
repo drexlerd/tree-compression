@@ -28,8 +28,8 @@ TEST(VallaTests, SuccinctIndexedHashSetTest)
     const auto s0 = set.insert(Slot<uint32_t>(0, 1));
     EXPECT_EQ(s0, 0);
     EXPECT_EQ(set.size(), 1);
-    EXPECT_EQ(set.bit_width(), 2);
-    EXPECT_EQ(set.uniqueness().bit_width(), 1);
+    EXPECT_EQ(set.width(), 2);
+    EXPECT_EQ(set.uniqueness().width(), 1);
     EXPECT_EQ(set.slots().bit_size(), 2);
     EXPECT_EQ(set.slots().capacity(), 64);
     EXPECT_EQ(set.lookup(s0), Slot<uint32_t>(0, 1));
@@ -38,8 +38,8 @@ TEST(VallaTests, SuccinctIndexedHashSetTest)
     const auto s1 = set.insert(Slot<uint32_t>(4, 5));
     EXPECT_EQ(s1, 1);
     EXPECT_EQ(set.size(), 2);
-    EXPECT_EQ(set.bit_width(), 6);
-    EXPECT_EQ(set.uniqueness().bit_width(), 1);
+    EXPECT_EQ(set.width(), 6);
+    EXPECT_EQ(set.uniqueness().width(), 1);
     EXPECT_EQ(set.slots().bit_size(), 12);
     EXPECT_EQ(set.slots().capacity(), 64);
     EXPECT_EQ(set.lookup(s1), Slot<uint32_t>(4, 5));
@@ -48,8 +48,8 @@ TEST(VallaTests, SuccinctIndexedHashSetTest)
     const auto s2 = set.insert(Slot<uint32_t>(0, 1));
     EXPECT_EQ(s2, 0);
     EXPECT_EQ(set.size(), 2);
-    EXPECT_EQ(set.bit_width(), 6);
-    EXPECT_EQ(set.uniqueness().bit_width(), 2);
+    EXPECT_EQ(set.width(), 6);
+    EXPECT_EQ(set.uniqueness().width(), 2);
     EXPECT_EQ(set.slots().bit_size(), 24);
     EXPECT_EQ(set.slots().capacity(), 64);
     EXPECT_EQ(set.lookup(s2), Slot<uint32_t>(0, 1));
@@ -58,8 +58,8 @@ TEST(VallaTests, SuccinctIndexedHashSetTest)
     const auto s3 = set.insert(Slot<uint32_t>(3, 2));
     EXPECT_EQ(s3, 2);
     EXPECT_EQ(set.size(), 3);
-    EXPECT_EQ(set.bit_width(), 6);
-    EXPECT_EQ(set.uniqueness().bit_width(), 2);
+    EXPECT_EQ(set.width(), 6);
+    EXPECT_EQ(set.uniqueness().width(), 2);
     EXPECT_EQ(set.slots().bit_size(), 24);
     EXPECT_EQ(set.slots().capacity(), 64);
     EXPECT_EQ(set.lookup(s3), Slot<uint32_t>(3, 2));
@@ -68,8 +68,8 @@ TEST(VallaTests, SuccinctIndexedHashSetTest)
     const auto s4 = set.insert(Slot<uint32_t>(1, 4));
     EXPECT_EQ(s4, 3);
     EXPECT_EQ(set.size(), 4);
-    EXPECT_EQ(set.bit_width(), 6);
-    EXPECT_EQ(set.uniqueness().bit_width(), 2);
+    EXPECT_EQ(set.width(), 6);
+    EXPECT_EQ(set.uniqueness().width(), 2);
     EXPECT_EQ(set.slots().bit_size(), 24);
     EXPECT_EQ(set.slots().capacity(), 64);
     EXPECT_EQ(set.lookup(s4), Slot<uint32_t>(1, 4));
@@ -78,8 +78,8 @@ TEST(VallaTests, SuccinctIndexedHashSetTest)
     const auto s5 = set.insert(Slot<uint32_t>(5, 1));
     EXPECT_EQ(s5, 4);
     EXPECT_EQ(set.size(), 5);
-    EXPECT_EQ(set.bit_width(), 6);
-    EXPECT_EQ(set.uniqueness().bit_width(), 3);
+    EXPECT_EQ(set.width(), 6);
+    EXPECT_EQ(set.uniqueness().width(), 3);
     EXPECT_EQ(set.slots().bit_size(), 48);
     EXPECT_EQ(set.slots().capacity(), 64);
     EXPECT_EQ(set.lookup(s5), Slot<uint32_t>(5, 1));

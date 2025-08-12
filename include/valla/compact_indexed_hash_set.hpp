@@ -15,9 +15,11 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef VALLA_INCLUDE_SUCCINCT_INDEXED_HASH_SET_HPP_
-#define VALLA_INCLUDE_SUCCINCT_INDEXED_HASH_SET_HPP_
+#ifndef VALLA_INCLUDE_COMPACT_INDEXED_HASH_SET_HPP_
+#define VALLA_INCLUDE_COMPACT_INDEXED_HASH_SET_HPP_
 
+#include "valla/compact_flat_hash_set.hpp"
+#include "valla/compact_hash.hpp"
 #include "valla/succinct_flat_hash_set.hpp"
 
 #include <algorithm>
@@ -30,8 +32,8 @@
 
 namespace valla
 {
-template<IsUint64tCodable T, std::unsigned_integral I, typename Hash = Hash<T>, typename EqualTo = EqualTo<T>>
-class SuccinctIndexedHashSet
+template<IsUint64tCodable T, std::unsigned_integral I, typename Hash = CompactHash<uint64_t>, typename EqualTo = EqualTo<T>>
+class CompactIndexedHashSet
 {
 public:
     using value_type = T;
@@ -41,15 +43,22 @@ private:
     struct IndexReferencedHash
     {
         std::shared_ptr<const sdsl::int_vector<>> vec;
-        Hash hash;
+        Hash m_hash;
 
-        IndexReferencedHash(std::shared_ptr<const sdsl::int_vector<>> vec) : vec(std::move(vec)), hash() {}
+        IndexReferencedHash(std::shared_ptr<const sdsl::int_vector<>> vec) : vec(std::move(vec)), m_hash() {}
 
-        size_t operator()(I el) const
+        uint64_t hash(uint64_t el, uint8_t w) const
         {
             assert(is_within_bounds(*vec, el));
             /* We obtain a stronger hash by decoding the slot and passing it into the Slot hash. */
-            return hash(Uint64tCoder<T>::from_uint64_t(vec->operator[](el), vec->width()));
+            return m_hash.hash(vec->operator[](el), w);
+        }
+
+        uint64_t invert_hash(uint64_t el, uint8_t w) const
+        {
+            assert(is_within_bounds(*vec, el));
+            /* We obtain a stronger hash by decoding the slot and passing it into the Slot hash. */
+            return m_hash.invert_hash(vec->operator[](el), w);
         }
     };
 
@@ -79,13 +88,13 @@ private:
         std::swap(m_slots, slots);
 
         /* Rebuild uniqueness */
-        m_uniqueness = succinct_flat_hash_set<I, I, IndexReferencedHash, IndexReferencedEqualTo>(IndexReferencedHash(m_slots), IndexReferencedEqualTo(m_slots));
+        m_uniqueness = compact_flat_hash_set<I, I, IndexReferencedHash, IndexReferencedEqualTo>(IndexReferencedHash(m_slots), IndexReferencedEqualTo(m_slots));
         for (I i = 0; i < m_size; ++i)
             m_uniqueness.insert(i);
     }
 
 public:
-    SuccinctIndexedHashSet() :
+    CompactIndexedHashSet() :
         m_size(0),
         m_capacity(1),
         m_slots(std::make_shared<sdsl::int_vector<>>(1, 0, 2)),  // size 1, value 0, width 2
@@ -93,14 +102,14 @@ public:
     {
     }
     // Moveable but not copieable
-    SuccinctIndexedHashSet(const SuccinctIndexedHashSet& other) = delete;
-    SuccinctIndexedHashSet& operator=(const SuccinctIndexedHashSet& other) = delete;
-    SuccinctIndexedHashSet(SuccinctIndexedHashSet&& other) = default;
-    SuccinctIndexedHashSet& operator=(SuccinctIndexedHashSet&& other) = default;
+    CompactIndexedHashSet(const CompactIndexedHashSet& other) = delete;
+    CompactIndexedHashSet& operator=(const CompactIndexedHashSet& other) = delete;
+    CompactIndexedHashSet(CompactIndexedHashSet&& other) = default;
+    CompactIndexedHashSet& operator=(CompactIndexedHashSet&& other) = default;
 
     I insert(T slot)
     {
-        assert(m_uniqueness.size() != std::numeric_limits<I>::max() && "SuccinctIndexedHashSet: Index overflow! The maximum number of slots reached.");
+        assert(m_uniqueness.size() != std::numeric_limits<I>::max() && "CompactIndexedHashSet: Index overflow! The maximum number of slots reached.");
 
         /* Resize on insufficient capacity. */
         if (m_size == m_capacity)
@@ -125,7 +134,7 @@ public:
         if (!result.second)
             --m_size;
 
-        return *result.first;
+        return result.first;
     }
 
     T lookup(I index) const
@@ -139,7 +148,7 @@ public:
     size_t capacity() const { return m_capacity; }
     uint8_t width() const { return m_slots->width(); }
     const sdsl::int_vector<>& slots() const { return *m_slots; }
-    const succinct_flat_hash_set<I, I, IndexReferencedHash, IndexReferencedEqualTo> uniqueness() const { return m_uniqueness; }
+    const compact_flat_hash_set<I, I, IndexReferencedHash, IndexReferencedEqualTo> uniqueness() const { return m_uniqueness; }
 
     size_t mem_usage() const
     {
@@ -153,10 +162,10 @@ private:
     size_t m_size;
     size_t m_capacity;
     std::shared_ptr<sdsl::int_vector<>> m_slots;
-    succinct_flat_hash_set<I, I, IndexReferencedHash, IndexReferencedEqualTo> m_uniqueness;
+    compact_flat_hash_set<I, I, IndexReferencedHash, IndexReferencedEqualTo> m_uniqueness;
 };
 
-static_assert(IsStableIndexedHashSet<SuccinctIndexedHashSet<Slot<uint32_t>, uint32_t>>);
+static_assert(IsStableIndexedHashSet<CompactIndexedHashSet<Slot<uint32_t>, uint32_t>>);
 }
 
 #endif

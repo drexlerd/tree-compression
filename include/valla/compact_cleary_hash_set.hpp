@@ -196,7 +196,7 @@ private:
     }
 
 public:
-    compact_cleary_hash_set(size_t capacity = 1, uint8_t bit_width = 1, Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) :
+    compact_cleary_hash_set(size_t capacity = 1, uint8_t width = 1, Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) :
         m_growth_info(capacity),
         m_R(this->capacity()),
         m_E(this->capacity(), 1),
@@ -205,7 +205,7 @@ public:
         m_hash(hash),
         m_Equal_to(equal_to)
     {
-        assert(bit_width > 0 && bit_width <= 64 && "bit_width must be in range [1,64].");
+        assert(width > 0 && width <= 64 && "width must be in range [1,64].");
     }
 
     compact_cleary_hash_set(Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) : compact_cleary_hash_set(1, 1, hash, equal_to) {}
@@ -214,7 +214,7 @@ public:
 
     std::pair<const_iterator, bool> insert(const T& key)
     {
-        const auto new_width = Uint64tCoder<T>::bit_width(key);
+        const auto new_width = Uint64tCoder<T>::width(key);
         const auto old_width = m_slots.width();
 
         if (new_width > old_width)

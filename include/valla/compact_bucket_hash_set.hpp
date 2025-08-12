@@ -78,14 +78,14 @@ private:
     }
 
 public:
-    compact_bucket_hash_set(size_t num_buckets = 1, uint8_t bit_width = 1, Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) :
+    compact_bucket_hash_set(size_t num_buckets = 1, uint8_t width = 1, Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) :
         m_growth_info(num_buckets * MAX_BUCKET_SIZE),
         m_buckets(1),
         m_hash(hash),
         m_equal_to(equal_to),
         must_rehash(false)
     {
-        assert(bit_width > 0 && bit_width <= 64 && "bit_width must be in range [1,64].");
+        assert(width > 0 && width <= 64 && "width must be in range [1,64].");
     }
 
     compact_bucket_hash_set(Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) :
@@ -97,7 +97,7 @@ public:
 
     std::pair<const_iterator, bool> insert(const T& key)
     {
-        const auto new_width = Uint64tCoder<T>::bit_width(key);
+        const auto new_width = Uint64tCoder<T>::width(key);
         const auto old_width = m_slots.width();
 
         if (new_width > old_width)
