@@ -68,34 +68,47 @@ private:
     inline uint64_t H(const T& key, uint8_t width) const { return m_hash.hash(Uint64tCoder<T>::to_uint64_t(key, width), width); }
     inline uint64_t Q(uint64_t h) { return h / m_growth_info.capacity(); }
     inline uint64_t R(uint64_t h) { return h & m_growth_info.mask(); }
+
+    /* Split Q into Q1 (stored in m_slots with variable bit-width) and Q2 (the control byte used for SIMD probing) */
     static inline uint64_t Q1(uint64_t q) { return (q >> 7); }
     static inline absl::container_internal::h2_t Q2(uint64_t q) { return q & 0x7F; }
 
+    /// @brief Test occupancy of a given position.
+    /// @param i is the position.
+    /// @return true iff there is an element stored at the given position i, and false otherwise.
     inline bool is_occupied(size_t i) const { return static_cast<int>(m_controls[i]) >= 0; }
 
+    /// @brief Get the displacement of an element stored in a given position.
+    /// @param i is the position.
+    /// @return
     inline uint32_t displacement(size_t i) const
     {
         assert(is_occupied(i));
         return (m_displacement[i] == disp_t::kOverflow) ? m_displacement_ext.at(i) : static_cast<uint32_t>(m_displacement[i]);
     }
 
+    /// @brief Get the home location of an element hashed to the given position.
+    /// @param i is the position.
+    /// @return
     inline uint64_t home(size_t i) const
     {
         assert(is_occupied(i));
         return (i - displacement(i)) & m_growth_info.mask();
     }
 
-    inline uint64_t decode_hash(size_t i) const
+    /// @brief Decode the key stored at the given position.
+    /// @param i
+    /// @return
+    inline Slot<I> decode_key(size_t i) const
     {
         uint64_t q1 = m_slots[1];
         uint64_t q2 = static_cast<uint64_t>(m_controls[i]);
         uint64_t q = (q1 << 7) | q2;
         uint64_t r = home(i);
         uint64_t h = q * m_growth_info.capacity() | r;
-        return m_hash.invert_hash(h, m_width);
+        uint64_t inserse_h = m_hash.invert_hash(h, m_width);
+        return Uint64tCoder<T>::from_uint64_t(inserse_h, m_width);
     }
-
-    inline Slot<I> decode_key(size_t i) const { return Uint64tCoder<T>::from_uint64_t(decode_hash(i), m_width); }
 
 private:
     std::pair<const_iterator, bool> insert_impl(const T& key)
