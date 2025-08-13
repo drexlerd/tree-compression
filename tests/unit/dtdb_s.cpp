@@ -362,6 +362,9 @@ TEST(VallaTests, PlainUintSwissExhaustiveTest)
             EXPECT_EQ(dl_2, out_dl);
         }
     }
+
+    std::cout << "Size: " << inner_table.size() << std::endl;
+    std::cout << "Memory usage: " << inner_table.mem_usage() << std::endl;
 }
 
 /**
@@ -626,6 +629,9 @@ TEST(VallaTests, SuccinctUintSwissExhaustiveTest)
             EXPECT_EQ(dl_2, out_dl);
         }
     }
+
+    std::cout << "Size: " << inner_table.size() << std::endl;
+    std::cout << "Memory usage: " << inner_table.mem_usage() << std::endl;
 }
 
 }

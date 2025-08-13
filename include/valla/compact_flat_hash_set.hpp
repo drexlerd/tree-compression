@@ -325,9 +325,9 @@ public:
     {
         size_t usage = 0;
         usage += m_slots.capacity() / 8;
-        usage += m_controls.capacity() * sizeof(decltype(m_controls)::value_type);
-        usage += m_displacement.capacity() * sizeof(decltype(m_displacement)::value_type);
-        usage += m_displacement_ext.capacity() * (sizeof(decltype(m_displacement_ext)::value_type));
+        usage += m_controls.capacity() * sizeof(typename decltype(m_controls)::value_type);
+        usage += m_displacement.capacity() * sizeof(typename decltype(m_displacement)::value_type);
+        usage += m_displacement_ext.capacity() * (sizeof(typename decltype(m_displacement_ext)::value_type));
         return usage;
     }
 };

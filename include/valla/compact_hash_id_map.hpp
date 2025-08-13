@@ -198,9 +198,8 @@ public:
     size_t mem_usage() const
     {
         size_t usage = 0;
+        usage += Base::mem_usage();
         usage += m_roots.mem_usage();
-        usage += this->m_slots.capacity() * sizeof(Slot<I>);
-        usage += this->m_controls.capacity() * sizeof(absl::container_internal::ctrl_t);
         return usage;
     }
 

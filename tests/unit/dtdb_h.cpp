@@ -344,6 +344,10 @@ TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
             EXPECT_EQ(dl_2, out_dl);
         }
     }
+
+    std::cout << "Size: " << table.size() << std::endl;
+    std::cout << "Capacity: " << table.capacity() << std::endl;
+    std::cout << "Memory usage: " << table.mem_usage() << std::endl;
 }
 
 TEST(VallaTests, CompactUintHashIDMapTest)
@@ -594,6 +598,10 @@ TEST(VallaTests, CompactUintHashIDMapExhaustiveTest)
             EXPECT_EQ(dl_2, out_dl);
         }
     }
+
+    std::cout << "Size: " << table.size() << std::endl;
+    std::cout << "Capacity: " << table.capacity() << std::endl;
+    std::cout << "Memory usage: " << table.mem_usage() << std::endl;
 }
 
 }
