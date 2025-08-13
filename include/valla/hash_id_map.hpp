@@ -232,6 +232,7 @@ public:
     }
 
     template<std::ranges::forward_range Range>
+        requires std::same_as<std::ranges::range_value_t<Range>, I>
     void resize_to_fit(Range sequence)
     {
         const auto size = static_cast<I>(std::distance(sequence.begin(), sequence.end()));

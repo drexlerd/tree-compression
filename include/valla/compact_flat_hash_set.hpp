@@ -100,13 +100,16 @@ protected:
     /// @return
     inline T decode_key(size_t i) const
     {
-        uint64_t q1 = m_slots[1];
+        uint64_t q1 = m_slots[i];
         uint64_t q2 = static_cast<uint64_t>(m_controls[i]);
         uint64_t q = (q1 << 7) | q2;
         uint64_t r = home(i);
         uint64_t h = q * m_growth_info.capacity() | r;
-        uint64_t inserse_h = m_hash.invert_hash(h, m_width);
-        return Uint64tCoder<T>::from_uint64_t(inserse_h, m_width);
+        uint64_t inverse_h = m_hash.invert_hash(h, m_width);
+
+        DEBUG_LOG("q1=" << q1 << " q2=" << q2 << " q=" << q << " r=" << r << " h=" << h << " inverse_h=" << inverse_h);
+
+        return Uint64tCoder<T>::from_uint64_t(inverse_h, m_width);
     }
 
     std::pair<uint64_t, bool> insert_impl(const T& key)
@@ -184,8 +187,6 @@ protected:
 
     void resize_width(uint8_t new_width)
     {
-        std::cout << "Base resize width" << std::endl;
-
         auto tmp = compact_flat_hash_set(capacity(), new_width, m_hash, m_equal_to);
 
         if (size() > 0)
@@ -235,15 +236,12 @@ public:
 
     T operator[](uint64_t pos) const
     {
-        std::cout << "pos=" << pos << " " << static_cast<int>(m_controls[pos]) << std::endl;
         assert(is_occupied(pos));
         return decode_key(pos);
     }
 
     void rehash()
     {
-        std::cout << "Base rehash" << std::endl;
-
         auto tmp = compact_flat_hash_set(2 * capacity(), m_width, m_hash, m_equal_to);
 
         for (size_t i = 0; i < capacity(); ++i)

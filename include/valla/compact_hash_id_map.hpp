@@ -48,7 +48,7 @@ public:
 private:
     RootSet m_roots;
 
-    I rehash_recursively(I unstable_index, I size, CompactTreeHashIDMap& tmp)
+    I relocate_recursively(I unstable_index, I size, CompactTreeHashIDMap& tmp)
     {
         /* Base case 1: skipped node creation */
         if (size == 1)
@@ -64,8 +64,8 @@ private:
         const auto mid = std::bit_floor(size - 1);
 
         /* Conquer */
-        I i1 = rehash_recursively(slot.i1, mid, tmp);
-        I i2 = rehash_recursively(slot.i2, size - mid, tmp);
+        I i1 = relocate_recursively(slot.i1, mid, tmp);
+        I i2 = relocate_recursively(slot.i2, size - mid, tmp);
 
         return tmp.insert(Slot<I>(i1, i2)).first;
     }
@@ -74,7 +74,10 @@ private:
     /// @param new_capacity is the capacity after rehash.
     bool rehash_impl(size_t new_capacity)
     {
-        auto tmp = CompactTreeHashIDMap(new_capacity, this->m_width, this->m_hash, this->m_equal_to);
+        auto tmp = CompactTreeHashIDMap(new_capacity,
+                                        std::max(this->width(), static_cast<uint8_t>(2 * std::bit_width(new_capacity - 1))),
+                                        this->m_hash,
+                                        this->m_equal_to);
 
         /* Relocate trees */
         for (I stable_index = 1; stable_index < this->m_roots.size(); ++stable_index)  // root 0 was already created
@@ -84,12 +87,51 @@ private:
             if (tmp.growth_info().growth_left() < 2 * root.i2)
                 return false;
 
-            tmp.insert_root(Slot(rehash_recursively(root.i1, root.i2, tmp), root.i2));
+            tmp.insert_root(Slot(relocate_recursively(root.i1, root.i2, tmp), root.i2));
         }
 
         std::swap(*this, tmp);
 
         return true;
+    }
+
+    void rehash()
+    {
+        using clock = std::chrono::high_resolution_clock;
+
+        auto start = clock::now();  // Start timing
+
+        this->m_statistics.increment_num_rehashes();
+
+        size_t new_capacity = this->capacity();
+
+        while (true)
+        {
+            new_capacity *= 2;
+
+            if (rehash_impl(new_capacity))
+                break;
+        }
+
+        this->m_statistics.increase_total_rehash_time(std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - start));
+    }
+
+    void resize_width(uint8_t new_width)
+    {
+        // TODO: width resize changes hash values -> changes positions -> hash id map must rebuild trees
+        auto tmp = CompactTreeHashIDMap(capacity(), new_width, this->m_hash, this->m_equal_to);
+
+        /* Relocate trees */
+        for (I stable_index = 1; stable_index < this->m_roots.size(); ++stable_index)  // root 0 was already created
+        {
+            Slot root = this->m_roots.lookup(stable_index);
+
+            tmp.insert_root(Slot(relocate_recursively(root.i1, root.i2, tmp), root.i2));
+        }
+
+        tmp.m_statistics += this->m_statistics;
+
+        std::swap(*this, tmp);
     }
 
 public:
@@ -111,74 +153,32 @@ public:
     CompactTreeHashIDMap(CompactTreeHashIDMap&&) = default;
     CompactTreeHashIDMap& operator=(CompactTreeHashIDMap&&) = default;
 
-    void rehash()
-    {
-        using clock = std::chrono::high_resolution_clock;
-
-        auto start = clock::now();  // Start timing
-
-        this->m_statistics.increment_num_rehashes();
-
-        size_t new_capacity = this->capacity();
-
-        while (true)
-        {
-            new_capacity *= 2;
-
-            std::cout << "Rehash " << new_capacity << std::endl;
-
-            if (rehash_impl(new_capacity))
-                break;
-        }
-
-        this->m_statistics.increase_total_rehash_time(std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - start));
-    }
-
-    void resize_width(uint8_t new_width)
-    {
-        std::cout << "Resize width: " << static_cast<int>(this->m_width) << " " << static_cast<int>(new_width) << std::endl;
-
-        // TODO: width resize changes hash values -> changes positions -> hash id map must rebuild trees
-        auto tmp = CompactTreeHashIDMap(capacity(), new_width, this->m_hash, this->m_equal_to);
-
-        /* Relocate trees */
-        for (I stable_index = 1; stable_index < this->m_roots.size(); ++stable_index)  // root 0 was already created
-        {
-            Slot root = this->m_roots.lookup(stable_index);
-
-            tmp.insert_root(Slot(rehash_recursively(root.i1, root.i2, tmp), root.i2));
-        }
-
-        tmp.m_statistics += this->m_statistics;
-
-        std::swap(*this, tmp);
-    }
-
     template<std::ranges::forward_range Range>
+        requires std::same_as<std::ranges::range_value_t<Range>, I>
     void resize_to_fit(Range sequence)
     {
+        DEBUG_LOG("Started resizing to fit: capacity=" << this->capacity() << " width=" << static_cast<int>(this->width()));
+
         const auto size = static_cast<I>(std::distance(sequence.begin(), sequence.end()));
-
-        auto max_width = 2;
-        // for (const auto x : sequence)
-        // max_width = std::max(max_width, Uint64tCoder<typename>::width(x));
-
-        if (max_width > this->m_width)
-            resize_width(max_width);
 
         while (growth_info().growth_left() < 2 * size)
             rehash();
+
+        auto required_width = 2 * std::bit_width(this->capacity() - 1);
+
+        for (const auto index : sequence)
+            required_width = std::max(required_width, 2 * std::bit_width(index));
+
+        if (required_width > this->m_width)
+            resize_width(required_width);
+
+        DEBUG_LOG("Finished resizing to fit: capacity=" << this->capacity() << " width=" << static_cast<int>(this->width()));
     }
 
     std::pair<uint64_t, bool> insert(const Slot<I>& key)
     {
-        const auto new_width = Uint64tCoder<Slot<I>>::width(key);
-
-        if (new_width > this->m_width)
-            resize_width(new_width);
-
-        if (this->m_growth_info.growth_left() == 0)
-            rehash();
+        assert(Uint64tCoder<Slot<I>>::width(key) <= this->width());
+        assert(this->m_growth_info.growth_left() > 0);
 
         return this->insert_impl(key);
     }

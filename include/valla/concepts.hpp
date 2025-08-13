@@ -39,7 +39,7 @@ concept IsStableIndexedHashSet = requires(T a, typename T::value_type v, typenam
 
 /// @brief `IsUnstableIndexedHashSet` is an indexed hash set whose indices are unstable such that special root nodes need to stabilize them.
 template<typename T>
-concept IsUnstableIndexedHashSet = requires(T a, typename T::value_type v, typename T::index_type i, std::vector<typename T::value_type> s) {
+concept IsUnstableIndexedHashSet = requires(T a, typename T::value_type v, typename T::index_type i, std::vector<typename T::index_type> s) {
     typename T::value_type;
     typename T::index_type;
 
