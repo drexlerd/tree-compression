@@ -184,6 +184,8 @@ protected:
 
     void resize_width(uint8_t new_width)
     {
+        std::cout << "Base resize width" << std::endl;
+
         auto tmp = compact_flat_hash_set(capacity(), new_width, m_hash, m_equal_to);
 
         if (size() > 0)
@@ -240,6 +242,8 @@ public:
 
     void rehash()
     {
+        std::cout << "Base rehash" << std::endl;
+
         auto tmp = compact_flat_hash_set(2 * capacity(), m_width, m_hash, m_equal_to);
 
         for (size_t i = 0; i < capacity(); ++i)

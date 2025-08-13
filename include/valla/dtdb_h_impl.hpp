@@ -73,8 +73,11 @@ auto insert_sequence(const Range& sequence, Set1& inner_table, Set2& leaf_table)
     if (size == 0)    ///< Special case for empty sequence.
         return I(0);  ///< Len 0 marks the empty sequence, the tree index can be arbitrary so we set it to 0.
 
-    while (inner_table.growth_info().growth_left() < 2 * size)
-        inner_table.rehash();
+    if (inner_table.must_grow_width(sequence))
+        inner_table.grow_width();
+
+    while (inner_table.must_grow_capacity(2 * size))
+        inner_table.grow_capacity();
 
     return inner_table.insert_root(Slot<I>(insert_sequence_recursively(sequence.begin(), sequence.end(), size, inner_table, leaf_table), size));
 }
