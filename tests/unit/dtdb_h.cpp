@@ -90,7 +90,9 @@ TEST(VallaTests, PlainUintHashIDMapTest)
 
     {
         const auto s0 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15. };
-        const auto s0_idx = insert_sequence(s0, table, leaf_table);
+        index_list.clear();
+        encode_as_unsigned_integrals(s0, leaf_table, std::back_inserter(index_list));
+        const auto s0_idx = insert_sequence(index_list, table);
 
         EXPECT_EQ(table.size(), 18);
         EXPECT_EQ(leaf_table.size(), 16);
@@ -98,14 +100,18 @@ TEST(VallaTests, PlainUintHashIDMapTest)
         // Created new state!
         EXPECT_EQ(s0_idx, 1);
 
+        index_list.clear();
+        read_sequence(s0_idx, table, std::back_inserter(index_list));
         double_list.clear();
-        read_sequence(s0_idx, table, leaf_table, std::back_inserter(double_list));
+        decode_from_unsigned_integrals(index_list, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s0);
     }
 
     {
         const auto s1 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16. };
-        const auto s1_idx = insert_sequence(s1, table, leaf_table);
+        index_list.clear();
+        encode_as_unsigned_integrals(s1, leaf_table, std::back_inserter(index_list));
+        const auto s1_idx = insert_sequence(index_list, table);
 
         EXPECT_EQ(table.size(), 18);
         EXPECT_EQ(leaf_table.size(), 17);
@@ -113,14 +119,18 @@ TEST(VallaTests, PlainUintHashIDMapTest)
         // Created new state!
         EXPECT_EQ(s1_idx, 2);
 
+        index_list.clear();
+        read_sequence(s1_idx, table, std::back_inserter(index_list));
         double_list.clear();
-        read_sequence(s1_idx, table, leaf_table, std::back_inserter(double_list));
+        decode_from_unsigned_integrals(index_list, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s1);
     }
 
     {
         const auto s2 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
-        const auto s2_idx = insert_sequence(s2, table, leaf_table);
+        index_list.clear();
+        encode_as_unsigned_integrals(s2, leaf_table, std::back_inserter(index_list));
+        const auto s2_idx = insert_sequence(index_list, table);
 
         EXPECT_EQ(table.size(), 18);
         EXPECT_EQ(leaf_table.size(), 18);
@@ -128,14 +138,18 @@ TEST(VallaTests, PlainUintHashIDMapTest)
         // Created new state!
         EXPECT_EQ(s2_idx, 3);
 
+        index_list.clear();
+        read_sequence(s2_idx, table, std::back_inserter(index_list));
         double_list.clear();
-        read_sequence(s2_idx, table, leaf_table, std::back_inserter(double_list));
+        decode_from_unsigned_integrals(index_list, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s2);
     }
 
     {
         const auto s3 = std::vector<double> { 0., 1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12., 13., 14., 15., 16., 17. };
-        const auto s3_idx = insert_sequence(s3, table, leaf_table);
+        index_list.clear();
+        encode_as_unsigned_integrals(s3, leaf_table, std::back_inserter(index_list));
+        const auto s3_idx = insert_sequence(index_list, table);
 
         EXPECT_EQ(table.size(), 18);
         EXPECT_EQ(leaf_table.size(), 18);
@@ -143,8 +157,10 @@ TEST(VallaTests, PlainUintHashIDMapTest)
         // std::vector<double> already exists!
         EXPECT_EQ(s3_idx, 3);
 
+        index_list.clear();
+        read_sequence(s3_idx, table, std::back_inserter(index_list));
         double_list.clear();
-        read_sequence(s3_idx, table, leaf_table, std::back_inserter(double_list));
+        decode_from_unsigned_integrals(index_list, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s3);
     }
 }
@@ -187,7 +203,9 @@ TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
 
     {
         const auto s0 = std::vector<double> {};
-        const auto s0_idx = insert_sequence(s0, table, leaf_table);
+        index_list.clear();
+        encode_as_unsigned_integrals(s0, leaf_table, std::back_inserter(index_list));
+        const auto s0_idx = insert_sequence(index_list, table);
 
         EXPECT_EQ(table.size(), 0);
         EXPECT_EQ(leaf_table.size(), 0);
@@ -196,13 +214,17 @@ TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
         EXPECT_EQ(s0_idx, 0);
 
         index_list.clear();
-        read_sequence(s0_idx, table, leaf_table, std::back_inserter(double_list));
+        read_sequence(s0_idx, table, std::back_inserter(index_list));
+        double_list.clear();
+        decode_from_unsigned_integrals(index_list, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s0);
     }
 
     {
         const auto s1 = std::vector<double> { 0 };
-        const auto s1_idx = insert_sequence(s1, table, leaf_table);
+        index_list.clear();
+        encode_as_unsigned_integrals(s1, leaf_table, std::back_inserter(index_list));
+        const auto s1_idx = insert_sequence(index_list, table);
 
         EXPECT_EQ(table.size(), 0);
         EXPECT_EQ(leaf_table.size(), 1);
@@ -211,7 +233,9 @@ TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
         EXPECT_EQ(s1_idx, 1);
 
         index_list.clear();
-        read_sequence(s1_idx, table, leaf_table, std::back_inserter(double_list));
+        read_sequence(s1_idx, table, std::back_inserter(index_list));
+        double_list.clear();
+        decode_from_unsigned_integrals(index_list, leaf_table, std::back_inserter(double_list));
         EXPECT_EQ(double_list, s1);
     }
 }
@@ -269,13 +293,17 @@ TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
     auto irs = std::vector<uint32_t> {};
     auto drs = std::vector<uint32_t> {};
 
+    auto tmp_il = std::vector<uint32_t> {};
+
     for (size_t i = 0; i < ils.size(); ++i)
     {
         const auto& il = ils[i];
         const auto& dl = dls[i];
 
         auto ir = insert_sequence(il, table);
-        auto dr = insert_sequence(dl, table, leaf_table);
+        tmp_il.clear();
+        encode_as_unsigned_integrals(dl, leaf_table, std::back_inserter(tmp_il));
+        auto dr = insert_sequence(tmp_il, table);
 
         irs.push_back(ir);
         drs.push_back(dr);
@@ -286,8 +314,10 @@ TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
         EXPECT_EQ(il, out_il);
 
         /* Ensure newly inserted double sequence is readable*/
+        tmp_il.clear();
+        read_sequence(dr, table, std::back_inserter(tmp_il));
         out_dl.clear();
-        read_sequence(dr, table, leaf_table, std::back_inserter(out_dl));
+        decode_from_unsigned_integrals(tmp_il, leaf_table, std::back_inserter(out_dl));
         EXPECT_EQ(dl, out_dl);
 
         /* Ensure that all index sequences are readable after rehash. */
@@ -307,8 +337,10 @@ TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
             const auto& dl_2 = dls[j];
             const auto& dr_2 = drs[j];
 
+            tmp_il.clear();
+            read_sequence(dr_2, table, std::back_inserter(tmp_il));
             out_dl.clear();
-            read_sequence(dr_2, table, leaf_table, std::back_inserter(out_dl));
+            decode_from_unsigned_integrals(tmp_il, leaf_table, std::back_inserter(out_dl));
             EXPECT_EQ(dl_2, out_dl);
         }
     }
@@ -391,13 +423,17 @@ TEST(VallaTests, CompactUintHashIDMapExhaustiveTest)
     auto irs = std::vector<uint32_t> {};
     auto drs = std::vector<uint32_t> {};
 
+    auto tmp_il = std::vector<uint32_t> {};
+
     for (size_t i = 0; i < ils.size(); ++i)
     {
         const auto& il = ils[i];
         const auto& dl = dls[i];
 
         auto ir = insert_sequence(il, table);
-        auto dr = insert_sequence(dl, table, leaf_table);
+        tmp_il.clear();
+        encode_as_unsigned_integrals(dl, leaf_table, std::back_inserter(tmp_il));
+        auto dr = insert_sequence(tmp_il, table);
 
         irs.push_back(ir);
         drs.push_back(dr);
@@ -408,8 +444,10 @@ TEST(VallaTests, CompactUintHashIDMapExhaustiveTest)
         EXPECT_EQ(il, out_il);
 
         /* Ensure newly inserted double sequence is readable*/
+        tmp_il.clear();
+        read_sequence(dr, table, std::back_inserter(tmp_il));
         out_dl.clear();
-        read_sequence(dr, table, leaf_table, std::back_inserter(out_dl));
+        decode_from_unsigned_integrals(tmp_il, leaf_table, std::back_inserter(out_dl));
         EXPECT_EQ(dl, out_dl);
 
         /* Ensure that all index sequences are readable after rehash. */
@@ -429,8 +467,10 @@ TEST(VallaTests, CompactUintHashIDMapExhaustiveTest)
             const auto& dl_2 = dls[j];
             const auto& dr_2 = drs[j];
 
+            tmp_il.clear();
+            read_sequence(dr_2, table, std::back_inserter(tmp_il));
             out_dl.clear();
-            read_sequence(dr_2, table, leaf_table, std::back_inserter(out_dl));
+            decode_from_unsigned_integrals(tmp_il, leaf_table, std::back_inserter(out_dl));
             EXPECT_EQ(dl_2, out_dl);
         }
     }

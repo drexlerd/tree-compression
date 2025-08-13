@@ -31,6 +31,7 @@
 #include "valla/hash_id_map.hpp"
 #include "valla/indexed_hash_set.hpp"
 #include "valla/ostream.hpp"
+#include "valla/sequence_coder.hpp"
 #include "valla/slot.hpp"
 #include "valla/statistics.hpp"
 #include "valla/succinct_flat_hash_set.hpp"

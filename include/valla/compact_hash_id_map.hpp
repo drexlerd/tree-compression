@@ -154,6 +154,22 @@ public:
         std::swap(*this, tmp);
     }
 
+    template<std::ranges::forward_range Range>
+    void resize_to_fit(Range sequence)
+    {
+        const auto size = static_cast<I>(std::distance(sequence.begin(), sequence.end()));
+
+        auto max_width = 2;
+        // for (const auto x : sequence)
+        // max_width = std::max(max_width, Uint64tCoder<typename>::width(x));
+
+        if (max_width > this->m_width)
+            resize_width(max_width);
+
+        while (growth_info().growth_left() < 2 * size)
+            rehash();
+    }
+
     std::pair<uint64_t, bool> insert(const Slot<I>& key)
     {
         const auto new_width = Uint64tCoder<Slot<I>>::width(key);

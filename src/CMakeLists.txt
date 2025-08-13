@@ -7,6 +7,7 @@ add_library(core STATIC
     "../include/valla/compact_hash.hpp"
     "../include/valla/concepts.hpp"
     "../include/valla/debug.hpp"
+    "../include/valla/sequence_coder.hpp"
     "../include/valla/dtdb_h_impl.hpp"
     "../include/valla/dtdb_h.hpp"
     "../include/valla/dtdb_s_impl.hpp"

@@ -231,6 +231,15 @@ public:
         this->m_statistics.increase_total_rehash_time(std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - start));
     }
 
+    template<std::ranges::forward_range Range>
+    void resize_to_fit(Range sequence)
+    {
+        const auto size = static_cast<I>(std::distance(sequence.begin(), sequence.end()));
+
+        while (growth_info().growth_left() < 2 * size)
+            rehash();
+    }
+
     I insert_root(const Slot<I>& slot) { return m_roots.insert(slot); }
 
     I insert_internal(const Slot<I>& slot) { return Base::insert(slot); }

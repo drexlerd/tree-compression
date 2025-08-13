@@ -36,7 +36,7 @@ struct Uint64tCoder<Slot<I>>
 {
     static_assert(std::numeric_limits<I>::digits <= 32, "Slot<I> packing with equal halves requires I <= 32 bits.");
 
-    constexpr static uint8_t width(const Slot<I>& el) noexcept { return std::max(2, 2 * std::max(std::bit_width(el.i1), std::bit_width(el.i2))); }
+    constexpr static uint8_t width(const Slot<I>& el) noexcept { return 2 * std::bit_width(1 | el.i1 | el.i2); }
 
     constexpr static uint64_t to_uint64_t(const Slot<I>& el, uint8_t width) noexcept
     {
@@ -57,7 +57,7 @@ struct Uint64tCoder<Slot<I>>
 template<std::unsigned_integral T>
 struct Uint64tCoder<T>
 {
-    constexpr static uint8_t width(const T& el) { return std::max(1, std::bit_width(el)); }
+    constexpr static uint8_t width(const T& el) { return std::bit_width(1 | el); }
 
     constexpr static uint64_t to_uint64_t(const T& el, uint8_t) { return static_cast<uint64_t>(el); }
 

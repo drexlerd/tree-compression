@@ -21,6 +21,7 @@
 #include "valla/slot.hpp"
 
 #include <concepts>
+#include <ranges>
 
 namespace valla
 {
@@ -38,28 +39,19 @@ concept IsStableIndexedHashSet = requires(T a, typename T::value_type v, typenam
 
 /// @brief `IsUnstableIndexedHashSet` is an indexed hash set whose indices are unstable such that special root nodes need to stabilize them.
 template<typename T>
-concept IsUnstableIndexedHashSet = requires(T a, typename T::value_type v, typename T::index_type i) {
+concept IsUnstableIndexedHashSet = requires(T a, typename T::value_type v, typename T::index_type i, std::vector<typename T::value_type> s) {
     typename T::value_type;
     typename T::index_type;
 
     requires std::unsigned_integral<typename T::index_type>;
 
+    { a.resize_to_fit(s) } -> std::same_as<void>;
     { a.insert_internal(v) } -> std::same_as<typename T::index_type>;
     { a.insert_root(v) } -> std::same_as<typename T::index_type>;
     { a.lookup_internal(i) } -> std::convertible_to<typename T::value_type>;
     { a.lookup_root(i) } -> std::convertible_to<typename T::value_type>;
 };
 
-/// @brief `AreGeneralCaseHashSets` ensures value and index type compatibility between an inner and a leaf indexed hash sets.
-template<typename Set1, typename Set2, typename V = typename Set2::value_type>
-concept AreGeneralCaseHashSets = std::same_as<V, typename Set2::value_type>                             //
-                                 && std::same_as<typename Set1::index_type, typename Set2::index_type>  //
-                                 && std::same_as<typename Set1::value_type, Slot<typename Set1::index_type>>;
-
-///@brief `IsSpecialCaseHashSet` ensures value and index type compatibility between a indexed hash set.
-template<typename Set, typename V = typename Set::value_type>
-concept IsSpecialCaseHashSet = std::same_as<V, typename Set::index_type>  //
-                               && std::same_as<typename Set::value_type, Slot<typename Set::index_type>>;
 }
 
 #endif
