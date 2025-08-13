@@ -152,7 +152,7 @@ public:
 private:
     RootSet m_roots;
 
-    I rehash_recursively(I unstable_index, I size, TreeHashIDMap& tmp)
+    I relocate_recursively(I unstable_index, I size, TreeHashIDMap& tmp)
     {
         /* Base case 1: skipped node creation */
         if (size == 1)
@@ -168,8 +168,8 @@ private:
         const auto mid = std::bit_floor(size - 1);
 
         /* Conquer */
-        I i1 = rehash_recursively(slot.i1, mid, tmp);
-        I i2 = rehash_recursively(slot.i2, size - mid, tmp);
+        I i1 = relocate_recursively(slot.i1, mid, tmp);
+        I i2 = relocate_recursively(slot.i2, size - mid, tmp);
 
         return tmp.insert(Slot<I>(i1, i2));
     }
@@ -188,7 +188,7 @@ private:
             if (tmp.growth_info().growth_left() < 2 * root.i2)
                 return false;
 
-            tmp.insert_root(Slot(rehash_recursively(root.i1, root.i2, tmp), root.i2));
+            tmp.insert_root(Slot(relocate_recursively(root.i1, root.i2, tmp), root.i2));
         }
 
         std::swap(*this, tmp);

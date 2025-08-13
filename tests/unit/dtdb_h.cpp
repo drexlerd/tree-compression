@@ -551,12 +551,12 @@ TEST(VallaTests, CompactUintHashIDMapExhaustiveTest)
         const auto& dl = dls[i];
 
         auto ir = insert_sequence(il, table);
-        // tmp_il.clear();
-        // encode_as_unsigned_integrals(dl, leaf_table, std::back_inserter(tmp_il));
-        // auto dr = insert_sequence(tmp_il, table);
+        tmp_il.clear();
+        encode_as_unsigned_integrals(dl, leaf_table, std::back_inserter(tmp_il));
+        auto dr = insert_sequence(tmp_il, table);
 
         irs.push_back(ir);
-        // drs.push_back(dr);
+        drs.push_back(dr);
 
         /* Ensure newly inserted index sequence is readable*/
         out_il.clear();
@@ -564,11 +564,11 @@ TEST(VallaTests, CompactUintHashIDMapExhaustiveTest)
         EXPECT_EQ(il, out_il);
 
         /* Ensure newly inserted double sequence is readable*/
-        // tmp_il.clear();
-        // read_sequence(dr, table, std::back_inserter(tmp_il));
-        // out_dl.clear();
-        // decode_from_unsigned_integrals(tmp_il, leaf_table, std::back_inserter(out_dl));
-        // EXPECT_EQ(dl, out_dl);
+        tmp_il.clear();
+        read_sequence(dr, table, std::back_inserter(tmp_il));
+        out_dl.clear();
+        decode_from_unsigned_integrals(tmp_il, leaf_table, std::back_inserter(out_dl));
+        EXPECT_EQ(dl, out_dl);
 
         /* Ensure that all index sequences are readable after rehash. */
         for (size_t j = 0; j <= i; ++j)
@@ -582,18 +582,18 @@ TEST(VallaTests, CompactUintHashIDMapExhaustiveTest)
         }
 
         /* Ensure that all double sequences are readable after rehash. */
-        //        for (size_t j = 0; j <= i; ++j)
-        //        {
-        //            const auto& dl_2 = dls[j];
-        //            const auto& dr_2 = drs[j];
-        //
-        //            tmp_il.clear();
-        //            read_sequence(dr_2, table, std::back_inserter(tmp_il));
-        //            out_dl.clear();
-        //            decode_from_unsigned_integrals(tmp_il, leaf_table, std::back_inserter(out_dl));
-        //            EXPECT_EQ(dl_2, out_dl);
-        //        }
-        //    }
+        for (size_t j = 0; j <= i; ++j)
+        {
+            const auto& dl_2 = dls[j];
+            const auto& dr_2 = drs[j];
+
+            tmp_il.clear();
+            read_sequence(dr_2, table, std::back_inserter(tmp_il));
+            out_dl.clear();
+            decode_from_unsigned_integrals(tmp_il, leaf_table, std::back_inserter(out_dl));
+            EXPECT_EQ(dl_2, out_dl);
+        }
     }
 }
+
 }
