@@ -139,7 +139,9 @@ protected:
                 assert(is_within_bounds(m_slots, offset));
 
                 if (home(offset) == r && m_equal_to(m_slots[offset], q1))  // matching home, q1, and q2 implies matching key
+                {
                     return { offset, false };
+                }
             }
 
             auto mask_empty = group.MaskEmpty();
@@ -182,7 +184,6 @@ protected:
 
     void resize_width(uint8_t new_width)
     {
-        // TODO: width resize changes hash values -> changes positions -> hash id map must rebuild trees
         auto tmp = compact_flat_hash_set(capacity(), new_width, m_hash, m_equal_to);
 
         if (size() > 0)
@@ -232,6 +233,7 @@ public:
 
     T operator[](uint64_t pos) const
     {
+        std::cout << "pos=" << pos << " " << static_cast<int>(m_controls[pos]) << std::endl;
         assert(is_occupied(pos));
         return decode_key(pos);
     }
@@ -327,6 +329,10 @@ public:
         return usage;
     }
 };
+
+/**
+ * Implementations
+ */
 }
 
 #endif

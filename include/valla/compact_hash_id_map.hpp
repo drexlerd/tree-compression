@@ -74,7 +74,7 @@ private:
     /// @param new_capacity is the capacity after rehash.
     bool rehash_impl(size_t new_capacity)
     {
-        auto tmp = CompactTreeHashIDMap(new_capacity, this->m_hash, this->m_equal_to);
+        auto tmp = CompactTreeHashIDMap(new_capacity, this->m_width, this->m_hash, this->m_equal_to);
 
         /* Relocate trees */
         for (I stable_index = 1; stable_index < this->m_roots.size(); ++stable_index)  // root 0 was already created
@@ -98,8 +98,8 @@ public:
     using Base::size;
     using Base::statistics;
 
-    CompactTreeHashIDMap(size_t capacity = absl::container_internal::Group::kWidth, Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) :
-        Base(capacity, 1, hash, equal_to),
+    CompactTreeHashIDMap(size_t capacity = absl::container_internal::Group::kWidth, uint8_t width = 1, Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) :
+        Base(capacity, width, hash, equal_to),
         m_roots()
     {
         this->m_roots.insert(get_empty_slot<I>());  // root representing empty sequence
@@ -134,9 +134,42 @@ public:
         this->m_statistics.increase_total_rehash_time(std::chrono::duration_cast<std::chrono::milliseconds>(clock::now() - start));
     }
 
+    void resize_width(uint8_t new_width)
+    {
+        std::cout << "Resize width: " << static_cast<int>(this->m_width) << " " << static_cast<int>(new_width) << std::endl;
+
+        // TODO: width resize changes hash values -> changes positions -> hash id map must rebuild trees
+        auto tmp = CompactTreeHashIDMap(capacity(), new_width, this->m_hash, this->m_equal_to);
+
+        /* Relocate trees */
+        for (I stable_index = 1; stable_index < this->m_roots.size(); ++stable_index)  // root 0 was already created
+        {
+            Slot root = this->m_roots.lookup(stable_index);
+
+            tmp.insert_root(Slot(rehash_recursively(root.i1, root.i2, tmp), root.i2));
+        }
+
+        tmp.m_statistics += this->m_statistics;
+
+        std::swap(*this, tmp);
+    }
+
+    std::pair<uint64_t, bool> insert(const Slot<I>& key)
+    {
+        const auto new_width = Uint64tCoder<Slot<I>>::width(key);
+
+        if (new_width > this->m_width)
+            resize_width(new_width);
+
+        if (this->m_growth_info.growth_left() == 0)
+            rehash();
+
+        return this->insert_impl(key);
+    }
+
     I insert_root(const Slot<I>& slot) { return m_roots.insert(slot); }
 
-    I insert_internal(const Slot<I>& slot) { return Base::insert(slot).first; }
+    I insert_internal(const Slot<I>& slot) { return insert(slot).first; }
 
     Slot<I> lookup_root(I pos) const { return m_roots.lookup(pos); }
 
