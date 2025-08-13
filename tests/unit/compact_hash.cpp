@@ -73,7 +73,7 @@ TEST(VallaTests, SimulateCompactHashOverflowTest)
 {
     const auto w = uint8_t(10);
     const auto b = size_t(std::pow(2, w));
-    const auto m = uint64_t(64);
+    const auto m = uint64_t(128);
 
     auto hash = CompactHash<uint64_t> {};
 
