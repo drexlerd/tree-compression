@@ -15,14 +15,15 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
-#ifndef VALLA_INCLUDE_HASH_ID_MAP_HPP_
-#define VALLA_INCLUDE_HASH_ID_MAP_HPP_
+#ifndef VALLA_INCLUDE_SIMPLE_TREE_HASH_ID_MAP_HPP_
+#define VALLA_INCLUDE_SIMPLE_TREE_HASH_ID_MAP_HPP_
 
 #include "valla/concepts.hpp"
 #include "valla/equal_to.hpp"
 #include "valla/growthinfo.hpp"
 #include "valla/hash.hpp"
 #include "valla/indexed_hash_set.hpp"
+#include "valla/simple_hash_id_map.hpp"
 #include "valla/statistics.hpp"
 
 #include <cstddef>
@@ -31,114 +32,17 @@
 
 namespace valla
 {
-/// @brief `HashIDMap implements a hash ID map with open addressing in a Swiss table format where the position of a key implicitly becomes the index.
-/// @tparam Derived is the derived class that must implement the rehash logic in rehash_impl.
-/// @tparam Key is the key.
-/// @tparam Hash is the hash functor for a key.
-/// @tparam EqualTo is the equality comparison functor for a key.
-template<typename Derived, typename Key, std::unsigned_integral I, typename Hash = Hash<Key>, typename EqualTo = EqualTo<Key>>
-class HashIDMap
-{
-private:
-    /// @brief Helper to cast to Derived.
-    constexpr const auto& self() const { return static_cast<const Derived&>(*this); }
-    constexpr auto& self() { return static_cast<Derived&>(*this); }
 
-protected:
-    GrowthInfo m_growth_info;
-    std::vector<Key> m_slots;
-    std::vector<absl::container_internal::ctrl_t> m_controls;
-
-    Hash m_hash;
-    EqualTo m_equal_to;
-
-    HashSetStatistics m_statistics;
-
-    HashIDMap(size_t capacity = absl::container_internal::Group::kWidth, Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) :
-        m_growth_info(capacity),
-        m_slots(capacity),
-        m_controls(capacity + absl::container_internal::NumClonedBytes(), absl::container_internal::ctrl_t::kEmpty),
-        m_hash(hash),
-        m_equal_to(equal_to)
-    {
-    }
-
-    // Moveable but not copieable
-    HashIDMap(const HashIDMap&) = delete;
-    HashIDMap& operator=(const HashIDMap&) = delete;
-    HashIDMap(HashIDMap&&) = default;
-    HashIDMap& operator=(HashIDMap&&) = default;
-
-    I insert(const Key& slot)
-    {
-        assert(size() < capacity() && "Insert failed. Rehashing to higher capacity is required.");
-
-        m_statistics.increment_num_probes();
-
-        size_t h = m_hash(slot);
-        absl::container_internal::h2_t h2 = absl::container_internal::H2(h);
-
-        absl::container_internal::probe_seq<absl::container_internal::Group::kWidth> probe(h, m_growth_info.mask());
-
-        while (true)
-        {
-            absl::container_internal::Group group(&m_controls[probe.offset()]);
-
-            for (const auto i : group.Match(h2))
-            {
-                m_statistics.increase_total_probe_length(i);
-
-                size_t offset = probe.offset(i);
-                assert(is_within_bounds(m_slots, offset));
-
-                if (m_equal_to(m_slots[offset], slot))
-                    return offset;
-            }
-
-            auto mask_empty = group.MaskEmpty();
-            if (mask_empty)
-            {
-                int i = mask_empty.LowestBitSet();
-
-                m_statistics.increase_total_probe_length(i);
-
-                size_t offset = probe.offset(i);
-                assert(is_within_bounds(m_slots, offset));
-
-                m_slots[offset] = slot;
-                m_controls[offset] = static_cast<absl::container_internal::ctrl_t>(h2);
-                if (offset < absl::container_internal::NumClonedBytes())
-                    m_controls[capacity() + offset] = static_cast<absl::container_internal::ctrl_t>(h2);
-
-                m_growth_info.increment_size();
-
-                return offset;
-            }
-
-            m_statistics.increase_total_probe_length(absl::container_internal::Group::kWidth);
-
-            probe.next();
-        }
-    }
-
-    const Key& operator[](I pos) const { return m_slots[pos]; }
-
-    const GrowthInfo& growth_info() const { return m_growth_info; }
-    size_t size() const { return m_growth_info.size(); }
-    size_t capacity() const { return m_growth_info.capacity(); }
-    const HashSetStatistics& statistics() const { return m_statistics; }
-};
-
-/// @brief `TreeHashIDMap` implements a HashIDMap for chains of perfectly balanced binary trees with DFS style rehash policy.
+/// @brief `SimpleTreeHashIDMap` implements a HashIDMap for chains of perfectly balanced binary trees with DFS style rehash policy.
 template<std::unsigned_integral I,
          typename Hash = Hash<Slot<I>>,
          typename EqualTo = EqualTo<Slot<I>>,
          IsStableIndexedHashSet RootSet = IndexedHashSet<Slot<I>, I, Hash, EqualTo>>
     requires std::same_as<typename RootSet::value_type, Slot<I>> && std::same_as<typename RootSet::index_type, I>
-class TreeHashIDMap : public HashIDMap<TreeHashIDMap<I, Hash, EqualTo, RootSet>, Slot<I>, I, Hash, EqualTo>
+class SimpleTreeHashIDMap : public SimpleHashIDMap<Slot<I>, I, Hash, EqualTo>
 {
 private:
-    using Base = HashIDMap<TreeHashIDMap<I, Hash, EqualTo, RootSet>, Slot<I>, I, Hash, EqualTo>;
+    using Base = SimpleHashIDMap<Slot<I>, I, Hash, EqualTo>;
 
 public:
     using value_type = Slot<I>;
@@ -152,7 +56,7 @@ public:
 private:
     RootSet m_roots;
 
-    I relocate_recursively(I unstable_index, I size, TreeHashIDMap& tmp)
+    I relocate_recursively(I unstable_index, I size, SimpleTreeHashIDMap& tmp)
     {
         /* Base case 1: skipped node creation */
         if (size == 1)
@@ -178,7 +82,7 @@ private:
     /// @param new_capacity is the capacity after rehash.
     bool rehash_impl(size_t new_capacity)
     {
-        auto tmp = TreeHashIDMap<I, Hash, EqualTo, RootSet>(new_capacity);
+        auto tmp = SimpleTreeHashIDMap<I, Hash, EqualTo, RootSet>(new_capacity);
 
         /* Relocate trees */
         for (I stable_index = 1; stable_index < this->m_roots.size(); ++stable_index)  // root 0 was already created
@@ -197,7 +101,7 @@ private:
     }
 
 public:
-    TreeHashIDMap(size_t capacity = absl::container_internal::Group::kWidth, Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) :
+    SimpleTreeHashIDMap(size_t capacity = absl::container_internal::Group::kWidth, Hash hash = Hash {}, EqualTo equal_to = EqualTo {}) :
         Base(capacity, hash, equal_to),
         m_roots()
     {
@@ -205,10 +109,10 @@ public:
     }
 
     // Moveable but not copieable
-    TreeHashIDMap(const TreeHashIDMap&) = delete;
-    TreeHashIDMap& operator=(const TreeHashIDMap&) = delete;
-    TreeHashIDMap(TreeHashIDMap&&) = default;
-    TreeHashIDMap& operator=(TreeHashIDMap&&) = default;
+    SimpleTreeHashIDMap(const SimpleTreeHashIDMap&) = delete;
+    SimpleTreeHashIDMap& operator=(const SimpleTreeHashIDMap&) = delete;
+    SimpleTreeHashIDMap(SimpleTreeHashIDMap&&) = default;
+    SimpleTreeHashIDMap& operator=(SimpleTreeHashIDMap&&) = default;
 
     void rehash()
     {
@@ -262,7 +166,7 @@ public:
         return usage;
     }
 
-    friend std::ostream& operator<<(std::ostream& os, const TreeHashIDMap& el)
+    friend std::ostream& operator<<(std::ostream& os, const SimpleTreeHashIDMap& el)
     {
         os << el.m_slots << std::endl;
         return os;

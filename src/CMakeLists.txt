@@ -2,8 +2,8 @@
 add_library(core STATIC
     "../include/valla/compact_bucket_hash_set.hpp"
     "../include/valla/compact_cleary_hash_set.hpp"
-    "../include/valla/compact_flat_hash_set.hpp"
     "../include/valla/compact_hash_id_map.hpp"
+    "../include/valla/compact_tree_hash_id_map.hpp"
     "../include/valla/compact_hash.hpp"
     "../include/valla/concepts.hpp"
     "../include/valla/debug.hpp"
@@ -21,6 +21,7 @@ add_library(core STATIC
     "../include/valla/statistics.hpp"
     "../include/valla/succinct_flat_hash_set.hpp"
     "../include/valla/succinct_indexed_hash_set.hpp"
+    "../include/valla/tree_hash_id_map.hpp"
     "../include/valla/uint64tcoder.hpp"
     "../include/valla/utils.hpp"
 

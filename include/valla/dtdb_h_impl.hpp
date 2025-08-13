@@ -18,8 +18,8 @@
 #ifndef VALLA_INCLUDE_DTDB_H_IMPL_HPP_
 #define VALLA_INCLUDE_DTDS_H_IMPL_HPP_
 
-#include "valla/hash_id_map.hpp"
 #include "valla/indexed_hash_set.hpp"
+#include "valla/simple_hash_id_map.hpp"
 
 namespace valla
 {

@@ -47,7 +47,7 @@ static void BM_PlainUintHashIDMapInsert(benchmark::State& state)
 
     for (auto _ : state)
     {
-        TreeHashIDMap<uint32_t> table;
+        SimpleTreeHashIDMap<uint32_t> table;
 
         for (size_t rep = 0; rep < repetitions; ++rep)
         {

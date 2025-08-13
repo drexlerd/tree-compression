@@ -20,9 +20,9 @@
 
 namespace valla::tests
 {
-TEST(VallaTests, CompactFlatHashSetUint32Test)
+TEST(VallaTests, CompactHashIDMapTest)
 {
-    auto set = compact_flat_hash_set<uint32_t> {};
+    auto set = compact_hash_id_map<uint32_t> {};
 
     // Insert s0
     const auto [s0, s0_success] = set.insert(uint32_t(0));
@@ -50,7 +50,7 @@ TEST(VallaTests, CompactFlatHashSetUint32Test)
 
 TEST(VallaTests, CompactFlatHashSetSlotTest)
 {
-    auto set = compact_flat_hash_set<Slot<uint32_t>> {};
+    auto set = compact_hash_id_map<Slot<uint32_t>> {};
 
     // Insert s0
     const auto [s0, s0_success] = set.insert(Slot<uint32_t>(0, 1));
