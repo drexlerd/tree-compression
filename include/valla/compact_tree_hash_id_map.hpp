@@ -20,6 +20,7 @@
 
 #include "valla/compact_hash.hpp"
 #include "valla/compact_hash_id_map.hpp"
+#include "valla/compact_utils.hpp"
 #include "valla/concepts.hpp"
 #include "valla/equal_to.hpp"
 #include "valla/growthinfo.hpp"
@@ -51,7 +52,7 @@ private:
     I relocate_recursively(I unstable_index, I size, CompactTreeHashIDMap& tmp)
     {
         /* Base case 1: skipped node creation */
-        if (size == 1)
+        if (size == I { 1 })
             return unstable_index;
 
         /* Note: caching relocation is expensive to cache because the tree structure depends on size. */
@@ -60,7 +61,8 @@ private:
         const auto& slot = this->operator[](unstable_index);
 
         /* Divide */
-        assert(size >= 2);
+        assert(size >= I { 2 });
+
         const auto mid = std::bit_floor(size - 1);
 
         /* Conquer */
@@ -80,7 +82,7 @@ private:
                                         this->m_equal_to);
 
         /* Relocate trees */
-        for (I stable_index = 1; stable_index < this->m_roots.size(); ++stable_index)  // root 0 was already created
+        for (I stable_index = I { 1 }; stable_index < this->m_roots.size(); ++stable_index)  // root 0 was already created
         {
             Slot root = this->m_roots.lookup(stable_index);
 
@@ -124,7 +126,7 @@ private:
         auto tmp = CompactTreeHashIDMap(capacity(), new_width, this->m_hash, this->m_equal_to);
 
         /* Relocate trees */
-        for (I stable_index = 1; stable_index < this->m_roots.size(); ++stable_index)  // root 0 was already created
+        for (I stable_index = I { 1 }; stable_index < this->m_roots.size(); ++stable_index)  // root 0 was already created
         {
             Slot root = this->m_roots.lookup(stable_index);
 
@@ -161,18 +163,13 @@ public:
     {
         DEBUG_LOG("Started resizing to fit: capacity=" << this->capacity() << " width=" << static_cast<int>(this->width()));
 
-        const auto size = static_cast<I>(std::distance(sequence.begin(), sequence.end()));
+        const auto [size, width] = compute_required_size_and_width(sequence, this->capacity());
 
         while (growth_info().growth_left() < 2 * size)
             rehash();
 
-        auto required_width = 2 * std::bit_width(this->capacity() - 1);
-
-        for (const auto index : sequence)
-            required_width = std::max(required_width, 2 * std::bit_width(index));
-
-        if (required_width > this->m_width)
-            resize_width(required_width);
+        if (width > this->m_width)
+            resize_width(width);
 
         DEBUG_LOG("Finished resizing to fit: capacity=" << this->capacity() << " width=" << static_cast<int>(this->width()));
     }

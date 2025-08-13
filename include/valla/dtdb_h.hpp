@@ -16,7 +16,7 @@
  */
 
 #ifndef VALLA_INCLUDE_DTDB_H_HPP_
-#define VALLA_INCLUDE_DTDS_H_HPP_
+#define VALLA_INCLUDE_DTDB_H_HPP_
 
 #include "valla/concepts.hpp"
 

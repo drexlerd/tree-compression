@@ -158,6 +158,76 @@ struct CompactHash
     }
 };
 
+// Some ChaptGpt generated hash from the Dynamic path decomposed tries paper text. have to finalize it.
+template<std::unsigned_integral U = uint64_t>
+struct BijectiveTransform
+{
+    // parameters: bit-width z in [1, digits(U)], shift a > floor(z/2), odd multiplier p
+    const uint8_t z;
+    const uint8_t a;
+    const U p;
+    const U mask;   // (1<<z)-1 (or all-ones if z==digits)
+    const U p_inv;  // modular inverse of p modulo 2^z
+
+    // ---- helpers ----
+    static constexpr U make_mask(uint8_t zbits)
+    {
+        const uint8_t D = std::numeric_limits<U>::digits;
+        assert(zbits >= 1 && zbits <= D);
+        if (zbits == D)
+            return ~U { 0 };
+        return (U { 1 } << zbits) - U { 1 };
+    }
+
+    // multiplicative inverse modulo 2^z (p must be odd). Newton iteration; evaluated at compile time here.
+    static constexpr U inv_mod_2pow(U a, uint8_t zbits)
+    {
+        assert((a & 1u) == 1u);
+        U x = U { 1 };
+        // Each iteration doubles the number of correct low bits. 6 suffices for 64-bit.
+        for (int i = 0; i < 6; ++i)
+        {
+            x = x * (U { 2 } - a * x);
+        }
+        // keep only zbits
+        const U m = make_mask(zbits);
+        return x & m;
+    }
+
+    // constructor checks & precomputes
+    constexpr BijectiveTransform(uint8_t zbits, uint8_t ashift, U mult) : z(zbits), a(ashift), p(mult), mask(make_mask(z)), p_inv(inv_mod_2pow(mult, z))
+    {
+        const uint8_t D = std::numeric_limits<U>::digits;
+        assert(z >= 1 && z <= D);
+        assert(a > (z >> 1));    // a > floor(z/2)  => h1 is self-inverse
+        assert((p & 1u) == 1u);  // p must be odd to be invertible mod 2^z
+    }
+
+    // h1: x ^ (x >> a), masked to z bits
+    static constexpr U h1(U x, uint8_t a, U m) { return (x ^ (x >> a)) & m; }
+
+    // h2: x * p mod 2^z
+    static constexpr U h2(U x, U p, U m) { return (x * p) & m; }
+
+    // The hash: h = h1 ∘ h2
+    constexpr U hash(U x) const
+    {
+        x &= mask;
+        x = h2(x, p, mask);
+        x = h1(x, a, mask);
+        return x;
+    }
+
+    // Inverse: h^{-1} = h2^{-1} ∘ h1^{-1};  h1 is self-inverse when a > z/2
+    constexpr U invert(U y) const
+    {
+        y &= mask;
+        y = h1(y, a, mask);      // self-inverse under our 'a' constraint
+        y = h2(y, p_inv, mask);  // multiply by modular inverse
+        return y;
+    }
+};
+
 }
 
 #endif

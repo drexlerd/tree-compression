@@ -16,7 +16,7 @@
  */
 
 #ifndef VALLA_INCLUDE_DTDB_H_IMPL_HPP_
-#define VALLA_INCLUDE_DTDS_H_IMPL_HPP_
+#define VALLA_INCLUDE_DTDB_H_IMPL_HPP_
 
 #include "valla/indexed_hash_set.hpp"
 #include "valla/simple_hash_id_map.hpp"
@@ -28,7 +28,7 @@ namespace valla
  * Insert recursively
  */
 
-template<std::input_iterator Iterator, IsUnstableIndexedHashSet Set>
+template<std::forward_iterator Iterator, IsUnstableIndexedHashSet Set, bool size_is_pow2 = false>
     requires std::same_as<std::iter_value_t<Iterator>, typename Set::index_type>  //
              && std::same_as<typename Set::value_type, Slot<typename Set::index_type>>
 inline auto insert_sequence_recursively(Iterator it, Iterator end, typename Set::index_type size, Set& table)
@@ -36,10 +36,10 @@ inline auto insert_sequence_recursively(Iterator it, Iterator end, typename Set:
     using I = Set::index_type;
 
     /* Base cases */
-    if (size == 1)
+    if (size == I { 1 })
         return I(*it);
 
-    if (size == 2)
+    if (size == I { 2 })
         return table.insert_internal(Slot<I>(*it, *(it + 1)));
 
     /* Divide */
@@ -48,8 +48,8 @@ inline auto insert_sequence_recursively(Iterator it, Iterator end, typename Set:
     /* Conquer */
 
     const auto mid_it = it + mid;
-    const auto i1 = insert_sequence_recursively(it, mid_it, mid, table);
-    const auto i2 = insert_sequence_recursively(mid_it, end, size - mid, table);
+    const auto i1 = insert_sequence_recursively<Iterator, Set, true>(it, mid_it, mid, table);
+    const auto i2 = insert_sequence_recursively<Iterator, Set, false>(mid_it, end, size - mid, table);
 
     return table.insert_internal(Slot<I>(i1, i2));
 }
@@ -64,8 +64,8 @@ auto insert_sequence(const Range& sequence, Set& table)
     // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
     const auto size = static_cast<I>(std::distance(sequence.begin(), sequence.end()));
 
-    if (size == 0)    ///< Special case for empty sequence.
-        return I(0);  ///< Len 0 marks the empty sequence, the tree index can be arbitrary so we set it to 0.
+    if (size == I { 0 })  ///< Special case for empty sequence.
+        return I(0);      ///< Len 0 marks the empty sequence, the tree index can be arbitrary so we set it to 0.
 
     table.resize_to_fit(sequence);
 
@@ -79,14 +79,16 @@ auto insert_sequence(const Range& sequence, Set& table)
 template<IsUnstableIndexedHashSet Set, std::output_iterator<typename Set::index_type> OutIterator>
 inline void read_sequence_recursively(typename Set::index_type index, typename Set::index_type size, const Set& table, OutIterator out)
 {
+    using I = typename Set::index_type;
+
     /* Base cases */
-    if (size == 1)
+    if (size == I { 1 })
     {
         *out++ = index;
         return;
     }
 
-    if (size == 2)
+    if (size == I { 2 })
     {
         const auto slot = table.lookup_internal(index);
         *out++ = slot.i1;
@@ -106,10 +108,12 @@ inline void read_sequence_recursively(typename Set::index_type index, typename S
 template<IsUnstableIndexedHashSet Set, std::output_iterator<typename Set::index_type> OutIterator>
 inline void read_sequence(typename Set::index_type root_index, const Set& table, OutIterator out)
 {
+    using I = typename Set::index_type;
+
     /* Observe: a root slot wraps the root tree_index together with the length that defines the tree structure! */
     const auto slot = table.lookup_root(root_index);
 
-    if (slot.i2 == 0)  ///< Special case for empty sequence.
+    if (slot.i2 == I { 0 })  ///< Special case for empty sequence.
         return;
 
     read_sequence_recursively(slot.i1, slot.i2, table, out);

@@ -28,7 +28,7 @@ namespace valla
  * Insert recursively
  */
 
-template<std::input_iterator Iterator, IsStableIndexedHashSet Set>
+template<std::forward_iterator Iterator, IsStableIndexedHashSet Set>
     requires std::same_as<std::iter_value_t<Iterator>, typename Set::index_type>  //
              && std::same_as<typename Set::value_type, Slot<typename Set::index_type>>
 inline auto insert_sequence_recursively(Iterator it, Iterator end, typename Set::index_type size, Set& table)
@@ -36,10 +36,10 @@ inline auto insert_sequence_recursively(Iterator it, Iterator end, typename Set:
     using I = Set::index_type;
 
     /* Base cases */
-    if (size == 1)
+    if (size == I { 1 })
         return I(*it);  ///< Skip node creation
 
-    if (size == 2)
+    if (size == I { 2 })
         return table.insert(Slot<I>(*it, *(it + 1)));
 
     /* Divide */
@@ -63,7 +63,7 @@ inline auto insert_sequence(const Range& sequence, Set& table)
     // Note: O(1) for random access iterators, and O(N) otherwise by repeatedly calling operator++.
     const auto size = static_cast<I>(std::distance(sequence.begin(), sequence.end()));
 
-    if (size == 0)
+    if (size == I { 0 })
         return get_empty_slot<I>();  ///< Special case for empty sequence.
 
     return Slot<I>(insert_sequence_recursively(sequence.begin(), sequence.end(), size, table), size);
@@ -76,8 +76,10 @@ inline auto insert_sequence(const Range& sequence, Set& table)
 template<IsStableIndexedHashSet Set, std::output_iterator<typename Set::index_type> OutIterator>
 inline void read_sequence_recursively(typename Set::index_type index, typename Set::index_type size, const Set& table, OutIterator out)
 {
+    using I = typename Set::index_type;
+
     /* Base case */
-    if (size == 1)
+    if (size == I { 1 })
     {
         *out++ = index;
         return;
@@ -86,7 +88,7 @@ inline void read_sequence_recursively(typename Set::index_type index, typename S
     const auto slot = table.lookup(index);
 
     /* Base case */
-    if (size == 2)
+    if (size == I { 2 })
     {
         *out++ = slot.i1;
         *out++ = slot.i2;
@@ -104,7 +106,9 @@ inline void read_sequence_recursively(typename Set::index_type index, typename S
 template<IsStableIndexedHashSet Set, std::output_iterator<typename Set::index_type> OutIterator>
 inline void read_sequence(const Slot<typename Set::index_type>& root_slot, const Set& table, OutIterator out)
 {
-    if (root_slot.i2 == 0)  ///< Special case for empty sequence.
+    using I = typename Set::index_type;
+
+    if (root_slot.i2 == I { 0 })  ///< Special case for empty sequence.
         return;
 
     /* Observe: a root slot wraps the root tree_index together with the length that defines the tree structure! */

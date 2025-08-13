@@ -65,7 +65,7 @@ protected:
     HashSetStatistics m_statistics;
 
     inline uint64_t H(const T& key, uint8_t width) const { return m_hash.hash(Uint64tCoder<T>::to_uint64_t(key, width), width); }
-    inline uint64_t Q(uint64_t h) { return h / m_growth_info.capacity(); }
+    inline uint64_t Q(uint64_t h) { return h >> m_growth_info.log2_capacity(); }
     inline uint64_t R(uint64_t h) { return h & m_growth_info.mask(); }
 
     /* Split Q into Q1 (stored in m_slots with variable bit-width) and Q2 (the control byte used for SIMD probing) */
@@ -104,7 +104,7 @@ protected:
         uint64_t q2 = static_cast<uint64_t>(m_controls[i]);
         uint64_t q = (q1 << 7) | q2;
         uint64_t r = home(i);
-        uint64_t h = q * m_growth_info.capacity() | r;
+        uint64_t h = (q * m_growth_info.capacity()) | r;
         uint64_t inverse_h = m_hash.invert_hash(h, m_width);
 
         DEBUG_LOG("q1=" << q1 << " q2=" << q2 << " q=" << q << " r=" << r << " h=" << h << " inverse_h=" << inverse_h);
