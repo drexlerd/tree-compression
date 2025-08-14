@@ -26,32 +26,43 @@
 namespace valla
 {
 /// @brief `IsStableIndexedHashSet` is an indexed hash set whose indices remain stable.
-template<typename T>
-concept IsStableIndexedHashSet = requires(T a, typename T::value_type v, typename T::index_type i) {
-    typename T::value_type;
-    typename T::index_type;
-
-    requires std::unsigned_integral<typename T::index_type>;
-
-    { a.insert(v) } -> std::same_as<typename T::index_type>;
-    { a.lookup(i) } -> std::convertible_to<typename T::value_type>;
-};
+template<class T>
+concept IsStableIndexedHashSet =
+    // associated types on the cvref-stripped type
+    requires {
+        typename std::remove_cvref_t<T>::value_type;
+        typename std::remove_cvref_t<T>::index_type;
+    } &&
+    // index must be unsigned integral
+    std::unsigned_integral<typename std::remove_cvref_t<T>::index_type> &&
+    // readable on const U&
+    requires(const std::remove_cvref_t<T>& ca, typename std::remove_cvref_t<T>::index_type i) {
+        { ca.lookup(i) } -> std::convertible_to<typename std::remove_cvref_t<T>::value_type>;
+    } &&
+    // writable on non-const U&
+    requires(std::remove_cvref_t<T>& a, typename std::remove_cvref_t<T>::value_type v) {
+        { a.insert(v) } -> std::same_as<typename std::remove_cvref_t<T>::index_type>;
+    };
 
 /// @brief `IsUnstableIndexedHashSet` is an indexed hash set whose indices are unstable such that special root nodes need to stabilize them.
 template<typename T>
-concept IsUnstableIndexedHashSet = requires(T a, typename T::value_type v, typename T::index_type i, std::vector<typename T::index_type> s) {
-    typename T::value_type;
-    typename T::index_type;
-
-    requires std::unsigned_integral<typename T::index_type>;
-
-    { a.resize_to_fit(s) } -> std::same_as<void>;
-    { a.insert_internal(v) } -> std::same_as<typename T::index_type>;
-    { a.insert_root(v) } -> std::same_as<typename T::index_type>;
-    { a.lookup_internal(i) } -> std::convertible_to<typename T::value_type>;
-    { a.lookup_root(i) } -> std::convertible_to<typename T::value_type>;
-};
-
+concept IsUnstableIndexedHashSet =
+    // associated types on the cvref-stripped type
+    requires {
+        typename std::remove_cvref_t<T>::value_type;
+        typename std::remove_cvref_t<T>::index_type;
+    } &&
+    // index must be unsigned integral
+    std::unsigned_integral<typename std::remove_cvref_t<T>::index_type> &&
+    requires(const std::remove_cvref_t<T>& ca, typename std::remove_cvref_t<T>::index_type i) {
+        { ca.lookup_internal(i) } -> std::convertible_to<typename std::remove_cvref_t<T>::value_type>;
+        { ca.lookup_root(i) } -> std::convertible_to<typename std::remove_cvref_t<T>::value_type>;
+    } &&
+    // writable on non-const U&
+    requires(std::remove_cvref_t<T>& a, typename std::remove_cvref_t<T>::value_type v, const std::vector<typename std::remove_cvref_t<T>::index_type>& s) {
+        { a.resize_to_fit(s) } -> std::same_as<void>;
+        { a.insert_internal(v) } -> std::same_as<typename std::remove_cvref_t<T>::index_type>;
+        { a.insert_root(v) } -> std::same_as<typename std::remove_cvref_t<T>::index_type>;
+    };
 }
-
 #endif
