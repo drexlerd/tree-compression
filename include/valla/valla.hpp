@@ -19,7 +19,7 @@
 #define VALLA_INCLUDE_VALLA_HPP_
 
 // Include all headers for easy downstream include
-#include "valla/compact_hash.hpp"
+#include "valla/bijective_hash.hpp"
 #include "valla/compact_hash_id_map.hpp"
 #include "valla/compact_tree_hash_id_map.hpp"
 #include "valla/concepts.hpp"

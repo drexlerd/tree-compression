@@ -599,6 +599,7 @@ TEST(VallaTests, CompactUintHashIDMapExhaustiveTest)
         }
     }
 
+    std::cout << "Width: " << static_cast<int>(table.width()) << std::endl;
     std::cout << "Size: " << table.size() << std::endl;
     std::cout << "Capacity: " << table.capacity() << std::endl;
     std::cout << "Memory usage: " << table.mem_usage() << std::endl;

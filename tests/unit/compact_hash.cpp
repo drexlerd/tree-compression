@@ -24,7 +24,7 @@ TEST(VallaTests, CompactHashTest)
 {
     auto w = uint8_t(4);
 
-    auto hash = CompactHash<uint64_t> {};
+    auto hash = BijectiveHash<uint64_t> {};
     const auto x0 = uint64_t(0);
     const auto h0 = hash.hash(x0, w);
     std::cout << 0 << " " << h0 << std::endl;
@@ -44,7 +44,7 @@ TEST(VallaTests, SimulateCompactHashTest)
     const auto b = size_t(std::pow(2, w));
     const auto m = uint64_t(128);
 
-    auto hash = CompactHash<uint64_t> {};
+    auto hash = BijectiveHash<uint64_t> {};
 
     std::mt19937 rng(42);  // fixed seed for reproducibility
     std::uniform_int_distribution<uint32_t> index_dist(0, std::pow(2, 2 * w));
@@ -75,7 +75,7 @@ TEST(VallaTests, SimulateCompactHashOverflowTest)
     const auto b = size_t(std::pow(2, w));
     const auto m = uint64_t(128);
 
-    auto hash = CompactHash<uint64_t> {};
+    auto hash = BijectiveHash<uint64_t> {};
 
     std::mt19937 rng(42);  // fixed seed for reproducibility
     std::uniform_int_distribution<uint32_t> index_dist(0, std::pow(2, 2 * w));

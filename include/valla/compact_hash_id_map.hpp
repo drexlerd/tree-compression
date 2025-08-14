@@ -18,7 +18,7 @@
 #ifndef VALLA_INCLUDE_COMPACT_HASH_ID_MAP_HPP_
 #define VALLA_INCLUDE_COMPACT_HASH_ID_MAP_HPP_
 
-#include "valla/compact_hash.hpp"
+#include "valla/bijective_hash.hpp"
 #include "valla/concepts.hpp"
 #include "valla/debug.hpp"
 #include "valla/equal_to.hpp"
@@ -35,7 +35,7 @@
 
 namespace valla
 {
-template<IsUint64tCodable T, typename Hash = CompactHash<uint64_t>, typename EqualTo = EqualTo<T>>
+template<IsUint64tCodable T, typename Hash = BijectiveHash<uint64_t>, typename EqualTo = EqualTo<T>>
 class compact_hash_id_map
 {
 public:

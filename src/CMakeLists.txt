@@ -1,10 +1,8 @@
 
 add_library(core STATIC
-    "../include/valla/compact_bucket_hash_set.hpp"
-    "../include/valla/compact_cleary_hash_set.hpp"
+    "../include/valla/bijective_hash.hpp"
     "../include/valla/compact_hash_id_map.hpp"
     "../include/valla/compact_tree_hash_id_map.hpp"
-    "../include/valla/compact_hash.hpp"
     "../include/valla/concepts.hpp"
     "../include/valla/debug.hpp"
     "../include/valla/sequence_coder.hpp"

@@ -18,6 +18,12 @@
 #ifndef VALLA_INCLUDE_DEBUG_HPP_
 #define VALLA_INCLUDE_DEBUG_HPP_
 
+// Some further references:
+// - https://arxiv.org/pdf/2109.04548
+// - https://arxiv.org/pdf/cs/0512081
+// - https://citeseerx.ist.psu.edu/document?repid=rep1&type=pdf&doi=b7620871f53d759a15cf9e820584b89f984f74c1
+// - https://en.wikipedia.org/wiki/Quotient_filter
+
 #ifdef VERBOSE
 #define DEBUG_LOG(x) std::cout << x << std::endl;
 #else

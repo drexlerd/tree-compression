@@ -18,7 +18,7 @@
 #ifndef VALLA_INCLUDE_COMPACT_TREE_HASH_ID_MAP_HPP_
 #define VALLA_INCLUDE_COMPACT_TREE_HASH_ID_MAP_HPP_
 
-#include "valla/compact_hash.hpp"
+#include "valla/bijective_hash.hpp"
 #include "valla/compact_hash_id_map.hpp"
 #include "valla/compact_utils.hpp"
 #include "valla/concepts.hpp"
@@ -35,7 +35,7 @@
 namespace valla
 {
 /// @brief `CompactTreeHashIDMap` implements a CompactHashIDMap for chains of perfectly balanced binary trees with DFS style rehash policy.
-template<std::unsigned_integral I, IsStableIndexedHashSet RootSet, typename Hash = CompactHash<uint64_t>, typename EqualTo = EqualTo<Slot<I>>>
+template<std::unsigned_integral I, IsStableIndexedHashSet RootSet, typename Hash = BijectiveHash<uint64_t>, typename EqualTo = EqualTo<Slot<I>>>
     requires std::same_as<typename RootSet::value_type, Slot<I>> && std::same_as<typename RootSet::index_type, I>
 class CompactTreeHashIDMap : public compact_hash_id_map<Slot<I>, Hash, EqualTo>
 {
