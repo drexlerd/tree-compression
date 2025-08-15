@@ -34,10 +34,7 @@ namespace valla
 {
 
 /// @brief `SimpleTreeHashIDMap` implements a HashIDMap for chains of perfectly balanced binary trees with DFS style rehash policy.
-template<std::unsigned_integral I,
-         typename Hash = Hash<Slot<I>>,
-         typename EqualTo = EqualTo<Slot<I>>,
-         IsStableIndexedHashSet RootSet = IndexedHashSet<Slot<I>, I, Hash, EqualTo>>
+template<std::unsigned_integral I, IsStableIndexedHashSet RootSet, typename Hash = Hash<Slot<I>>, typename EqualTo = EqualTo<Slot<I>>>
     requires std::same_as<typename RootSet::value_type, Slot<I>> && std::same_as<typename RootSet::index_type, I>
 class SimpleTreeHashIDMap : public SimpleHashIDMap<Slot<I>, I, Hash, EqualTo>
 {
@@ -82,7 +79,7 @@ private:
     /// @param new_capacity is the capacity after rehash.
     bool rehash_impl(size_t new_capacity)
     {
-        auto tmp = SimpleTreeHashIDMap<I, Hash, EqualTo, RootSet>(new_capacity);
+        auto tmp = SimpleTreeHashIDMap(new_capacity);
 
         /* Relocate trees */
         for (I stable_index = 1; stable_index < this->m_roots.size(); ++stable_index)  // root 0 was already created

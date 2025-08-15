@@ -45,7 +45,7 @@ static void BM_PlainUintSwissRead(benchmark::State& state)
         all_states.push_back(std::move(s));
     }
 
-    SimpleTreeHashIDMap<uint32_t> table;
+    auto table = SimpleTreeHashIDMap<uint32_t, IndexedHashSet<Slot<uint32_t>, uint32_t>>();
 
     auto all_roots = std::vector<uint32_t> {};
 

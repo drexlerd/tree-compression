@@ -23,7 +23,7 @@ namespace valla::tests
 
 TEST(VallaTests, PlainUintHashIDMapTest)
 {
-    auto table = SimpleTreeHashIDMap<uint32_t>();
+    auto table = SimpleTreeHashIDMap<uint32_t, IndexedHashSet<Slot<uint32_t>, uint32_t>>();
     auto leaf_table = IndexedHashSet<double, uint32_t>();
 
     auto index_list = std::vector<uint32_t>();
@@ -167,7 +167,7 @@ TEST(VallaTests, PlainUintHashIDMapTest)
 
 TEST(VallaTests, PlainUintHashIDMapEdgeCasesTest)
 {
-    auto table = SimpleTreeHashIDMap<uint32_t>();
+    auto table = SimpleTreeHashIDMap<uint32_t, IndexedHashSet<Slot<uint32_t>, uint32_t>>();
     auto leaf_table = IndexedHashSet<double, uint32_t>();
 
     auto index_list = std::vector<uint32_t>();
@@ -284,7 +284,7 @@ TEST(VallaTests, PlainUintHashIDMapExhaustiveTest)
         dls.push_back(std::move(dl));
     }
 
-    auto table = SimpleTreeHashIDMap<uint32_t>();
+    auto table = SimpleTreeHashIDMap<uint32_t, IndexedHashSet<Slot<uint32_t>, uint32_t>>();
     auto leaf_table = IndexedHashSet<double, uint32_t>();
 
     auto out_il = std::vector<uint32_t> {};
