@@ -25,9 +25,6 @@ add_library(core STATIC
 
     "sdsl/bits.cpp"
     "sdsl/bp_support_algorithm.cpp"
-    "sdsl/coder_elias_delta.cpp"
-    "sdsl/coder_elias_gamma.cpp"
-    "sdsl/coder_fibonacci.cpp"
     "sdsl/config.cpp"
     "sdsl/construct_config.cpp"
     "sdsl/construct_isa.cpp"
