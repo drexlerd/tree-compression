@@ -69,7 +69,7 @@ private:
         I i1 = relocate_recursively(slot.i1, mid, tmp);
         I i2 = relocate_recursively(slot.i2, size - mid, tmp);
 
-        return tmp.insert(Slot<I>(i1, i2)).first;
+        return tmp.insert_internal(Slot<I>(i1, i2));
     }
 
     /// @brief Depth-first rehash policy for a CompactHashIDMap that stores a collection of perfectly balanced binary trees.
@@ -122,7 +122,6 @@ private:
 
     void resize_width(uint8_t new_width)
     {
-        // TODO: width resize changes hash values -> changes positions -> hash id map must rebuild trees
         auto tmp = CompactTreeHashIDMap(capacity(), new_width, this->m_hash, this->m_equal_to);
 
         /* Relocate trees */

@@ -62,24 +62,6 @@ struct BijectiveHash
         return a;
     }();
 
-    static inline constexpr std::array<U, std::numeric_limits<U>::digits + 1> PMOD = []
-    {
-        std::array<U, std::numeric_limits<U>::digits + 1> a {};
-        a[0] = 0;
-        for (int w = 1; w <= std::numeric_limits<U>::digits; ++w)
-            a[w] = P & MASKS[w];
-        return a;
-    }();
-
-    static inline constexpr std::array<U, std::numeric_limits<U>::digits + 1> PINV = []
-    {
-        std::array<U, std::numeric_limits<U>::digits + 1> a {};
-        a[0] = 0;
-        for (int w = 1; w <= std::numeric_limits<U>::digits; ++w)
-            a[w] = P_INV64 & MASKS[w];
-        return a;
-    }();
-
     // choose a > floor(z/2); derive from z to keep it valid for all z
     static inline constexpr uint8_t A(uint8_t z) { return static_cast<uint8_t>((z >> 1) + 1); }
 
@@ -88,8 +70,10 @@ struct BijectiveHash
     {
         assert(z >= 1 && z <= std::numeric_limits<U>::digits);
         const U m = MASKS[z];
+        const U pmod = P & m;
+
         x &= m;
-        x = (x * PMOD[z]) & m;      // h2
+        x = (x * pmod) & m;         // h2
         x = (x ^ (x >> A(z))) & m;  // h1
         return x;
     }
@@ -98,9 +82,11 @@ struct BijectiveHash
     {
         assert(z >= 1 && z <= std::numeric_limits<U>::digits);
         const U m = MASKS[z];
+        const U pinv = P_INV64 & m;
+
         y &= m;
         y = (y ^ (y >> A(z))) & m;  // h1^{-1} == h1
-        y = (y * PINV[z]) & m;      // h2^{-1}
+        y = (y * pinv) & m;         // h2^{-1}
         return y;
     }
 };
