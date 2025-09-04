@@ -14,13 +14,17 @@ The following example illustrates the API of the library. First, it instantiates
 #include <valla/valla.hpp>
 
 /* Common setup */
+
 // Deduplicate root nodes, i.e., pair of uint32_t representing pointer to inner node and sequence length, by bijectively mapping it to uint32_t
 auto root_table = valla::IndexedHashSet<valla::Slot<uint32_t>, uint32_t>();
+
 // Insert the root representing the empty sequence.
 const auto z_empty_index = root_table.insert(valla::Slot<uint32_t>());
 assert(z_empty_index == 0);
+
 // Deduplicate inner nodes, i.e., pair of uint32_t representing pointer to left and right child node, by bijectively mapping it to uint32_t
 auto inner_table = valla::IndexedHashSet<valla::Slot<uint32_t>, uint32_t>();
+
 // Deduplicate doubles by bijectively mapping it to uint32_t
 auto leaf_table = valla::IndexedHashSet<double, uint32_t>();
 
@@ -28,11 +32,14 @@ auto leaf_table = valla::IndexedHashSet<double, uint32_t>();
 {
     // Create a sequence over uint32_t
     const auto z = std::vector<uint32_t> { 3, 1, 2, 4, 7, 10 };
+
     // Insert the sequence that satisfies the std::input_range concept
     const auto z_root = valla::insert_sequence(z, inner_table);
+
     // Read the sequence from the given handle z_root.
     auto z_out = std::vector<uint32_t>{};
     valla::read_sequence(z_root, inner_table, std::back_inserter(z_out));
+
     // Optional: deduplicate the sequence to obtain an indexing scheme
     const auto z_index = root_table.insert(valla::Slot<uint32_t>(z_root, z.size()));
     assert(z_index == 1);
@@ -42,11 +49,22 @@ auto leaf_table = valla::IndexedHashSet<double, uint32_t>();
 {
     // Create a sequence over double (requires the leaf table for deduplication of elements from the alphabet)
     const auto z = std::vector<double> { 4.2, 1.7, 3, 4, 7.7, 0.41 };
+
+    // Translate the sequence over double to sequence over uint32_t.
+    auto z_tmp = std::vector<uint32_t>{};
+    valla::encode_as_unsigned_integrals(z, leaf_table, std::back_inserter(z_tmp));
+
     // Insert the sequence that satisfies the std::input_range concept
-    const auto z_root = valla::insert_sequence(z, inner_table, leaf_table);
-    // Read the sequence from the given handle z_root.
+    const auto z_root = valla::insert_sequence(z_tmp, inner_table);
+
+    // Read the sequence over uint32_t from the given handle z_root.
+    auto z_tmp_out = std::vector<uint32_t>{};
+    valla::read_sequence(z_root, inner_table, std::back_inserter(z_tmp_out));
+
+    // Translate the sequence over uint32_t to sequence over double.
     auto z_out = std::vector<double>{};
-    valla::read_sequence(z_root, inner_table, leaf_table, std::back_inserter(z_out));
+    valla::decode_from_unsigned_integrals(z_tmp_out, leaf_table, std::back_inserter(z_out));
+
     // Optional: deduplicate the sequence to obtain an indexing scheme
     const auto z_index = root_table.insert(valla::Slot<uint32_t>(z_root, z.size()));
     assert(z_index == 2);  // We could store roots for sequences over doubles and uint32_t separately as well.
