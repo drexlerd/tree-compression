@@ -47,11 +47,11 @@ private:
     {
         using is_transparent = void;
 
-        std::shared_ptr<const std::vector<T>> vec;
+        std::shared_ptr<const SegmentedVector<T>> vec;
         Hash hash;
 
         IndexReferencedHash() : vec(nullptr), hash() {}
-        explicit IndexReferencedHash(std::shared_ptr<const std::vector<T>> vec) : vec(std::move(vec)), hash() {}
+        explicit IndexReferencedHash(std::shared_ptr<const SegmentedVector<T>> vec) : vec(std::move(vec)), hash() {}
 
         size_t operator()(I el) const
         {
@@ -66,11 +66,11 @@ private:
     {
         using is_transparent = void;
 
-        std::shared_ptr<const std::vector<T>> vec;
+        std::shared_ptr<const SegmentedVector<T>> vec;
         EqualTo equal_to;
 
         IndexReferencedEqualTo() : vec(nullptr), equal_to() {}
-        explicit IndexReferencedEqualTo(std::shared_ptr<const std::vector<T>> vec) : vec(std::move(vec)), equal_to() {}
+        explicit IndexReferencedEqualTo(std::shared_ptr<const SegmentedVector<T>> vec) : vec(std::move(vec)), equal_to() {}
 
         bool operator()(I lhs, I rhs) const
         {
@@ -97,7 +97,7 @@ private:
     size_t stripe_of(const T& slot) { return Hash {}(slot) & (kStripes - 1); }
 
 public:
-    IndexedHashSet() : m_slots(std::make_shared<std::vector<T>>()), m_uniqueness(0, IndexReferencedHash(m_slots), IndexReferencedEqualTo(m_slots)) {}
+    IndexedHashSet() : m_slots(std::make_shared<SegmentedVector<T>>()), m_uniqueness(0, IndexReferencedHash(m_slots), IndexReferencedEqualTo(m_slots)) {}
 
     // Moveable but not copieable
     IndexedHashSet(const IndexedHashSet& other) = delete;
@@ -120,15 +120,14 @@ public:
     {
         assert(m_uniqueness.size() != std::numeric_limits<I>::max() && "IndexedHashSet: Index overflow! The maximum number of slots reached.");
 
-        // Lock the stripe associated with the slot.
+        // Lock the stripe associated with the slot, which allows running the following code in parallel for different slots, with low false positive rate.
         std::mutex& mx = stripes[stripe_of(slot)];
         std::lock_guard<std::mutex> lk(mx);
 
         if (auto it = m_uniqueness.find(slot); it != m_uniqueness.end())
             return *it;
 
-        I index = m_slots->size();
-        m_slots->push_back(slot);
+        I index = m_slots->push_back(slot);
         m_uniqueness.emplace(index);
 
         return index;
@@ -156,10 +155,13 @@ public:
     }
 
 private:
-    std::shared_ptr<std::vector<T>> m_slots;
-    gtl::parallel_flat_hash_set<I, IndexReferencedHash, IndexReferencedEqualTo, std::allocator<I>, 4, std::mutex> m_uniqueness;
+    std::shared_ptr<SegmentedVector<T>> m_slots;
+    gtl::parallel_flat_hash_set<I, IndexReferencedHash, IndexReferencedEqualTo, std::allocator<I>, 8, std::mutex> m_uniqueness;
 
-    static constexpr size_t kStripes = 64;  // power of two
+    static constexpr size_t kStripes = 64;
+
+    static_assert((kStripes & (kStripes - 1)) == 0, "kStripes must be a power of 2");
+
     std::array<std::mutex, kStripes> stripes;
 };
 

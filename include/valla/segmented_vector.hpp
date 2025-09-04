@@ -18,7 +18,10 @@
 #ifndef VALLA_INCLUDE_SEGMENTED_VECTOR_HPP_
 #define VALLA_INCLUDE_SEGMENTED_VECTOR_HPP_
 
+#include <atomic>
 #include <bit>
+#include <deque>
+#include <mutex>
 #include <vector>
 
 namespace valla
@@ -27,75 +30,84 @@ template<typename T>
 class SegmentedVector
 {
 private:
-    std::vector<std::vector<T>> m_segments;
+    static constexpr std::size_t kSegmentBytes = 512ull * 1024ull;  // 512 KiB
+    static constexpr std::size_t kElemsPerSeg = (kSegmentBytes / sizeof(T));
+
+    static_assert(kElemsPerSeg > 0, "kElemsPerSeg must be >= 1");
+    static_assert((kSegmentBytes & (kSegmentBytes - 1)) == 0, "kSegmentBytes must be a power of 2");
+
+    std::deque<std::vector<T>> m_segments;
+    std::mutex m_write_mutex;
     size_t m_offset;
     size_t m_capacity;
-    size_t m_size;
+    std::atomic<size_t> m_size;
 
-    static constexpr size_t INITIAL_SEGMENT_SIZE = 1024;
-
-    // TODO assert that initial segment size is a power of 2
-    static_assert((INITIAL_SEGMENT_SIZE & (INITIAL_SEGMENT_SIZE - 1)) == 0, "INITIAL_SEGMENT_SIZE must be a power of 2");
-
-    static size_t get_index(size_t pos)
-    {
-        constexpr size_t k = std::countr_zero(INITIAL_SEGMENT_SIZE);
-        return std::countr_zero(std::bit_floor(pos + INITIAL_SEGMENT_SIZE)) - k;
-    }
-
-    static size_t get_offset(size_t pos)
-    {
-        constexpr size_t k = std::countr_zero(INITIAL_SEGMENT_SIZE);
-        return pos - (((std::bit_floor(pos + INITIAL_SEGMENT_SIZE) >> k) - 1) << k);
-    }
+    static std::size_t get_index(std::size_t pos) { return pos / kElemsPerSeg; }
+    static std::size_t get_offset(std::size_t pos) { return pos % kElemsPerSeg; }
 
     void resize_to_fit()
     {
-        const auto remaining_entries = m_segments.back().capacity() - m_offset;
+        const auto remaining_entries = kElemsPerSeg - m_offset;
 
         if (remaining_entries == 0)
         {
-            const auto new_segment_size = m_segments.back().size() * 2;
-
             m_segments.emplace_back();
-            m_segments.back().reserve(new_segment_size);
+            m_segments.back().reserve(kElemsPerSeg);
             m_offset = 0;
-            m_capacity += new_segment_size;
+            m_capacity += kElemsPerSeg;
         }
     }
 
 public:
-    SegmentedVector() : m_segments(), m_offset(0), m_capacity(0), m_size(0)
+    SegmentedVector() : m_segments(), m_offset(0), m_capacity(kElemsPerSeg), m_size(0)
     {
         m_segments.emplace_back();
-        m_segments.back().reserve(INITIAL_SEGMENT_SIZE);
+        m_segments.back().reserve(kElemsPerSeg);
     }
+    SegmentedVector(const SegmentedVector& other) = delete;
+    SegmentedVector& operator=(const SegmentedVector& other) = delete;
+    SegmentedVector(SegmentedVector&& other) = default;
+    SegmentedVector& operator=(SegmentedVector&& other) = default;
 
-    void push_back(const T& element)
+    size_t push_back(const T& element)
     {
+        std::lock_guard<std::mutex> lk(m_write_mutex);
+
         resize_to_fit();
+
+        const std::size_t idx = m_size.load(std::memory_order_relaxed);
 
         m_segments.back().push_back(element);
 
         ++m_offset;
-        ++m_size;
+        m_size.fetch_add(1, std::memory_order_release);
+
+        return idx;
     }
-    void push_back(T&& element)
+    size_t push_back(T&& element)
     {
+        std::lock_guard<std::mutex> lk(m_write_mutex);
+
         resize_to_fit();
+
+        const std::size_t idx = m_size.load(std::memory_order_relaxed);
 
         m_segments.back().push_back(std::move(element));
 
         ++m_offset;
-        ++m_size;
+        m_size.fetch_add(1, std::memory_order_release);
+
+        return idx;
     }
 
     void pop_back()
     {
+        std::lock_guard<std::mutex> lk(m_write_mutex);
+
         m_segments.back().pop_back();
 
         --m_offset;
-        --m_size;
+        m_size.fetch_sub(1, std::memory_order_release);
     }
 
     const T& operator[](size_t pos) const
@@ -119,6 +131,10 @@ public:
 
     const T& at(size_t pos) const
     {
+        const auto n = m_size.load(std::memory_order_acquire);
+        if (pos >= n)
+            throw std::out_of_range("SegmentedVector::at");
+
         const auto index = get_index(pos);
         const auto offset = get_offset(pos);
 
@@ -126,6 +142,10 @@ public:
     }
     T& at(size_t pos)
     {
+        const auto n = m_size.load(std::memory_order_acquire);
+        if (pos >= n)
+            throw std::out_of_range("SegmentedVector::at");
+
         const auto index = get_index(pos);
         const auto offset = get_offset(pos);
 
@@ -136,7 +156,7 @@ public:
     T& back() { return m_segments.back().back(); }
 
     size_t capacity() const { return m_capacity; }
-    size_t size() const { return m_size; }
+    size_t size() const { return m_size.load(std::memory_order_acquire); }
 };
 }
 
