@@ -21,6 +21,7 @@
 #include "valla/concepts.hpp"
 #include "valla/equal_to.hpp"
 #include "valla/hash.hpp"
+#include "valla/segmented_vector.hpp"
 #include "valla/utils.hpp"
 
 #include <absl/container/flat_hash_set.h>
@@ -28,6 +29,7 @@
 #include <cstddef>
 #include <gtl/phmap.hpp>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 namespace valla
@@ -48,10 +50,12 @@ private:
         std::shared_ptr<const std::vector<T>> vec;
         Hash hash;
 
+        IndexReferencedHash() : vec(nullptr), hash() {}
         explicit IndexReferencedHash(std::shared_ptr<const std::vector<T>> vec) : vec(std::move(vec)), hash() {}
 
         size_t operator()(I el) const
         {
+            assert(vec);
             assert(is_within_bounds(*vec, el));
             return hash(vec->operator[](el));
         }
@@ -65,26 +69,32 @@ private:
         std::shared_ptr<const std::vector<T>> vec;
         EqualTo equal_to;
 
+        IndexReferencedEqualTo() : vec(nullptr), equal_to() {}
         explicit IndexReferencedEqualTo(std::shared_ptr<const std::vector<T>> vec) : vec(std::move(vec)), equal_to() {}
 
         bool operator()(I lhs, I rhs) const
         {
+            assert(vec);
             assert(is_within_bounds(*vec, lhs));
             assert(is_within_bounds(*vec, rhs));
             return equal_to(vec->operator[](lhs), vec->operator[](rhs));
         }
         bool operator()(const T& lhs, I rhs) const
         {
+            assert(vec);
             assert(is_within_bounds(*vec, rhs));
             return equal_to(lhs, (*vec)[rhs]);
         }
         bool operator()(I lhs, const T& rhs) const
         {
+            assert(vec);
             assert(is_within_bounds(*vec, lhs));
             return equal_to((*vec)[lhs], rhs);
         }
         bool operator()(const T& lhs, const T& rhs) const { return equal_to(lhs, rhs); }
     };
+
+    size_t stripe_of(const T& slot) { return Hash {}(slot) & (kStripes - 1); }
 
 public:
     IndexedHashSet() : m_slots(std::make_shared<std::vector<T>>()), m_uniqueness(0, IndexReferencedHash(m_slots), IndexReferencedEqualTo(m_slots)) {}
@@ -92,12 +102,27 @@ public:
     // Moveable but not copieable
     IndexedHashSet(const IndexedHashSet& other) = delete;
     IndexedHashSet& operator=(const IndexedHashSet& other) = delete;
-    IndexedHashSet(IndexedHashSet&& other) = default;
-    IndexedHashSet& operator=(IndexedHashSet&& other) = default;
+    IndexedHashSet(IndexedHashSet&& other) : m_slots(std::move(other.m_slots)), m_uniqueness(std::move(other.m_uniqueness)) {}
+    IndexedHashSet& operator=(IndexedHashSet&& other)
+    {
+        if (this != &other)
+        {
+            m_slots = std::move(other.m_slots);
+            m_uniqueness = std::move(other.m_uniqueness);
+        }
+        return *this;
+    }
 
+    /// @brief Insert a slot uniquely and return its index.
+    /// @param slot
+    /// @return
     I insert(T slot)
     {
         assert(m_uniqueness.size() != std::numeric_limits<I>::max() && "IndexedHashSet: Index overflow! The maximum number of slots reached.");
+
+        // Lock the stripe associated with the slot.
+        std::mutex& mx = stripes[stripe_of(slot)];
+        std::lock_guard<std::mutex> lk(mx);
 
         if (auto it = m_uniqueness.find(slot); it != m_uniqueness.end())
             return *it;
@@ -109,6 +134,10 @@ public:
         return index;
     }
 
+    /// @brief Lookup the slot of the given index.
+    /// Thread-safe if m_slots is a segmented vector.
+    /// @param index
+    /// @return
     T lookup(I index) const
     {
         assert(index < m_slots->size() && "Index out of bounds");
@@ -128,7 +157,10 @@ public:
 
 private:
     std::shared_ptr<std::vector<T>> m_slots;
-    gtl::flat_hash_set<I, IndexReferencedHash, IndexReferencedEqualTo> m_uniqueness;
+    gtl::parallel_flat_hash_set<I, IndexReferencedHash, IndexReferencedEqualTo, std::allocator<I>, 4, std::mutex> m_uniqueness;
+
+    static constexpr size_t kStripes = 64;  // power of two
+    std::array<std::mutex, kStripes> stripes;
 };
 
 static_assert(IsStableIndexedHashSet<IndexedHashSet<Slot<uint32_t>, uint32_t>>);
