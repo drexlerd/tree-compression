@@ -147,7 +147,7 @@ public:
         Base(capacity, width, hash, equal_to),
         m_roots()
     {
-        this->m_roots.insert(get_empty_slot<I>());  // root representing empty sequence
+        this->m_roots.insert(Slot<I>());  // root representing empty sequence
     }
 
     // Moveable but not copieable
@@ -164,7 +164,7 @@ public:
 
         const auto [size, width] = compute_required_size_and_width(sequence, this->capacity());
 
-        while (growth_info().growth_left() < 2 * size)
+        while (growth_info().growth_left() < size)
             rehash();
 
         if (width > this->m_width)

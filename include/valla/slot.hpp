@@ -42,12 +42,6 @@ struct Slot
     }
 };
 
-template<std::unsigned_integral I>
-constexpr inline Slot<I> get_empty_slot()
-{
-    return Slot<I>();
-}
-
 }
 
 #endif

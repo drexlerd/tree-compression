@@ -102,7 +102,7 @@ public:
         Base(capacity, hash, equal_to),
         m_roots()
     {
-        this->m_roots.insert(get_empty_slot<I>());  // root representing empty sequence
+        this->m_roots.insert(Slot<I>());  // root representing empty sequence
     }
 
     // Moveable but not copieable

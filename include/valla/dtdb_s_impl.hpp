@@ -64,7 +64,7 @@ inline auto insert_sequence(const Range& sequence, Set& table)
     const auto size = static_cast<I>(std::distance(sequence.begin(), sequence.end()));
 
     if (size == I { 0 })
-        return get_empty_slot<I>();  ///< Special case for empty sequence.
+        return Slot<I>();  ///< Special case for empty sequence.
 
     return Slot<I>(insert_sequence_recursively(sequence.begin(), sequence.end(), size, table), size);
 }
