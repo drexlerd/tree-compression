@@ -26,6 +26,7 @@
 #include <absl/container/flat_hash_set.h>
 #include <concepts>
 #include <cstddef>
+#include <gtl/phmap.hpp>
 #include <memory>
 #include <vector>
 
@@ -42,6 +43,8 @@ public:
 private:
     struct IndexReferencedHash
     {
+        using is_transparent = void;
+
         std::shared_ptr<const std::vector<T>> vec;
         Hash hash;
 
@@ -52,21 +55,35 @@ private:
             assert(is_within_bounds(*vec, el));
             return hash(vec->operator[](el));
         }
+        size_t operator()(const T& el) const { return hash(el); }
     };
 
     struct IndexReferencedEqualTo
     {
+        using is_transparent = void;
+
         std::shared_ptr<const std::vector<T>> vec;
         EqualTo equal_to;
 
         explicit IndexReferencedEqualTo(std::shared_ptr<const std::vector<T>> vec) : vec(std::move(vec)), equal_to() {}
 
-        size_t operator()(I lhs, I rhs) const
+        bool operator()(I lhs, I rhs) const
         {
             assert(is_within_bounds(*vec, lhs));
             assert(is_within_bounds(*vec, rhs));
             return equal_to(vec->operator[](lhs), vec->operator[](rhs));
         }
+        bool operator()(const T& lhs, I rhs) const
+        {
+            assert(is_within_bounds(*vec, rhs));
+            return equal_to(lhs, (*vec)[rhs]);
+        }
+        bool operator()(I lhs, const T& rhs) const
+        {
+            assert(is_within_bounds(*vec, lhs));
+            return equal_to((*vec)[lhs], rhs);
+        }
+        bool operator()(const T& lhs, const T& rhs) const { return equal_to(lhs, rhs); }
     };
 
 public:
@@ -82,19 +99,17 @@ public:
     {
         assert(m_uniqueness.size() != std::numeric_limits<I>::max() && "IndexedHashSet: Index overflow! The maximum number of slots reached.");
 
+        if (auto it = m_uniqueness.find(slot); it != m_uniqueness.end())
+            return *it;
+
         I index = m_slots->size();
-
         m_slots->push_back(slot);
+        m_uniqueness.emplace(index);
 
-        const auto result = m_uniqueness.emplace(index);
-
-        if (!result.second)
-            m_slots->pop_back();
-
-        return *result.first;
+        return index;
     }
 
-    const T& lookup(I index) const
+    T lookup(I index) const
     {
         assert(index < m_slots->size() && "Index out of bounds");
 
@@ -113,7 +128,7 @@ public:
 
 private:
     std::shared_ptr<std::vector<T>> m_slots;
-    absl::flat_hash_set<I, IndexReferencedHash, IndexReferencedEqualTo> m_uniqueness;
+    gtl::flat_hash_set<I, IndexReferencedHash, IndexReferencedEqualTo> m_uniqueness;
 };
 
 static_assert(IsStableIndexedHashSet<IndexedHashSet<Slot<uint32_t>, uint32_t>>);

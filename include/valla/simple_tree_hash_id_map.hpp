@@ -146,9 +146,9 @@ public:
 
     I insert_internal(const Slot<I>& slot) { return Base::insert(slot); }
 
-    const Slot<I>& lookup_root(I pos) const { return m_roots.lookup(pos); }
+    Slot<I> lookup_root(I pos) const { return m_roots.lookup(pos); }
 
-    const Slot<I>& lookup_internal(I pos) const { return this->m_slots[pos]; }
+    Slot<I> lookup_internal(I pos) const { return this->m_slots[pos]; }
 
     size_t num_internals() const { return Base::size(); }
     size_t num_roots() const { return m_roots.size(); }

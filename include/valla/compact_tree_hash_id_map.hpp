@@ -182,11 +182,9 @@ public:
     }
 
     I insert_root(const Slot<I>& slot) { return m_roots.insert(slot); }
-
     I insert_internal(const Slot<I>& slot) { return insert(slot).first; }
 
     Slot<I> lookup_root(I pos) const { return m_roots.lookup(pos); }
-
     Slot<I> lookup_internal(I pos) const { return this->operator[](pos); }
 
     size_t num_internals() const { return Base::size(); }

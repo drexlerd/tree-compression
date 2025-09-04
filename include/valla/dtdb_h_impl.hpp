@@ -100,7 +100,7 @@ inline void read_sequence_recursively(typename Set::index_type index, typename S
     const auto mid = std::bit_floor(size - 1);
 
     /* Conquer */
-    const auto& slot = table.lookup_internal(index);
+    const auto slot = table.lookup_internal(index);
     read_sequence_recursively(slot.i1, mid, table, out);
     read_sequence_recursively(slot.i2, size - mid, table, out);
 }

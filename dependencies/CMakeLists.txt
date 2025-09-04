@@ -25,6 +25,7 @@ endif ()
 ##############################################################
 
 add_subdirectory(abseil)
+add_subdirectory(gtl)
 add_subdirectory(benchmark)
 add_subdirectory(fmt)
 add_subdirectory(googletest)
