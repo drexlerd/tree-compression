@@ -121,8 +121,7 @@ public:
         assert(m_uniqueness.size() != std::numeric_limits<I>::max() && "IndexedHashSet: Index overflow! The maximum number of slots reached.");
 
         // Lock the stripe associated with the slot, which allows running the following code in parallel for different slots, with low false positive rate.
-        std::mutex& mx = stripes[stripe_of(slot)];
-        std::lock_guard<std::mutex> lk(mx);
+        std::lock_guard<std::mutex> lk(stripes[stripe_of(slot)]);
 
         if (auto it = m_uniqueness.find(slot); it != m_uniqueness.end())
             return *it;

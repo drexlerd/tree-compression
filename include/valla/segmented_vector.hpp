@@ -36,7 +36,7 @@ private:
     static_assert(kElemsPerSeg > 0, "kElemsPerSeg must be >= 1");
     static_assert((kSegmentBytes & (kSegmentBytes - 1)) == 0, "kSegmentBytes must be a power of 2");
 
-    std::deque<std::vector<T>> m_segments;
+    std::vector<std::vector<T>> m_segments;
     std::mutex m_write_mutex;
     size_t m_offset;
     size_t m_capacity;
@@ -59,11 +59,7 @@ private:
     }
 
 public:
-    SegmentedVector() : m_segments(), m_offset(0), m_capacity(kElemsPerSeg), m_size(0)
-    {
-        m_segments.emplace_back();
-        m_segments.back().reserve(kElemsPerSeg);
-    }
+    SegmentedVector() : m_segments(), m_offset(kElemsPerSeg), m_capacity(0), m_size(0) {}
     SegmentedVector(const SegmentedVector& other) = delete;
     SegmentedVector& operator=(const SegmentedVector& other) = delete;
     SegmentedVector(SegmentedVector&& other) = default;
