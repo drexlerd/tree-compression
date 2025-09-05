@@ -11,6 +11,11 @@ add_executable(plain_swiss_insert "plain/swiss/insert.cpp")
 target_link_libraries(plain_swiss_insert valla::core)
 target_link_libraries(plain_swiss_insert benchmark::benchmark)
 
+add_executable(plain_swiss_concurrent_read "plain/swiss/concurrent_read.cpp")
+target_link_libraries(plain_swiss_concurrent_read valla::core)
+target_link_libraries(plain_swiss_concurrent_read benchmark::benchmark)
+target_link_libraries(plain_swiss_concurrent_read TBB::tbb Threads::Threads)
+
 add_executable(plain_swiss_read "plain/swiss/read.cpp")
 target_link_libraries(plain_swiss_read valla::core)
 target_link_libraries(plain_swiss_read benchmark::benchmark)

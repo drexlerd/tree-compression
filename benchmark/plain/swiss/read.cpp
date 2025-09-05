@@ -24,9 +24,8 @@ namespace valla::benchmarks
 /// @brief In this benchmark, we evaluate the performance of accessing data in sequence
 static void BM_PlainUintSwissRead(benchmark::State& state)
 {
-    const size_t state_num = static_cast<size_t>(state.range(0));    // number of states
-    const size_t state_size = static_cast<size_t>(state.range(1));   // size of each state
-    const size_t repetitions = static_cast<size_t>(state.range(2));  // reinsertions (for deduplication effect)
+    const size_t state_num = static_cast<size_t>(state.range(0));   // number of states
+    const size_t state_size = static_cast<size_t>(state.range(1));  // size of each state
 
     std::mt19937 rng(42);  // fixed seed for reproducibility
     std::uniform_int_distribution<uint32_t> dist(0, 10'000);
@@ -50,39 +49,30 @@ static void BM_PlainUintSwissRead(benchmark::State& state)
 
     auto all_roots = std::vector<Slot<uint32_t>> {};
 
-    for (size_t rep = 0; rep < repetitions; ++rep)
-    {
-        for (const auto& s : all_states)
-            all_roots.push_back(root_table.lookup(root_table.insert(insert_sequence(s, tree_table))));
-    }
+    for (const auto& s : all_states)
+        all_roots.push_back(root_table.lookup(root_table.insert(insert_sequence(s, tree_table))));
 
     for (auto _ : state)
     {
         auto state = std::vector<uint32_t>();
 
-        for (size_t rep = 0; rep < repetitions; ++rep)
+        for (const auto& r : all_roots)
         {
-            for (const auto& r : all_roots)
-            {
-                state.clear();
-                read_sequence(r, tree_table, std::back_inserter(state));
-                benchmark::DoNotOptimize(state);
-            }
+            state.clear();
+            read_sequence(r, tree_table, std::back_inserter(state));
+            benchmark::DoNotOptimize(state);
         }
 
         benchmark::ClobberMemory();
     }
 
-    state.SetItemsProcessed(state.iterations() * state_num * repetitions);
+    state.SetItemsProcessed(state.iterations() * state_num * state_size);
 }
 
 }
 
-BENCHMARK(valla::benchmarks::BM_PlainUintSwissRead)->Args({ 100, 50, 1 });     // 100 unique states, 50 entries each, no repetition
-BENCHMARK(valla::benchmarks::BM_PlainUintSwissRead)->Args({ 100, 50, 5 });     // same but with 5 insertions each
-BENCHMARK(valla::benchmarks::BM_PlainUintSwissRead)->Args({ 1000, 100, 1 });   // larger states
-BENCHMARK(valla::benchmarks::BM_PlainUintSwissRead)->Args({ 1000, 100, 5 });   // reinsertions (stress hashing)
-BENCHMARK(valla::benchmarks::BM_PlainUintSwissRead)->Args({ 10000, 200, 1 });  // large-scale
-BENCHMARK(valla::benchmarks::BM_PlainUintSwissRead)->Args({ 10000, 200, 5 });  // heavy deduplication pressure
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissRead)->Args({ 10000, 50 });
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissRead)->Args({ 100000, 100 });
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissRead)->Args({ 1000000, 200 });
 
 BENCHMARK_MAIN();

@@ -23,7 +23,7 @@ namespace valla::benchmarks
 {
 
 /// @brief In this benchmark, we evaluate the performance of accessing data in sequence
-static void BM_PlainUintSwissConcurrentInsert(benchmark::State& state)
+static void BM_PlainUintSwissConcurrentRead(benchmark::State& state)
 {
     const size_t state_num = static_cast<size_t>(state.range(0));   // number of states
     const size_t state_size = static_cast<size_t>(state.range(1));  // size of each state
@@ -45,24 +45,31 @@ static void BM_PlainUintSwissConcurrentInsert(benchmark::State& state)
         all_states.push_back(std::move(s));
     }
 
-    // const int threads = 24;
-    // tbb::global_control gc(tbb::global_control::max_allowed_parallelism, threads);
+    IndexedHashSet<Slot<uint32_t>, uint32_t> tree_table;
+    IndexedHashSet<Slot<uint32_t>, uint32_t> root_table;
+
+    auto all_roots = std::vector<Slot<uint32_t>> {};
+
+    for (const auto& s : all_states)
+        all_roots.push_back(root_table.lookup(root_table.insert(insert_sequence(s, tree_table))));
+    tbb::enumerable_thread_specific<std::vector<uint32_t>> tls_buf;
 
     for (auto _ : state)
     {
-        IndexedHashSet<Slot<uint32_t>, uint32_t> tree_table;
-        IndexedHashSet<Slot<uint32_t>, uint32_t> root_table;
-
-        tbb::parallel_for(tbb::blocked_range<size_t>(0, all_states.size(), /*grain*/ 4096),
+        tbb::parallel_for(tbb::blocked_range<size_t>(0, all_roots.size(), /*grain*/ 4096),
                           [&](const tbb::blocked_range<size_t>& r)
                           {
+                              auto& state = tls_buf.local();
+
                               for (size_t k = r.begin(); k != r.end(); ++k)
                               {
-                                  assert(k < all_states.size());
-                                  benchmark::DoNotOptimize(root_table.insert(insert_sequence(all_states[k], tree_table)));
+                                  assert(k < all_roots.size());
+
+                                  state.clear();
+                                  read_sequence(all_roots[k], tree_table, std::back_inserter(state));
+                                  benchmark::DoNotOptimize(state);
                               }
                           });
-
         benchmark::ClobberMemory();
     }
 
@@ -71,8 +78,8 @@ static void BM_PlainUintSwissConcurrentInsert(benchmark::State& state)
 
 }
 
-BENCHMARK(valla::benchmarks::BM_PlainUintSwissConcurrentInsert)->Args({ 10000, 50, 1 });
-BENCHMARK(valla::benchmarks::BM_PlainUintSwissConcurrentInsert)->Args({ 100000, 100, 1 });
-BENCHMARK(valla::benchmarks::BM_PlainUintSwissConcurrentInsert)->Args({ 1000000, 200, 1 });
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissConcurrentRead)->Args({ 10000, 50 });
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissConcurrentRead)->Args({ 100000, 100 });
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissConcurrentRead)->Args({ 1000000, 200 });
 
 BENCHMARK_MAIN();
