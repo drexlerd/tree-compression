@@ -64,6 +64,12 @@ if(absl_FOUND)
   message(STATUS "Found absl: ${absl_DIR} (found version ${absl_VERSION})")
 endif()
 
+find_package(TBB CONFIG REQUIRED PATHS ${CMAKE_PREFIX_PATH} NO_DEFAULT_PATH)
+if(TBB_FOUND)
+  include_directories(${TBB_INCLUDE_DIRS})
+  message(STATUS "Found TBB: ${TBB_DIR} (found version ${TBB_VERSION})")
+endif()
+
 ##############################################################
 # Add library and executable targets
 ##############################################################

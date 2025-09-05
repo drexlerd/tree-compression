@@ -16,14 +16,14 @@
  */
 
 #include <benchmark/benchmark.h>
-#include <nanothread/nanothread.h>
+#include <oneapi/tbb.h>
 #include <valla/valla.hpp>
 
 namespace valla::benchmarks
 {
 
 /// @brief In this benchmark, we evaluate the performance of accessing data in sequence
-static void BM_PlainUintSwissInsert(benchmark::State& state)
+static void BM_PlainUintSwissConcurrentInsert(benchmark::State& state)
 {
     const size_t state_num = static_cast<size_t>(state.range(0));    // number of states
     const size_t state_size = static_cast<size_t>(state.range(1));   // size of each state
@@ -46,6 +46,9 @@ static void BM_PlainUintSwissInsert(benchmark::State& state)
         all_states.push_back(std::move(s));
     }
 
+    const int threads = 24;
+    tbb::global_control gc(tbb::global_control::max_allowed_parallelism, threads);
+
     for (auto _ : state)
     {
         IndexedHashSet<Slot<uint32_t>, uint32_t> tree_table;
@@ -53,15 +56,18 @@ static void BM_PlainUintSwissInsert(benchmark::State& state)
 
         for (size_t rep = 0; rep < repetitions; ++rep)
         {
-            drjit::parallel_for(drjit::blocked_range<uint32_t>(/*begin*/ 0, /*end*/ all_states.size(), 64),
-                                [&](drjit::blocked_range<uint32_t> r)
-                                {
-                                    for (auto k = r.begin(); k != r.end(); ++k)
-                                    {
-                                        assert(*k < all_states.size());
-                                        benchmark::DoNotOptimize(root_table.insert(insert_sequence(all_states[*k], tree_table)));
-                                    }
-                                });
+            tbb::parallel_for(tbb::blocked_range<size_t>(0, all_states.size(), /*grain*/ 4096),
+                              [&](const tbb::blocked_range<size_t>& r)
+                              {
+                                  for (size_t k = r.begin(); k != r.end(); ++k)
+                                  {
+                                      assert(k < all_states.size());
+                                      benchmark::DoNotOptimize(root_table.insert(insert_sequence(all_states[k], tree_table)));
+                                  }
+                              }
+                              // , tbb::auto_partitioner{}    // default
+                              // , tbb::static_partitioner{}  // deterministic partitioning if preferred
+            );
         }
 
         benchmark::ClobberMemory();
@@ -72,11 +78,11 @@ static void BM_PlainUintSwissInsert(benchmark::State& state)
 
 }
 
-BENCHMARK(valla::benchmarks::BM_PlainUintSwissInsert)->Args({ 100, 50, 1 });     // 100 unique states, 50 entries each, no repetition
-BENCHMARK(valla::benchmarks::BM_PlainUintSwissInsert)->Args({ 100, 50, 5 });     // same but with 5 insertions each
-BENCHMARK(valla::benchmarks::BM_PlainUintSwissInsert)->Args({ 1000, 100, 1 });   // larger states
-BENCHMARK(valla::benchmarks::BM_PlainUintSwissInsert)->Args({ 1000, 100, 5 });   // reinsertions (stress hashing)
-BENCHMARK(valla::benchmarks::BM_PlainUintSwissInsert)->Args({ 10000, 200, 1 });  // large-scale
-BENCHMARK(valla::benchmarks::BM_PlainUintSwissInsert)->Args({ 10000, 200, 5 });  // heavy deduplication pressure
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissConcurrentInsert)->Args({ 100, 50, 1 });     // 100 unique states, 50 entries each, no repetition
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissConcurrentInsert)->Args({ 100, 50, 5 });     // same but with 5 insertions each
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissConcurrentInsert)->Args({ 1000, 100, 1 });   // larger states
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissConcurrentInsert)->Args({ 1000, 100, 5 });   // reinsertions (stress hashing)
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissConcurrentInsert)->Args({ 10000, 200, 1 });  // large-scale
+BENCHMARK(valla::benchmarks::BM_PlainUintSwissConcurrentInsert)->Args({ 10000, 200, 5 });  // heavy deduplication pressure
 
 BENCHMARK_MAIN();

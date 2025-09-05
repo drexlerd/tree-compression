@@ -51,6 +51,7 @@ set_target_properties(core PROPERTIES OUTPUT_NAME valla_core)
 add_library(valla::core ALIAS core)
 
 target_link_libraries(core absl::flat_hash_set absl::flat_hash_map)
+target_link_libraries(core TBB::tbb)
 
 # Use include depending on building or using from installed location
 target_include_directories(core

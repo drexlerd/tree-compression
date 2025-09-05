@@ -21,7 +21,6 @@
 #include "valla/concepts.hpp"
 #include "valla/equal_to.hpp"
 #include "valla/hash.hpp"
-#include "valla/segmented_vector.hpp"
 #include "valla/utils.hpp"
 
 #include <absl/container/flat_hash_set.h>
@@ -30,6 +29,7 @@
 #include <gtl/phmap.hpp>
 #include <memory>
 #include <mutex>
+#include <oneapi/tbb.h>
 #include <vector>
 
 namespace valla
@@ -47,11 +47,11 @@ private:
     {
         using is_transparent = void;
 
-        std::shared_ptr<const SegmentedVector<T>> vec;
+        std::shared_ptr<const tbb::concurrent_vector<T>> vec;
         Hash hash;
 
         IndexReferencedHash() : vec(nullptr), hash() {}
-        explicit IndexReferencedHash(std::shared_ptr<const SegmentedVector<T>> vec) : vec(std::move(vec)), hash() {}
+        explicit IndexReferencedHash(std::shared_ptr<const tbb::concurrent_vector<T>> vec) : vec(std::move(vec)), hash() {}
 
         size_t operator()(I el) const
         {
@@ -66,11 +66,11 @@ private:
     {
         using is_transparent = void;
 
-        std::shared_ptr<const SegmentedVector<T>> vec;
+        std::shared_ptr<const tbb::concurrent_vector<T>> vec;
         EqualTo equal_to;
 
         IndexReferencedEqualTo() : vec(nullptr), equal_to() {}
-        explicit IndexReferencedEqualTo(std::shared_ptr<const SegmentedVector<T>> vec) : vec(std::move(vec)), equal_to() {}
+        explicit IndexReferencedEqualTo(std::shared_ptr<const tbb::concurrent_vector<T>> vec) : vec(std::move(vec)), equal_to() {}
 
         bool operator()(I lhs, I rhs) const
         {
@@ -97,7 +97,7 @@ private:
     size_t stripe_of(const T& slot) { return Hash {}(slot) & (kStripes - 1); }
 
 public:
-    IndexedHashSet() : m_slots(std::make_shared<SegmentedVector<T>>()), m_uniqueness(0, IndexReferencedHash(m_slots), IndexReferencedEqualTo(m_slots)) {}
+    IndexedHashSet() : m_slots(std::make_shared<tbb::concurrent_vector<T>>()), m_uniqueness(0, IndexReferencedHash(m_slots), IndexReferencedEqualTo(m_slots)) {}
 
     // Moveable but not copieable
     IndexedHashSet(const IndexedHashSet& other) = delete;
@@ -126,7 +126,8 @@ public:
         if (auto it = m_uniqueness.find(slot); it != m_uniqueness.end())
             return *it;
 
-        I index = m_slots->push_back(slot);
+        auto it = m_slots->push_back(slot);
+        I index = it - m_slots->begin();
         m_uniqueness.emplace(index);
 
         return index;
@@ -154,8 +155,8 @@ public:
     }
 
 private:
-    std::shared_ptr<SegmentedVector<T>> m_slots;
-    gtl::parallel_flat_hash_set<I, IndexReferencedHash, IndexReferencedEqualTo, std::allocator<I>, 8, std::mutex> m_uniqueness;
+    std::shared_ptr<tbb::concurrent_vector<T>> m_slots;
+    gtl::parallel_flat_hash_set<I, IndexReferencedHash, IndexReferencedEqualTo, std::allocator<I>, 4, std::mutex> m_uniqueness;
 
     static constexpr size_t kStripes = 64;
 
