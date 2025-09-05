@@ -37,7 +37,7 @@ private:
     static_assert((kSegmentBytes & (kSegmentBytes - 1)) == 0, "kSegmentBytes must be a power of 2");
 
     std::vector<std::vector<T>> m_segments;
-    std::mutex m_write_mutex;
+    mutable std::mutex m_write_mutex;
     size_t m_offset;
     size_t m_capacity;
     std::atomic<size_t> m_size;
@@ -108,6 +108,8 @@ public:
 
     const T& operator[](size_t pos) const
     {
+        std::lock_guard<std::mutex> lk(m_write_mutex);
+
         const auto index = get_index(pos);
         const auto offset = get_offset(pos);
 
@@ -117,6 +119,8 @@ public:
     }
     T& operator[](size_t pos)
     {
+        std::lock_guard<std::mutex> lk(m_write_mutex);
+
         const auto index = get_index(pos);
         const auto offset = get_offset(pos);
 
@@ -127,6 +131,8 @@ public:
 
     const T& at(size_t pos) const
     {
+        std::lock_guard<std::mutex> lk(m_write_mutex);
+
         const auto n = m_size.load(std::memory_order_acquire);
         if (pos >= n)
             throw std::out_of_range("SegmentedVector::at");
@@ -138,6 +144,8 @@ public:
     }
     T& at(size_t pos)
     {
+        std::lock_guard<std::mutex> lk(m_write_mutex);
+
         const auto n = m_size.load(std::memory_order_acquire);
         if (pos >= n)
             throw std::out_of_range("SegmentedVector::at");
