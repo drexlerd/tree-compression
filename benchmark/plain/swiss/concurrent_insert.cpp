@@ -46,8 +46,8 @@ static void BM_PlainUintSwissConcurrentInsert(benchmark::State& state)
         all_states.push_back(std::move(s));
     }
 
-    const int threads = 24;
-    tbb::global_control gc(tbb::global_control::max_allowed_parallelism, threads);
+    // const int threads = 24;
+    // tbb::global_control gc(tbb::global_control::max_allowed_parallelism, threads);
 
     for (auto _ : state)
     {
@@ -64,10 +64,7 @@ static void BM_PlainUintSwissConcurrentInsert(benchmark::State& state)
                                       assert(k < all_states.size());
                                       benchmark::DoNotOptimize(root_table.insert(insert_sequence(all_states[k], tree_table)));
                                   }
-                              }
-                              // , tbb::auto_partitioner{}    // default
-                              // , tbb::static_partitioner{}  // deterministic partitioning if preferred
-            );
+                              });
         }
 
         benchmark::ClobberMemory();
