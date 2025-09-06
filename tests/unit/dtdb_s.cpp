@@ -337,30 +337,157 @@ TEST(VallaTests, PlainUintSwissExhaustiveTest)
         out_dl.clear();
         decode_from_unsigned_integrals(tmp_il, leaf_table, std::back_inserter(out_dl));
         EXPECT_EQ(dl, out_dl);
+    }
 
-        /* Ensure that all index sequences are readable after rehash. */
-        for (size_t j = 0; j <= i; ++j)
-        {
-            const auto& il_2 = ils[j];
-            const auto& ir_2 = irs[j];
+    /* Ensure that all index sequences are readable. */
+    for (size_t i = 0; i < ils.size(); ++i)
+    {
+        const auto& il = ils[i];
+        const auto& ir = irs[i];
 
-            out_il.clear();
-            read_sequence(ir_2, inner_table, std::back_inserter(out_il));
-            EXPECT_EQ(il_2, out_il);
-        }
+        out_il.clear();
+        read_sequence(ir, inner_table, std::back_inserter(out_il));
+        EXPECT_EQ(il, out_il);
+    }
 
-        /* Ensure that all double sequences are readable after rehash. */
-        for (size_t j = 0; j <= i; ++j)
-        {
-            const auto& dl_2 = dls[j];
-            const auto& dr_2 = drs[j];
+    /* Ensure that all double sequences are readable. */
+    for (size_t i = 0; i < ils.size(); ++i)
+    {
+        const auto& dl = dls[i];
+        const auto& dr = drs[i];
 
-            tmp_il.clear();
-            read_sequence(dr_2, inner_table, std::back_inserter(tmp_il));
-            out_dl.clear();
-            decode_from_unsigned_integrals(tmp_il, leaf_table, std::back_inserter(out_dl));
-            EXPECT_EQ(dl_2, out_dl);
-        }
+        tmp_il.clear();
+        read_sequence(dr, inner_table, std::back_inserter(tmp_il));
+        out_dl.clear();
+        decode_from_unsigned_integrals(tmp_il, leaf_table, std::back_inserter(out_dl));
+        EXPECT_EQ(dl, out_dl);
+    }
+
+    std::cout << "Size: " << inner_table.size() << std::endl;
+    std::cout << "Memory usage: " << inner_table.mem_usage() << std::endl;
+}
+
+TEST(VallaTests, PlainUintSwissExhaustiveConcurrentTest)
+{
+    const size_t num_sequences = static_cast<size_t>(1000);  // number of states
+    const size_t sequence_size = static_cast<size_t>(29);    // size of each state
+
+    /* Create random sequences */
+
+    std::mt19937 rng(42);  // fixed seed for reproducibility
+    std::uniform_int_distribution<uint32_t> index_dist(0, 1000);
+    std::uniform_real_distribution<double> double_dist(0, 1000);
+    std::uniform_int_distribution<size_t> changes_dist(1, 5);
+    std::uniform_int_distribution<size_t> pos_dist(0, sequence_size - 1);
+
+    std::vector<std::vector<uint32_t>> ils;
+    ils.reserve(num_sequences);
+    std::vector<std::vector<double>> dls;
+    dls.reserve(num_sequences);
+
+    std::vector<uint32_t> start_il(sequence_size);
+    for (auto& v : start_il)
+        v = index_dist(rng);
+    ils.push_back(start_il);
+
+    std::vector<double> start_dl(sequence_size);
+    for (auto& v : start_dl)
+        v = double_dist(rng);
+    dls.push_back(start_dl);
+
+    // Generate sorted random states
+    for (size_t i = 1; i < num_sequences; ++i)
+    {
+        size_t num_changes = changes_dist(rng);
+
+        std::vector<uint32_t> index_list = ils[i - 1];
+        for (size_t j = 0; j < num_changes; ++j)
+            index_list[pos_dist(rng)] = index_dist(rng);
+        ils.push_back(std::move(index_list));
+
+        std::vector<double> double_list = dls[i - 1];
+        for (size_t j = 0; j < num_changes; ++j)
+            double_list[pos_dist(rng)] = double_dist(rng);
+        dls.push_back(std::move(double_list));
+    }
+
+    auto inner_table = IndexedHashSet<Slot<uint32_t>, uint32_t>();
+    auto leaf_table = IndexedHashSet<double, uint32_t>();
+
+    auto kirs = tbb::concurrent_vector<std::pair<uint32_t, Slot<uint32_t>>> {};
+    auto kdrs = tbb::concurrent_vector<std::pair<uint32_t, Slot<uint32_t>>> {};
+
+    tbb::parallel_for(tbb::blocked_range<size_t>(0, ils.size(), /*grain*/ 8),
+                      [&](const tbb::blocked_range<size_t>& r)
+                      {
+                          auto out_il = std::vector<uint32_t> {};
+                          auto out_dl = std::vector<double> {};
+                          auto tmp_il = std::vector<uint32_t> {};
+
+                          for (size_t k = r.begin(); k != r.end(); ++k)
+                          {
+                              const auto& il = ils[k];
+                              const auto& dl = dls[k];
+
+                              auto ir = insert_sequence(il, inner_table);
+                              tmp_il.clear();
+                              encode_as_unsigned_integrals(dl, leaf_table, std::back_inserter(tmp_il));
+                              auto dr = insert_sequence(tmp_il, inner_table);
+
+                              kirs.emplace_back(k, ir);
+                              kdrs.emplace_back(k, dr);
+
+                              /* Ensure newly inserted index sequence is readable*/
+                              out_il.clear();
+                              read_sequence(ir, inner_table, std::back_inserter(out_il));
+                              EXPECT_EQ(il, out_il);
+
+                              /* Ensure newly inserted double sequence is readable*/
+                              tmp_il.clear();
+                              read_sequence(dr, inner_table, std::back_inserter(tmp_il));
+                              out_dl.clear();
+                              decode_from_unsigned_integrals(tmp_il, leaf_table, std::back_inserter(out_dl));
+                              EXPECT_EQ(dl, out_dl);
+                          }
+                      });
+
+    std::sort(kirs.begin(), kirs.end(), [](auto&& lhs, auto&& rhs) { return lhs.first < rhs.first; });
+    std::sort(kdrs.begin(), kdrs.end(), [](auto&& lhs, auto&& rhs) { return lhs.first < rhs.first; });
+
+    auto irs = std::vector<Slot<uint32_t>> {};
+    auto drs = std::vector<Slot<uint32_t>> {};
+
+    for (const auto& [k, ir] : kirs)
+        irs.push_back(ir);
+    for (const auto& [k, dr] : kdrs)
+        drs.push_back(dr);
+
+    auto out_il = std::vector<uint32_t> {};
+    auto out_dl = std::vector<double> {};
+    auto tmp_il = std::vector<uint32_t> {};
+
+    /* Ensure that all index sequences are readable. */
+    for (size_t i = 0; i < ils.size(); ++i)
+    {
+        const auto& il = ils[i];
+        const auto& ir = irs[i];
+
+        out_il.clear();
+        read_sequence(ir, inner_table, std::back_inserter(out_il));
+        EXPECT_EQ(il, out_il);
+    }
+
+    /* Ensure that all double sequences are readable. */
+    for (size_t i = 0; i < ils.size(); ++i)
+    {
+        const auto& dl = dls[i];
+        const auto& dr = drs[i];
+
+        tmp_il.clear();
+        read_sequence(dr, inner_table, std::back_inserter(tmp_il));
+        out_dl.clear();
+        decode_from_unsigned_integrals(tmp_il, leaf_table, std::back_inserter(out_dl));
+        EXPECT_EQ(dl, out_dl);
     }
 
     std::cout << "Size: " << inner_table.size() << std::endl;
@@ -604,30 +731,30 @@ TEST(VallaTests, SuccinctUintSwissExhaustiveTest)
         out_dl.clear();
         decode_from_unsigned_integrals(tmp_il, leaf_table, std::back_inserter(out_dl));
         EXPECT_EQ(dl, out_dl);
+    }
 
-        /* Ensure that all index sequences are readable after rehash. */
-        for (size_t j = 0; j <= i; ++j)
-        {
-            const auto& il_2 = ils[j];
-            const auto& ir_2 = irs[j];
+    /* Ensure that all index sequences are readable after rehash. */
+    for (size_t i = 0; i < ils.size(); ++i)
+    {
+        const auto& il = ils[i];
+        const auto& ir = irs[i];
 
-            out_il.clear();
-            read_sequence(ir_2, inner_table, std::back_inserter(out_il));
-            EXPECT_EQ(il_2, out_il);
-        }
+        out_il.clear();
+        read_sequence(ir, inner_table, std::back_inserter(out_il));
+        EXPECT_EQ(il, out_il);
+    }
 
-        /* Ensure that all double sequences are readable after rehash. */
-        for (size_t j = 0; j <= i; ++j)
-        {
-            const auto& dl_2 = dls[j];
-            const auto& dr_2 = drs[j];
+    /* Ensure that all double sequences are readable after rehash. */
+    for (size_t i = 0; i < ils.size(); ++i)
+    {
+        const auto& dl = dls[i];
+        const auto& dr = drs[i];
 
-            tmp_il.clear();
-            read_sequence(dr_2, inner_table, std::back_inserter(tmp_il));
-            out_dl.clear();
-            decode_from_unsigned_integrals(tmp_il, leaf_table, std::back_inserter(out_dl));
-            EXPECT_EQ(dl_2, out_dl);
-        }
+        tmp_il.clear();
+        read_sequence(dr, inner_table, std::back_inserter(tmp_il));
+        out_dl.clear();
+        decode_from_unsigned_integrals(tmp_il, leaf_table, std::back_inserter(out_dl));
+        EXPECT_EQ(dl, out_dl);
     }
 
     std::cout << "Size: " << inner_table.size() << std::endl;
