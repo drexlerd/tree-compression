@@ -22,9 +22,13 @@
 
 #include <concepts>
 #include <ranges>
+#include <type_traits>
 
 namespace valla
 {
+template<typename T>
+concept IsFloatingPoint = std::is_floating_point_v<T>;
+
 /// @brief `IsStableIndexedHashSet` is an indexed hash set whose indices remain stable.
 template<class T>
 concept IsStableIndexedHashSet =

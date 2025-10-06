@@ -18,6 +18,7 @@
 #ifndef VALLA_INCLUDE_EQUAL_TO_HPP_
 #define VALLA_INCLUDE_EQUAL_TO_HPP_
 
+#include "valla/concepts.hpp"
 #include "valla/uint64tcoder.hpp"
 
 #include <cmath>
@@ -39,10 +40,10 @@ struct EqualTo
     }
 };
 
-template<>
-struct EqualTo<double>
+template<IsFloatingPoint T>
+struct EqualTo<T>
 {
-    bool operator()(double lhs, double rhs) const
+    bool operator()(const T& lhs, const T& rhs) const
     {
         if (std::isnan(lhs) && std::isnan(rhs))
             return true;

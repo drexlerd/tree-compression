@@ -18,6 +18,7 @@
 #ifndef VALLA_INCLUDE_HASH_HPP_
 #define VALLA_INCLUDE_HASH_HPP_
 
+#include "valla/concepts.hpp"
 #include "valla/slot.hpp"
 #include "valla/uint64tcoder.hpp"
 
@@ -46,15 +47,15 @@ struct Hash<Slot<I>>
     }
 };
 
-template<>
-struct Hash<double>
+template<IsFloatingPoint T>
+struct Hash<T>
 {
-    size_t operator()(double el) const
+    size_t operator()(const T& el) const
     {
         if (std::isnan(el))
             return 0x9e3779b97f4a7c15ULL;  // any fixed salt
 
-        return std::hash<double> {}(el);
+        return std::hash<T> {}(el);
     }
 };
 
