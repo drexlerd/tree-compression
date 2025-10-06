@@ -46,6 +46,18 @@ struct Hash<Slot<I>>
     }
 };
 
+template<>
+struct Hash<double>
+{
+    size_t operator()(double el) const
+    {
+        if (std::isnan(el))
+            return 0x9e3779b97f4a7c15ULL;  // any fixed salt
+
+        return std::hash<double> {}(el);
+    }
+};
+
 }
 
 #endif

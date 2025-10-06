@@ -20,7 +20,9 @@
 
 #include "valla/uint64tcoder.hpp"
 
+#include <cmath>
 #include <cstdint>
+#include <iostream>
 
 namespace valla
 {
@@ -33,6 +35,18 @@ struct EqualTo
     template<IsUint64tCodable U = T>
     bool operator()(uint64_t lhs, uint64_t rhs) const
     {
+        return lhs == rhs;
+    }
+};
+
+template<>
+struct EqualTo<double>
+{
+    bool operator()(double lhs, double rhs) const
+    {
+        if (std::isnan(lhs) && std::isnan(rhs))
+            return true;
+
         return lhs == rhs;
     }
 };
