@@ -18,12 +18,10 @@
 #ifndef VALLA_INCLUDE_HASH_HPP_
 #define VALLA_INCLUDE_HASH_HPP_
 
-#include "valla/concepts.hpp"
 #include "valla/slot.hpp"
-#include "valla/uint64tcoder.hpp"
 
-#include <absl/hash/hash.h>
 #include <concepts>
+#include <gtl/phmap.hpp>
 #include <utility>
 
 namespace valla
@@ -38,16 +36,10 @@ struct Hash
 template<std::unsigned_integral I>
 struct Hash<Slot<I>>
 {
-    size_t operator()(const Slot<I>& el) const { return absl::HashOf(el.i1, el.i2); }
-
-    template<IsUint64tCodable U = Slot<I>>
-    bool operator()(uint64_t el) const
-    {
-        return Hash<uint64_t> {}(el);
-    }
+    size_t operator()(const Slot<I>& el) const { return gtl::HashState().combine(el.i1, el.i2); }
 };
 
-template<IsFloatingPoint T>
+template<std::floating_point T>
 struct Hash<T>
 {
     size_t operator()(const T& el) const

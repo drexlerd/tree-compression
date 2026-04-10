@@ -16,6 +16,7 @@
  */
 
 #include <benchmark/benchmark.h>
+#include <random>
 #include <valla/valla.hpp>
 
 namespace valla::benchmarks

@@ -1,64 +1,14 @@
 
-add_library(core STATIC
-    "../include/valla/bijective_hash.hpp"
-    "../include/valla/compact_hash_id_map.hpp"
-    "../include/valla/compact_tree_hash_id_map.hpp"
-    "../include/valla/concepts.hpp"
-    "../include/valla/debug.hpp"
-    "../include/valla/sequence_coder.hpp"
-    "../include/valla/dtdb_h_impl.hpp"
-    "../include/valla/dtdb_h.hpp"
-    "../include/valla/dtdb_s_impl.hpp"
-    "../include/valla/dtdb_s.hpp"
-    "../include/valla/equal_to.hpp"
-    "../include/valla/hash.hpp"
-    "../include/valla/indexed_hash_set.hpp"
-    "../include/valla/ostream.hpp"
-    "../include/valla/simple_hash_id_map.hpp"
-    "../include/valla/simple_tree_hash_id_map.hpp"
-    "../include/valla/slot.hpp"
-    "../include/valla/statistics.hpp"
-    "../include/valla/succinct_flat_hash_set.hpp"
-    "../include/valla/succinct_indexed_hash_set.hpp"
-    "../include/valla/uint64tcoder.hpp"
-    "../include/valla/utils.hpp"
-
-    "sdsl/bits.cpp"
-    "sdsl/bp_support_algorithm.cpp"
-    "sdsl/config.cpp"
-    "sdsl/construct_config.cpp"
-    "sdsl/construct_isa.cpp"
-    "sdsl/construct_lcp_helper.cpp"
-    "sdsl/construct_sa_se.cpp"
-    "sdsl/csa_alphabet_strategy.cpp"
-    "sdsl/io.cpp"
-    "sdsl/louds_tree.cpp"
-    "sdsl/memory_management.cpp"
-    "sdsl/nn_dict_dynamic.cpp"
-    "sdsl/ram_filebuf.cpp"
-    "sdsl/ram_fs.cpp"
-    "sdsl/rrr_vector_15.cpp"
-    "sdsl/sd_vector.cpp"
-    "sdsl/sfstream.cpp"
-    "sdsl/uint128_t.cpp"
-    "sdsl/uint256_t.cpp"
-    "sdsl/util.cpp"
-    "sdsl/wt_helper.cpp"
-)
+add_library(core INTERFACE)
 set_target_properties(core PROPERTIES OUTPUT_NAME valla_core)
 
 # Create an alias for simpler reference
 add_library(valla::core ALIAS core)
 
-target_link_libraries(core 
-    PUBLIC 
-        absl::flat_hash_set 
-        absl::flat_hash_map
-        TBB::tbb)
 
 # Use include depending on building or using from installed location
 target_include_directories(core
-    PUBLIC
+    INTERFACE
         "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>"
         "$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>"
 )

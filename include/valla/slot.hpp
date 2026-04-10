@@ -30,10 +30,10 @@ struct Slot
     I i1;
     I i2;
 
-    constexpr Slot() : i1(0), i2(0) {}
-    constexpr Slot(I i1, I i2) : i1(i1), i2(i2) {}
+    constexpr Slot() noexcept : i1(0), i2(0) {}
+    constexpr Slot(I i1, I i2) noexcept : i1(i1), i2(i2) {}
 
-    constexpr friend bool operator==(const Slot& lhs, const Slot& rhs) { return lhs.i1 == rhs.i1 && lhs.i2 == rhs.i2; }
+    constexpr friend bool operator==(const Slot& lhs, const Slot& rhs) noexcept { return lhs.i1 == rhs.i1 && lhs.i2 == rhs.i2; }
 
     friend std::ostream& operator<<(std::ostream& os, const Slot& slot)
     {

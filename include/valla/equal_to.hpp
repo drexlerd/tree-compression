@@ -18,9 +18,6 @@
 #ifndef VALLA_INCLUDE_EQUAL_TO_HPP_
 #define VALLA_INCLUDE_EQUAL_TO_HPP_
 
-#include "valla/concepts.hpp"
-#include "valla/uint64tcoder.hpp"
-
 #include <cmath>
 #include <cstdint>
 #include <iostream>
@@ -32,15 +29,9 @@ template<typename T>
 struct EqualTo
 {
     bool operator()(const T& lhs, const T& rhs) const { return lhs == rhs; }
-
-    template<IsUint64tCodable U = T>
-    bool operator()(uint64_t lhs, uint64_t rhs) const
-    {
-        return lhs == rhs;
-    }
 };
 
-template<IsFloatingPoint T>
+template<std::floating_point T>
 struct EqualTo<T>
 {
     bool operator()(const T& lhs, const T& rhs) const
